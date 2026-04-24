@@ -7,6 +7,8 @@ import type {
   Snapshot,
   CommsEvent,
   BaseSheetRow,
+  AmTierRow,
+  DataHealth,
 } from "./types";
 import type { Tier } from "./config";
 
@@ -107,17 +109,32 @@ export async function buildSnapshot(): Promise<Snapshot> {
     }
   }
 
-  // AM exposure
+  // AM exposure — both the legacy shape (high/total) and the new per-tier breakdown
   const amMap = new Map<string, { high: number; total: number }>();
+  const amBreakdownMap = new Map<string, AmTierRow>();
   for (const c of scored) {
     const am = c.am_name || "(unassigned)";
     const cur = amMap.get(am) || { high: 0, total: 0 };
     cur.total++;
     if (c.signals.tier === "HIGH") cur.high++;
     amMap.set(am, cur);
+
+    const row = amBreakdownMap.get(am) || { am, HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0, total: 0 };
+    row[c.signals.tier]++;
+    row.total++;
+    amBreakdownMap.set(am, row);
   }
   const amExposure = Array.from(amMap, ([am, v]) => ({ am, ...v }))
     .sort((a, b) => (b.high - a.high) || (b.total - a.total));
+  const amTierBreakdown = Array.from(amBreakdownMap.values())
+    .sort((a, b) => (b.HIGH - a.HIGH) || (b.total - a.total));
+
+  // Score distribution — 10 buckets (0-10, 10-20, …, 90-100)
+  const scoreDistribution: number[] = new Array(10).fill(0);
+  for (const c of scored) {
+    const s = Math.max(0, Math.min(99, c.signals.score));
+    scoreDistribution[Math.floor(s / 10)]++;
+  }
 
   // Book-wide numeric stats
   const t30 = scored.map((c) => c.metrics.total_30d).sort((a, b) => a - b);
@@ -125,6 +142,27 @@ export async function buildSnapshot(): Promise<Snapshot> {
   const med = (arr: number[]) => (arr.length ? arr[Math.floor(arr.length / 2)] : 0);
   const mean = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
   const totalComms90d = scored.reduce((a, c) => a + c.metrics.total_90d, 0);
+
+  // Data-health instrumentation — lets us see pipeline state at a glance
+  const perSourceEventCount = { chat: 0, email: 0, phone: 0, video: 0, sms: 0 };
+  const perDirectionCount = { in: 0, out: 0 };
+  for (const e of comms) {
+    perSourceEventCount[e.channel]++;
+    perDirectionCount[e.direction]++;
+  }
+  const customersWithAnyComms90d = scored.filter((c) => c.metrics.total_90d > 0).length;
+  const customersWithEntityId = scored.filter((c) => c.entity_id).length;
+
+  const health: DataHealth = {
+    totalSubsFetched: subs.length,
+    customersWithEntityId,
+    customersWithAnyComms90d,
+    perSourceEventCount,
+    perDirectionCount,
+    baseSheetRowCount: baseSheet.rows.length,
+    fetchErrors: errors,
+    refreshDurationMs: Date.now() - started,
+  };
 
   const snapshot: Snapshot = {
     generatedAt: new Date().toISOString(),
@@ -134,6 +172,8 @@ export async function buildSnapshot(): Promise<Snapshot> {
     signalCounts,
     channelCounts,
     amExposure,
+    amTierBreakdown,
+    scoreDistribution,
     customers: scored,
     stats: {
       total_comms_90d: totalComms90d,
@@ -143,6 +183,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
       mean_90d: Number(mean(t90).toFixed(2)),
       fetch_duration_ms: Date.now() - started,
     },
+    health,
     errors: errors.length ? errors : undefined,
   };
 

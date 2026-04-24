@@ -95,6 +95,37 @@ export type ScoredCustomer = {
   signals: CustomerSignals;
 };
 
+/** Per-AM tier breakdown (for stacked horizontal bar) */
+export type AmTierRow = {
+  am: string;
+  HIGH: number;
+  MEDIUM: number;
+  LOW: number;
+  HEALTHY: number;
+  total: number;
+};
+
+/** Data-health stats — surfaced in the UI strip so we can spot pipeline issues */
+export type DataHealth = {
+  totalSubsFetched: number;        // raw count from Chargebee before dedup
+  customersWithEntityId: number;    // matched to BaseSheet
+  customersWithAnyComms90d: number; // any event in the last 90 days
+  perSourceEventCount: {            // how many events came from each feed
+    chat: number;
+    email: number;
+    phone: number;
+    video: number;
+    sms: number;
+  };
+  perDirectionCount: {              // sanity check — in vs out across the book
+    in: number;
+    out: number;
+  };
+  baseSheetRowCount: number;        // how many rows BaseSheet returned
+  fetchErrors: string[];
+  refreshDurationMs: number;
+};
+
 /** Snapshot stored in KV */
 export type Snapshot = {
   generatedAt: string;      // ISO
@@ -112,6 +143,8 @@ export type Snapshot = {
     d90: Record<string, number>;
   };
   amExposure: { am: string; high: number; total: number }[];
+  amTierBreakdown: AmTierRow[];            // NEW — for the stacked horizontal bar
+  scoreDistribution: number[];              // NEW — 10 buckets of 10 (0-10, 10-20, …, 90-100)
   customers: ScoredCustomer[];
   stats: {
     total_comms_90d: number;
@@ -121,6 +154,7 @@ export type Snapshot = {
     mean_90d: number;
     fetch_duration_ms: number;
   };
+  health: DataHealth;                       // NEW — pipeline validation stats
   errors?: string[];
 };
 

@@ -32,6 +32,7 @@ if (typeof window !== "undefined") {
 const Bar      = dynamic(() => import("react-chartjs-2").then((m) => m.Bar),      { ssr: false });
 const Line     = dynamic(() => import("react-chartjs-2").then((m) => m.Line),     { ssr: false });
 const Doughnut = dynamic(() => import("react-chartjs-2").then((m) => m.Doughnut), { ssr: false });
+const Bubble   = dynamic(() => import("react-chartjs-2").then((m) => m.Bubble),   { ssr: false });
 
 /* =================================================================== types */
 
@@ -70,6 +71,20 @@ function scoreColor(s: number): string {
   if (s >= 65) return "#ff4fa8";
   if (s >= 35) return "#ffb74d";
   if (s >= 15) return "#7868f4";
+  return "#76FF03";
+}
+
+function pctOf(n: number, total: number): string {
+  if (!total) return "0";
+  return ((n / total) * 100).toFixed(1);
+}
+
+const SCORE_BUCKET_LABELS = ["0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100"] as const;
+function scoreBucketColor(i: number): string {
+  const mid = i * 10 + 5;
+  if (mid >= 65) return "#ff4fa8";
+  if (mid >= 35) return "#ffb74d";
+  if (mid >= 15) return "#7868f4";
   return "#76FF03";
 }
 
@@ -299,9 +314,50 @@ function Overview({
   const tc = snap.tierCounts;
   const total = snap.totalActive || 1;
   const sig = snap.signalCounts;
+  const h = snap.health;
 
   return (
     <div className="space-y-4">
+      {/* ---- Data Health strip ---- */}
+      <Card className="zoca-fade-in !p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <HealthStat label="Active customers" value={snap.totalActive.toLocaleString()} />
+          <HealthStat
+            label="Entity-ID matched"
+            value={`${h.customersWithEntityId.toLocaleString()} · ${pctOf(h.customersWithEntityId, snap.totalActive)}%`}
+            ok={h.customersWithEntityId / Math.max(1, snap.totalActive) >= 0.9}
+          />
+          <HealthStat
+            label="Any comms (90d)"
+            value={`${h.customersWithAnyComms90d.toLocaleString()} · ${pctOf(h.customersWithAnyComms90d, snap.totalActive)}%`}
+            ok={h.customersWithAnyComms90d / Math.max(1, snap.totalActive) >= 0.5}
+          />
+          <HealthStat
+            label="Comms events"
+            value={(h.perDirectionCount.in + h.perDirectionCount.out).toLocaleString()}
+            sub={`${h.perDirectionCount.in.toLocaleString()} in · ${h.perDirectionCount.out.toLocaleString()} out`}
+          />
+          <HealthStat
+            label="Refresh"
+            value={`${(h.refreshDurationMs / 1000).toFixed(1)}s`}
+            ok={h.fetchErrors.length === 0}
+            sub={h.fetchErrors.length ? `${h.fetchErrors.length} error(s)` : "OK"}
+          />
+          <HealthStat
+            label="Per-source events"
+            value={`${h.perSourceEventCount.chat.toLocaleString()} chat`}
+            sub={`${h.perSourceEventCount.phone} phone · ${h.perSourceEventCount.video} vid · ${h.perSourceEventCount.sms} sms · ${h.perSourceEventCount.email} email`}
+          />
+        </div>
+        {h.fetchErrors.length > 0 && (
+          <div className="mt-3 rounded-zoca border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-200">
+            <strong>Fetch errors:</strong>
+            <ul className="ml-4 mt-1 list-disc">{h.fetchErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+          </div>
+        )}
+      </Card>
+
+      {/* ---- Tier cards ---- */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {TIER_ORDER.map((t, i) => (
           <TierCard
@@ -315,6 +371,7 @@ function Overview({
         ))}
       </div>
 
+      {/* ---- Risk mix donut + Score distribution ---- */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1 zoca-fade-in">
           <SectionTitle>Risk mix</SectionTitle>
@@ -331,17 +388,57 @@ function Overview({
               options={{
                 responsive: true, maintainAspectRatio: false, cutout: "68%",
                 plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, padding: 10, font: { size: 11 } } } },
+                onClick: (_, elems) => {
+                  if (elems[0] != null) {
+                    const tier = TIER_ORDER[elems[0].index];
+                    setFilters({ ...emptyFilters(), tier });
+                    setTab("risk_list");
+                  }
+                },
               }}
             />
           </div>
         </Card>
 
         <Card className="lg:col-span-2 zoca-fade-in">
-          <SectionTitle>Signal prevalence (customers with score ≥ 30)</SectionTitle>
+          <SectionTitle>Score distribution</SectionTitle>
           <div style={{ height: 220 }}>
             <Bar
               data={{
-                labels: ["We went silent 30d+", "Client went silent", "Response rate dropped", "Volume/channel collapse"],
+                labels: [...SCORE_BUCKET_LABELS],
+                datasets: [{
+                  data: snap.scoreDistribution,
+                  backgroundColor: SCORE_BUCKET_LABELS.map((_, i) => scoreBucketColor(i)),
+                  borderRadius: 5,
+                }],
+              }}
+              options={{
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} customers` } },
+                },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                  x: { grid: { display: false }, ticks: { color: "#c8cafe", font: { size: 10 } } },
+                },
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-zoca-text-soft">
+            Each bar = number of customers in that score range. Bar color matches the tier that range falls into.
+          </p>
+        </Card>
+      </div>
+
+      {/* ---- Signal prevalence + Channel mix ---- */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="zoca-fade-in">
+          <SectionTitle>Signal prevalence (score ≥ 30)</SectionTitle>
+          <div style={{ height: 220 }}>
+            <Bar
+              data={{
+                labels: ["We went silent", "Client went silent", "Response rate dropped", "Volume/channel collapse"],
                 datasets: [{
                   data: [sig.we_silent_any, sig.client_silent_any, sig.response_drop_any, sig.volume_collapse_any],
                   backgroundColor: ["#F87171", "#FBBF24", "#60A5FA", "#A78BFA"],
@@ -355,13 +452,18 @@ function Overview({
                   y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
                   x: { grid: { display: false } },
                 },
+                onClick: (_, elems) => {
+                  if (elems[0] != null) {
+                    const sigKey = (["ws", "cs", "rd", "vc"] as const)[elems[0].index];
+                    setFilters({ ...emptyFilters(), signal: sigKey });
+                    setTab("risk_list");
+                  }
+                },
               }}
             />
           </div>
         </Card>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="zoca-fade-in">
           <SectionTitle>Channel usage</SectionTitle>
           <div style={{ height: 220 }}>
@@ -394,34 +496,112 @@ function Overview({
             />
           </div>
         </Card>
-
-        <Card className="zoca-fade-in">
-          <SectionTitle>Top AM exposure (HIGH-risk accounts)</SectionTitle>
-          <div className="max-h-[220px] overflow-auto scroll-thin">
-            <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-zoca-bg-2/95">
-                <tr>
-                  <Th>AM</Th><Th num>HIGH</Th><Th num>Book</Th><Th num>% HIGH</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {snap.amExposure.slice(0, 12).map(({ am, high, total }) => (
-                  <tr
-                    key={am}
-                    onClick={() => { setFilters({ ...emptyFilters(), am, tier: "HIGH" }); setTab("risk_list"); }}
-                    className="cursor-pointer border-t border-zoca-border hover:bg-zoca-bg-3/40"
-                  >
-                    <Td>{am}</Td>
-                    <Td num><span className="text-zoca-pink-text">{high}</span></Td>
-                    <Td num>{total}</Td>
-                    <Td num>{total ? Math.round((high / total) * 100) : 0}%</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
+
+      {/* ---- AM exposure: tier-stacked horizontal bar ---- */}
+      {snap.amTierBreakdown && snap.amTierBreakdown.length > 0 && (
+        <Card className="zoca-fade-in">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle>AM exposure · tier mix per account manager</SectionTitle>
+            <div className="flex items-center gap-3 text-xs text-zoca-text-muted">
+              {TIER_ORDER.map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-sm" style={{ background: TIER_COLORS[t] }} />
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ height: Math.max(260, snap.amTierBreakdown.length * 26 + 80) }}>
+            <Bar
+              data={{
+                labels: snap.amTierBreakdown.map((r) => r.am),
+                datasets: TIER_ORDER.map((t) => ({
+                  label: t,
+                  data: snap.amTierBreakdown.map((r) => r[t]),
+                  backgroundColor: TIER_COLORS[t],
+                  borderWidth: 0,
+                })),
+              }}
+              options={{
+                indexAxis: "y",
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { mode: "index", intersect: false },
+                },
+                scales: {
+                  x: { stacked: true, beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                  y: { stacked: true, grid: { display: false }, ticks: { color: "#c8cafe", font: { size: 11 } } },
+                },
+                onClick: (_, elems) => {
+                  if (elems[0] != null) {
+                    const rowIdx = elems[0].index;
+                    const dsIdx = elems[0].datasetIndex;
+                    const am = snap.amTierBreakdown[rowIdx].am;
+                    const tier = TIER_ORDER[dsIdx];
+                    setFilters({ ...emptyFilters(), am, tier });
+                    setTab("risk_list");
+                  }
+                },
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-zoca-text-soft">Click any segment to filter to that AM + tier.</p>
+        </Card>
+      )}
+
+      {/* ---- Team pulse bubble chart ---- */}
+      <Card className="zoca-fade-in">
+        <SectionTitle>Team pulse — volume vs response rate</SectionTitle>
+        <p className="mb-2 text-xs text-zoca-text-soft">
+          Each bubble = one customer · X = 30d comms · Y = in / out response rate · size = 90d total · color = tier.
+          Bottom-left = disengaged, top-right = healthy two-way. Click any bubble for details.
+        </p>
+        <div style={{ height: 320 }}>
+          <Bubble
+            data={{
+              datasets: TIER_ORDER.map((t) => ({
+                label: t,
+                data: snap.customers
+                  .filter((c) => c.signals.tier === t && c.metrics.total_30d > 0)
+                  .map((c) => ({
+                    x: c.metrics.total_30d,
+                    y: c.metrics.out_30d > 0 ? c.metrics.in_30d / c.metrics.out_30d : 0,
+                    r: Math.max(3, Math.min(14, 3 + Math.sqrt(c.metrics.total_90d))),
+                    _c: c,
+                  })),
+                backgroundColor: TIER_COLORS[t] + "aa",
+                borderColor: TIER_COLORS[t],
+                borderWidth: 1,
+              })),
+            }}
+            options={{
+              responsive: true, maintainAspectRatio: false,
+              layout: { padding: 20 },
+              plugins: {
+                legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => {
+                      const d = ctx.raw as { x: number; y: number; r: number; _c: ScoredCustomer };
+                      return [
+                        d._c.company,
+                        `${d._c.am_name || "—"} · ${d._c.signals.tier}`,
+                        `30d: ${d._c.metrics.in_30d} in / ${d._c.metrics.out_30d} out · 90d: ${d._c.metrics.total_90d}`,
+                      ];
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: { title: { display: true, text: "30-day comms volume", color: "#c8cafe" }, beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                y: { title: { display: true, text: "Response rate (in / out)", color: "#c8cafe" }, beginAtZero: true, suggestedMax: 2, grid: { color: "rgba(200,202,254,0.06)" } },
+              },
+            }}
+          />
+        </div>
+      </Card>
 
       <Card className="zoca-fade-in">
         <SectionTitle>Methodology</SectionTitle>
@@ -841,6 +1021,19 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="mb-4 font-display text-base font-bold tracking-zoca-tight text-white">{children}</h3>
+  );
+}
+
+function HealthStat({
+  label, value, sub, ok,
+}: { label: string; value: string; sub?: string; ok?: boolean }) {
+  const valueColor = ok === true ? "text-[#76FF03]" : ok === false ? "text-zoca-pink-text" : "text-white";
+  return (
+    <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/40 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">{label}</div>
+      <div className={`num mt-1 font-display text-base font-semibold leading-tight ${valueColor}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-zoca-text-muted">{sub}</div>}
+    </div>
   );
 }
 
