@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #0a0422;
+  color: #ffffff;
+}
+
+body {
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(70% 70% at 100% -10%, rgba(220, 0, 116, 0.22), transparent 60%),
+    radial-gradient(55% 55% at 15% 5%, rgba(120, 104, 244, 0.22), transparent 60%),
+    radial-gradient(40% 40% at 80% 40%, rgba(255, 134, 225, 0.10), transparent 70%),
+    linear-gradient(180deg, #13063a 0%, #0a0422 45%, #0a0422 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+canvas { max-width: 100% !important; }
+
+/* Gradient-clipped text (for "Journey" accent) */
+.zoca-gradient-text {
+  background: linear-gradient(135deg, #ff86e1 0%, #c8cafe 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+}
+
+/* Sparkle after the gradient word */
+.sparkle-word { position: relative; display: inline-block; }
+.sparkle-word::before {
+  content: "✦";
+  position: absolute;
+  top: -0.35em;
+  right: -0.55em;
+  font-size: 0.45em;
+  color: #ff86e1;
+  filter: drop-shadow(0 0 12px rgba(255, 134, 225, 0.8));
+}
+
+/* Zoca signature pink button */
+.zoca-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background-color: #ffa8cd;
+  color: #0b051d;
+  border-radius: 9999px;
+  padding: 0.625rem 1.375rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.zoca-btn:hover:not(:disabled) {
+  background-color: #f695be;
+  transform: scale(1.025);
+  box-shadow: 0 12px 24px -8px rgba(255, 168, 205, 0.4);
+}
+.zoca-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.zoca-btn.zoca-btn-outline {
+  background-color: transparent;
+  color: #ffa8cd;
+  border: 1px solid #ffa8cd;
+}
+.zoca-btn.zoca-btn-outline:hover:not(:disabled) {
+  background-color: rgba(255, 168, 205, 0.1);
+  transform: scale(1.025);
+}
+
+.zoca-btn.zoca-btn-ghost {
+  background-color: transparent;
+  color: #c8cafe;
+  border: 1px solid rgba(200, 202, 254, 0.18);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 0.5rem 1rem;
+}
+.zoca-btn.zoca-btn-ghost:hover:not(:disabled) {
+  background-color: rgba(200, 202, 254, 0.08);
+  color: #ffffff;
+  transform: none;
+  box-shadow: none;
+}
+
+.zoca-btn.zoca-btn-dark {
+  background-color: #1a0b4a;
+  color: #ffffff;
+  border: 1px solid rgba(200, 202, 254, 0.18);
+}
+.zoca-btn.zoca-btn-dark:hover:not(:disabled) {
+  background-color: #24125c;
+  transform: scale(1.025);
+}
+
+/* Chip/pill for filters, status, active filters */
+.zoca-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: rgba(120, 104, 244, 0.18);
+  color: #c8cafe;
+  border: 1px solid rgba(120, 104, 244, 0.3);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Scrollbars */
+.scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgba(200, 202, 254, 0.2); border-radius: 4px; }
+.scroll-thin::-webkit-scrollbar-thumb:hover { background: rgba(200, 202, 254, 0.35); }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+/* Modal */
+.modal-overlay {
+  background: rgba(10, 4, 34, 0.8);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.12s ease-out;
+}
+.modal-panel { animation: popIn 0.2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Refresh spinner */
+.refresh-spinning { animation: spin 800ms linear infinite; }
+@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* Pulse for live dot */
+.pulse-dot { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* Card fade-in on mount (use inline style `--fade-delay` for stagger) */
+.zoca-fade-in {
+  animation: zFadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--fade-delay, 0ms);
+}
+@keyframes zFadeIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Soft pink glow on hover for KPI / accent cards */
+.zoca-glow-hover { transition: box-shadow 240ms ease, transform 240ms ease, border-color 240ms ease; }
+.zoca-glow-hover:hover {
+  box-shadow: 0 18px 36px -12px rgba(255, 134, 225, 0.35), 0 0 0 1px rgba(255, 168, 205, 0.25);
+  transform: translateY(-2px);
+}
+
+/* "Live" ring pulse around a small dot/element — used near refresh timestamp */
+.zoca-live-ring { position: relative; }
+.zoca-live-ring::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 168, 205, 0.55);
+  opacity: 0;
+  animation: zLivePulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes zLivePulse {
+  0%   { transform: scale(0.9);  opacity: 0.9; }
+  100% { transform: scale(1.35); opacity: 0;   }
+}
+
+/* Animated gradient border for hero cards */
+.zoca-gradient-border {
+  position: relative;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(120, 104, 244, 0.22), transparent 45%),
+    radial-gradient(120% 140% at 100% 100%, rgba(255, 134, 225, 0.18), transparent 45%),
+    linear-gradient(135deg, #1a0b4a 0%, #24125c 100%);
+}
+.zoca-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 134, 225, 0.55) 0%, rgba(120, 104, 244, 0.35) 55%, rgba(200, 202, 254, 0.15) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Tabular lining numerals + stronger rendering for big numbers */
+.num-hero {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum", "lnum";
+}
+
+/* Gradient number (for hero close-rate percent) */
+.zoca-num-gradient {
+  background: linear-gradient(135deg, #ff86e1 0%, #c8cafe 55%, #7868f4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Horizontal bar grow-in (used in Insights cycle-time histogram) */
+@keyframes zBarGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
