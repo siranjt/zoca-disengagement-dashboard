@@ -318,7 +318,7 @@ function Overview({
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1 zoca-fade-in">
           <SectionTitle>Risk mix</SectionTitle>
-          <div className="mx-auto max-w-xs">
+          <div className="mx-auto max-w-[220px]" style={{ height: 220 }}>
             <Doughnut
               data={{
                 labels: TIER_ORDER,
@@ -329,8 +329,8 @@ function Overview({
                 }],
               }}
               options={{
-                responsive: true, maintainAspectRatio: true, cutout: "68%",
-                plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } } },
+                responsive: true, maintainAspectRatio: false, cutout: "68%",
+                plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, padding: 10, font: { size: 11 } } } },
               }}
             />
           </div>
@@ -338,59 +338,61 @@ function Overview({
 
         <Card className="lg:col-span-2 zoca-fade-in">
           <SectionTitle>Signal prevalence (customers with score ≥ 30)</SectionTitle>
-          <Bar
-            data={{
-              labels: ["We went silent 30d+", "Client went silent", "Response rate dropped", "Volume/channel collapse"],
-              datasets: [{
-                data: [sig.we_silent_any, sig.client_silent_any, sig.response_drop_any, sig.volume_collapse_any],
-                backgroundColor: ["#F87171", "#FBBF24", "#60A5FA", "#A78BFA"],
-                borderRadius: 6,
-              }],
-            }}
-            options={{
-              responsive: true, maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: {
-                y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
-                x: { grid: { display: false } },
-              },
-            }}
-            height={220}
-          />
+          <div style={{ height: 220 }}>
+            <Bar
+              data={{
+                labels: ["We went silent 30d+", "Client went silent", "Response rate dropped", "Volume/channel collapse"],
+                datasets: [{
+                  data: [sig.we_silent_any, sig.client_silent_any, sig.response_drop_any, sig.volume_collapse_any],
+                  backgroundColor: ["#F87171", "#FBBF24", "#60A5FA", "#A78BFA"],
+                  borderRadius: 6,
+                }],
+              }}
+              options={{
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                  x: { grid: { display: false } },
+                },
+              }}
+            />
+          </div>
         </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="zoca-fade-in">
           <SectionTitle>Channel usage</SectionTitle>
-          <Bar
-            data={{
-              labels: ["chat", "phone", "video", "sms", "email"].map((s) => s.toUpperCase()),
-              datasets: [
-                {
-                  label: "30d",
-                  data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d30[c] || 0),
-                  backgroundColor: "#ff86e1",
-                  borderRadius: 6,
+          <div style={{ height: 220 }}>
+            <Bar
+              data={{
+                labels: ["chat", "phone", "video", "sms", "email"].map((s) => s.toUpperCase()),
+                datasets: [
+                  {
+                    label: "30d",
+                    data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d30[c] || 0),
+                    backgroundColor: "#ff86e1",
+                    borderRadius: 6,
+                  },
+                  {
+                    label: "90d",
+                    data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d90[c] || 0),
+                    backgroundColor: "#7868f4",
+                    borderRadius: 6,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: "top" } },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                  x: { grid: { display: false } },
                 },
-                {
-                  label: "90d",
-                  data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d90[c] || 0),
-                  backgroundColor: "#7868f4",
-                  borderRadius: 6,
-                },
-              ],
-            }}
-            options={{
-              responsive: true, maintainAspectRatio: false,
-              plugins: { legend: { position: "top" } },
-              scales: {
-                y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
-                x: { grid: { display: false } },
-              },
-            }}
-            height={220}
-          />
+              }}
+            />
+          </div>
         </Card>
 
         <Card className="zoca-fade-in">
