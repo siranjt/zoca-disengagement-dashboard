@@ -58,10 +58,12 @@ type Filters = {
   windowDays: WindowDays;
   sort: SortKey;          // when set, RiskList sorts by this key
   activeInWindow: boolean; // when true, RiskList only shows customers with > 0 comms in chosen window
+  scoreBucket: number | null; // 0–9 → 0-10, 10-20, … 90-100
+  channel: string | null;     // chat/email/phone/video/sms — must have used this channel in window
 };
 const emptyFilters = (): Filters => ({
   tier: null, am: null, signal: null, search: "", windowDays: 30,
-  sort: null, activeInWindow: false,
+  sort: null, activeInWindow: false, scoreBucket: null, channel: null,
 });
 
 // Pull the right per-window metrics off a customer regardless of which window is active.
@@ -265,6 +267,7 @@ export default function Dashboard() {
   const filteredCustomers = useMemo(() => {
     if (!snap) return [];
     const q = filters.search.trim().toLowerCase();
+    const channelWindowKey = filters.windowDays >= 60 ? "channels_used_90d" : "channels_used_30d";
     const filtered = snap.customers.filter((c) => {
       if (filters.tier && c.signals.tier !== filters.tier) return false;
       if (filters.am && (c.am_name || "(unassigned)") !== filters.am) return false;
@@ -273,6 +276,15 @@ export default function Dashboard() {
       if (filters.signal === "rd" && c.signals.sig_response_drop < 30) return false;
       if (filters.signal === "vc" && c.signals.sig_volume_collapse < 30) return false;
       if (filters.activeInWindow && windowMetrics(c.metrics, filters.windowDays).total <= 0) return false;
+      if (filters.scoreBucket !== null) {
+        const lo = filters.scoreBucket * 10;
+        const hi = lo + 10;
+        if (c.signals.score < lo || c.signals.score >= hi) return false;
+      }
+      if (filters.channel) {
+        const channels = (c.metrics[channelWindowKey] || "").split(",").filter(Boolean);
+        if (!channels.includes(filters.channel)) return false;
+      }
       if (q) {
         const hay = `${c.company} ${c.am_name} ${c.email} ${c.customer_id}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -386,12 +398,14 @@ export default function Dashboard() {
       </div>
 
       {/* Active filter chips */}
-      {(filters.tier || filters.am || filters.signal || filters.activeInWindow || filters.sort) && (
+      {(filters.tier || filters.am || filters.signal || filters.activeInWindow || filters.sort || filters.scoreBucket !== null || filters.channel) && (
         <div className="flex flex-wrap items-center gap-2">
           {filters.tier && <FilterChip label={`tier: ${filters.tier}`} onClear={() => setFilters({ ...filters, tier: null })} />}
           {filters.am && <FilterChip label={`AM: ${filters.am}`} onClear={() => setFilters({ ...filters, am: null })} />}
           {filters.signal && <FilterChip label={`signal: ${filters.signal}`} onClear={() => setFilters({ ...filters, signal: null })} />}
           {filters.activeInWindow && <FilterChip label={`active in last ${filters.windowDays}d`} onClear={() => setFilters({ ...filters, activeInWindow: false })} />}
+          {filters.scoreBucket !== null && <FilterChip label={`score ${filters.scoreBucket * 10}–${filters.scoreBucket * 10 + 10}`} onClear={() => setFilters({ ...filters, scoreBucket: null })} />}
+          {filters.channel && <FilterChip label={`channel: ${filters.channel}`} onClear={() => setFilters({ ...filters, channel: null })} />}
           {filters.sort && <FilterChip label={`sort: ${filters.sort.replace("_", " ")}`} onClear={() => setFilters({ ...filters, sort: null })} />}
           <button
             className="text-xs text-zoca-text-soft underline-offset-2 hover:text-white hover:underline"
@@ -689,11 +703,22 @@ function Overview({
                   y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
                   x: { grid: { display: false }, ticks: { color: "#c8cafe", font: { size: 10 } } },
                 },
+                onClick: (_, elems) => {
+                  if (elems[0] != null) {
+                    const bucketIdx = elems[0].index;
+                    setFilters({ ...currentFilters, scoreBucket: bucketIdx });
+                    setTab("all");
+                  }
+                },
+                onHover: (event, chartElement) => {
+                  const target = event.native?.target as HTMLElement | undefined;
+                  if (target) target.style.cursor = chartElement[0] ? "pointer" : "default";
+                },
               }}
             />
           </div>
           <p className="mt-2 text-xs text-zoca-text-soft">
-            Each bar = number of customers in that score range. Bar color matches the tier that range falls into.
+            Each bar = number of customers in that score range. Bar color matches the tier. Click any bar to drill into those customers.
           </p>
         </Card>
       </div>
@@ -753,11 +778,23 @@ function Overview({
                   y: { beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
                   x: { grid: { display: false } },
                 },
+                onClick: (_, elems) => {
+                  if (elems[0] != null) {
+                    const idx = elems[0].index;
+                    const ch = ["chat", "phone", "video", "sms", "email"][idx];
+                    setFilters({ ...currentFilters, channel: ch });
+                    setTab("all");
+                  }
+                },
+                onHover: (event, chartElement) => {
+                  const target = event.native?.target as HTMLElement | undefined;
+                  if (target) target.style.cursor = chartElement[0] ? "pointer" : "default";
+                },
               }}
             />
           </div>
           <p className="mt-2 text-xs text-zoca-text-soft">
-            Channel mix is aggregated at 30d / 90d only. Window {windowDays}d → uses {channelWindow}d aggregate. (Switching among 7 / 14 / 30 keeps the 30d view; 60 / 90 switches to 90d.)
+            Channel mix is aggregated at 30d / 90d only. Window {windowDays}d → uses {channelWindow}d aggregate. Click any bar to filter to customers using that channel.
           </p>
         </Card>
       </div>
