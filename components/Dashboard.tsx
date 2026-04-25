@@ -535,6 +535,47 @@ function Overview({
         ))}
       </div>
 
+      {/* ---- Window-reactive Book Activity strip ---- */}
+      {(() => {
+        // Recompute on every windowDays change so the filter has visible effect.
+        const totals = viewSnap.customers.map((c) => windowMetrics(c.metrics, windowDays).total);
+        const ins = viewSnap.customers.map((c) => windowMetrics(c.metrics, windowDays).in);
+        const outs = viewSnap.customers.map((c) => windowMetrics(c.metrics, windowDays).out);
+        const sumTotal = totals.reduce((a, b) => a + b, 0);
+        const sumIn = ins.reduce((a, b) => a + b, 0);
+        const sumOut = outs.reduce((a, b) => a + b, 0);
+        const withActivity = totals.filter((n) => n > 0).length;
+        const sortedTotals = [...totals].sort((a, b) => a - b);
+        const median = sortedTotals.length ? sortedTotals[Math.floor(sortedTotals.length / 2)] : 0;
+        const mean = totals.length ? sumTotal / totals.length : 0;
+        let topCustomer = viewSnap.customers[0];
+        let topVolume = 0;
+        for (const c of viewSnap.customers) {
+          const t = windowMetrics(c.metrics, windowDays).total;
+          if (t > topVolume) { topVolume = t; topCustomer = c; }
+        }
+        return (
+          <Card className="zoca-fade-in zoca-gradient-border !p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="font-display text-base font-bold text-white">
+                Book activity · <span className="zoca-gradient-text">last {windowDays} days</span>
+              </h3>
+              <p className="text-xs text-zoca-text-soft">
+                These numbers change with the Window selector. Score-based charts (tier mix, signal counts, AM exposure) intentionally use all 5 windows.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <HealthStat label={`Total comms (${windowDays}d)`} value={sumTotal.toLocaleString()} sub={`${sumIn.toLocaleString()} in · ${sumOut.toLocaleString()} out`} />
+              <HealthStat label="Customers active" value={`${withActivity.toLocaleString()} / ${viewSnap.totalActive.toLocaleString()}`} sub={`${pctOf(withActivity, viewSnap.totalActive)}% of view`} />
+              <HealthStat label={`Median ${windowDays}d`} value={median.toLocaleString()} sub="per customer" />
+              <HealthStat label={`Mean ${windowDays}d`} value={mean.toFixed(1)} sub="per customer" />
+              <HealthStat label="Response rate" value={sumOut > 0 ? (sumIn / sumOut).toFixed(2) : "—"} sub="in / out across view" />
+              <HealthStat label={`Most active (${windowDays}d)`} value={topVolume.toLocaleString()} sub={(topCustomer?.company || "—").slice(0, 24)} />
+            </div>
+          </Card>
+        );
+      })()}
+
       {/* ---- Risk mix donut + Score distribution ---- */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1 zoca-fade-in">
@@ -653,6 +694,9 @@ function Overview({
               }}
             />
           </div>
+          <p className="mt-2 text-xs text-zoca-text-soft">
+            Channel mix is aggregated at 30d / 90d only. Window {windowDays}d → uses {channelWindow}d aggregate. (Switching among 7 / 14 / 30 keeps the 30d view; 60 / 90 switches to 90d.)
+          </p>
         </Card>
       </div>
 
