@@ -24,11 +24,22 @@ function parseRows<T extends Record<string, string>>(csv: string): T[] {
   return (out.data || []).filter((r) => r && typeof r === "object");
 }
 
-/** Fetch BaseSheet and return rows + lookup-by-customer_id + lookup-by-entity_id */
+export function normalizeBizName(s: string): string {
+  return (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Fetch BaseSheet and return rows + multiple lookup maps:
+ * - byCustomerId: Chargebee customer_id → row
+ * - byEntityId:   Zoca entity_id → row
+ * - byBizName:    normalized bizname → row (only for UNAMBIGUOUS names — if a bizname appears in
+ *                 >1 BaseSheet row, it's excluded to avoid false matches)
+ */
 export async function fetchBaseSheet(): Promise<{
   rows: BaseSheetRow[];
   byCustomerId: Record<string, BaseSheetRow>;
   byEntityId: Record<string, BaseSheetRow>;
+  byBizName: Record<string, BaseSheetRow>;
 }> {
   const csv = await fetchCsvText(METABASE_ENDPOINTS.baseSheet);
   const raw = parseRows<Record<string, string>>(csv);
@@ -49,11 +60,19 @@ export async function fetchBaseSheet(): Promise<{
   }));
   const byCustomerId: Record<string, BaseSheetRow> = {};
   const byEntityId: Record<string, BaseSheetRow> = {};
+  const bizNameGroups: Record<string, BaseSheetRow[]> = {};
   for (const r of rows) {
     if (r.customer_id) byCustomerId[r.customer_id] = r;
     if (r.entity_id) byEntityId[r.entity_id] = r;
+    const norm = normalizeBizName(r.bizname);
+    if (norm) (bizNameGroups[norm] = bizNameGroups[norm] || []).push(r);
   }
-  return { rows, byCustomerId, byEntityId };
+  // Only include unambiguous bizname matches
+  const byBizName: Record<string, BaseSheetRow> = {};
+  for (const [k, v] of Object.entries(bizNameGroups)) {
+    if (v.length === 1) byBizName[k] = v[0];
+  }
+  return { rows, byCustomerId, byEntityId, byBizName };
 }
 
 function parseTs(s: string | undefined): number | null {
@@ -65,8 +84,25 @@ function parseTs(s: string | undefined): number | null {
 }
 
 /**
+ * Diagnostic stats from a comms-fetch, surfaced in the Data Health strip.
+ * - rawRows: papaparse row count per source (regression test against raw CSV size)
+ * - eventsKept: events that passed the date + direction filter
+ * - eventsDeduped: events that survived our duplicate-event guard
+ */
+export type CommsParseStats = {
+  rawRows: { chat: number; email: number; phone: number; video: number; sms: number };
+  eventsKept: { chat: number; email: number; phone: number; video: number; sms: number };
+  eventsDeduped: { chat: number; email: number; phone: number; video: number; sms: number };
+  totalDuplicatesRemoved: number;
+};
+
+/**
  * Fetch + normalize all 5 comms feeds into a single array of CommsEvent.
  * Filters to the last COMMS_RETAIN_DAYS days to keep memory sane.
+ *
+ * Includes a duplicate-event guard: if the same (entityId, ts, channel, direction)
+ * tuple shows up multiple times (which would indicate a CSV / runtime issue),
+ * we only keep one copy.
  *
  * Directionality rules:
  *  - Chat:  Member Type = "Team Member" → out, "User" → in (Assistant/bot skipped)
@@ -75,7 +111,9 @@ function parseTs(s: string | undefined): number | null {
  *  - Video: counted as mutual — one in + one out per meeting
  *  - SMS:   Sender = "Received_By_Client" → out, "Sent_By_Client" → in
  */
-export async function fetchAllComms(todayMs: number): Promise<CommsEvent[]> {
+export async function fetchAllComms(
+  todayMs: number,
+): Promise<{ events: CommsEvent[]; stats: CommsParseStats }> {
   const cutoff = todayMs - COMMS_RETAIN_DAYS * 86400 * 1000;
 
   const [chatCsv, emailCsv, phoneCsv, videoCsv, smsCsv] = await Promise.all([
@@ -86,23 +124,46 @@ export async function fetchAllComms(todayMs: number): Promise<CommsEvent[]> {
     fetchCsvText(METABASE_ENDPOINTS.sms),
   ]);
 
+  const stats: CommsParseStats = {
+    rawRows: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    eventsKept: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    eventsDeduped: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    totalDuplicatesRemoved: 0,
+  };
+
+  // Per-channel deduplication keyed by entity+ts+direction. Built per channel so a
+  // genuine SMS at the same timestamp as a chat message both stay distinct.
+  const seen: Record<CommsEvent["channel"], Set<string>> = {
+    chat: new Set(), email: new Set(), phone: new Set(), video: new Set(), sms: new Set(),
+  };
   const out: CommsEvent[] = [];
   const push = (eid: string, ts: number | null, channel: CommsEvent["channel"], direction: CommsEvent["direction"]) => {
     if (!eid || ts === null || ts < cutoff) return;
+    stats.eventsKept[channel]++;
+    const key = `${eid}|${ts}|${direction}`;
+    if (seen[channel].has(key)) {
+      stats.totalDuplicatesRemoved++;
+      return;
+    }
+    seen[channel].add(key);
+    stats.eventsDeduped[channel]++;
     out.push({ entityId: eid, ts, channel, direction });
   };
 
   // Chat
-  for (const r of parseRows<Record<string, string>>(chatCsv)) {
+  const chatRows = parseRows<Record<string, string>>(chatCsv);
+  stats.rawRows.chat = chatRows.length;
+  for (const r of chatRows) {
     const eid = (r["Entity ID"] || "").trim();
     const ts = parseTs(r["Created At"]);
     const mt = r["Member Type"];
     if (mt === "Team Member") push(eid, ts, "chat", "out");
     else if (mt === "User") push(eid, ts, "chat", "in");
-    // Assistant etc. → skip
   }
   // Email
-  for (const r of parseRows<Record<string, string>>(emailCsv)) {
+  const emailRows = parseRows<Record<string, string>>(emailCsv);
+  stats.rawRows.email = emailRows.length;
+  for (const r of emailRows) {
     const eid = (r["Entity ID"] || "").trim();
     const ts = parseTs(r["Created At"]);
     const s = r["Sender"];
@@ -110,22 +171,28 @@ export async function fetchAllComms(todayMs: number): Promise<CommsEvent[]> {
     else if (s === "Sent_By_Client") push(eid, ts, "email", "in");
   }
   // Phone
-  for (const r of parseRows<Record<string, string>>(phoneCsv)) {
+  const phoneRows = parseRows<Record<string, string>>(phoneCsv);
+  stats.rawRows.phone = phoneRows.length;
+  for (const r of phoneRows) {
     const eid = (r["Entity ID"] || "").trim();
     const ts = parseTs(r["Created At"]);
     const s = r["Sender"];
     if (s === "Initiated_By_Us") push(eid, ts, "phone", "out");
     else if (s === "Initiated_By_Client") push(eid, ts, "phone", "in");
   }
-  // Video — mutual engagement
-  for (const r of parseRows<Record<string, string>>(videoCsv)) {
+  // Video — mutual engagement (one in + one out per meeting)
+  const videoRows = parseRows<Record<string, string>>(videoCsv);
+  stats.rawRows.video = videoRows.length;
+  for (const r of videoRows) {
     const eid = (r["Entity ID"] || "").trim();
     const ts = parseTs(r["Created At"]);
     push(eid, ts, "video", "in");
     push(eid, ts, "video", "out");
   }
   // SMS
-  for (const r of parseRows<Record<string, string>>(smsCsv)) {
+  const smsRows = parseRows<Record<string, string>>(smsCsv);
+  stats.rawRows.sms = smsRows.length;
+  for (const r of smsRows) {
     const eid = (r["Entity ID"] || "").trim();
     const ts = parseTs(r["Created At"]);
     const s = r["Sender"];
@@ -133,7 +200,13 @@ export async function fetchAllComms(todayMs: number): Promise<CommsEvent[]> {
     else if (s === "Sent_By_Client") push(eid, ts, "sms", "in");
   }
 
-  return out;
+  // Surface in Vercel logs so we can spot anomalies even before the dashboard updates
+  console.log("[fetchAllComms] raw rows:", stats.rawRows);
+  console.log("[fetchAllComms] events kept (pre-dedup):", stats.eventsKept);
+  console.log("[fetchAllComms] events kept (post-dedup):", stats.eventsDeduped);
+  console.log("[fetchAllComms] total duplicates removed:", stats.totalDuplicatesRemoved);
+
+  return { events: out, stats };
 }
 
 /**

@@ -88,6 +88,74 @@ function scoreBucketColor(i: number): string {
   return "#76FF03";
 }
 
+/** Aggregates derived from a (possibly-filtered) customer list. */
+type ViewSnap = {
+  customers: ScoredCustomer[];
+  totalActive: number;
+  tierCounts: Record<Tier, number>;
+  signalCounts: { we_silent_any: number; client_silent_any: number; response_drop_any: number; volume_collapse_any: number };
+  channelCounts: { d30: Record<string, number>; d90: Record<string, number> };
+  amExposure: { am: string; high: number; total: number }[];
+  amTierBreakdown: { am: string; HIGH: number; MEDIUM: number; LOW: number; HEALTHY: number; total: number }[];
+  scoreDistribution: number[];
+};
+
+function computeViewAggregates(snap: Snapshot, customers: ScoredCustomer[]): ViewSnap {
+  const tierCounts: Record<Tier, number> = { HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0 };
+  for (const c of customers) tierCounts[c.signals.tier]++;
+
+  const signalCounts = {
+    we_silent_any: customers.filter((r) => r.signals.sig_we_silent >= 30).length,
+    client_silent_any: customers.filter((r) => r.signals.sig_client_silent >= 30).length,
+    response_drop_any: customers.filter((r) => r.signals.sig_response_drop >= 30).length,
+    volume_collapse_any: customers.filter((r) => r.signals.sig_volume_collapse >= 30).length,
+  };
+
+  const channelCounts = { d30: {} as Record<string, number>, d90: {} as Record<string, number> };
+  for (const c of customers) {
+    for (const ch of (c.metrics.channels_used_30d || "").split(",").filter(Boolean)) {
+      channelCounts.d30[ch] = (channelCounts.d30[ch] || 0) + 1;
+    }
+    for (const ch of (c.metrics.channels_used_90d || "").split(",").filter(Boolean)) {
+      channelCounts.d90[ch] = (channelCounts.d90[ch] || 0) + 1;
+    }
+  }
+
+  const amMap = new Map<string, { high: number; total: number }>();
+  const amBreakdownMap = new Map<string, { am: string; HIGH: number; MEDIUM: number; LOW: number; HEALTHY: number; total: number }>();
+  for (const c of customers) {
+    const am = c.am_name || "(unassigned)";
+    const cur = amMap.get(am) || { high: 0, total: 0 };
+    cur.total++;
+    if (c.signals.tier === "HIGH") cur.high++;
+    amMap.set(am, cur);
+
+    const row = amBreakdownMap.get(am) || { am, HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0, total: 0 };
+    row[c.signals.tier]++;
+    row.total++;
+    amBreakdownMap.set(am, row);
+  }
+  const amExposure = Array.from(amMap, ([am, v]) => ({ am, ...v })).sort((a, b) => (b.high - a.high) || (b.total - a.total));
+  const amTierBreakdown = Array.from(amBreakdownMap.values()).sort((a, b) => (b.HIGH - a.HIGH) || (b.total - a.total));
+
+  const scoreDistribution: number[] = new Array(10).fill(0);
+  for (const c of customers) {
+    const s = Math.max(0, Math.min(99, c.signals.score));
+    scoreDistribution[Math.floor(s / 10)]++;
+  }
+
+  return {
+    customers,
+    totalActive: customers.length,
+    tierCounts,
+    signalCounts,
+    channelCounts,
+    amExposure,
+    amTierBreakdown,
+    scoreDistribution,
+  };
+}
+
 function csvEscape(v: unknown): string {
   if (v == null) return "";
   const s = String(v);
@@ -189,6 +257,12 @@ export default function Dashboard() {
     });
   }, [snap, filters]);
 
+  /* -------- derived: aggregates for the filtered set -------- */
+  const viewSnap = useMemo(() => {
+    if (!snap) return null;
+    return computeViewAggregates(snap, filteredCustomers);
+  }, [snap, filteredCustomers]);
+
   /* -------- state views -------- */
   if (loading && !snap) return <LoadingPane />;
   if (error && !snap) return <ErrorPane error={error} onRetry={() => load(true)} />;
@@ -233,10 +307,15 @@ export default function Dashboard() {
           <option value="vc">Volume/channel collapse</option>
         </select>
 
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-zoca-text-soft">
-            As of {snap.generatedAt.slice(0, 19).replace("T", " ")}Z · {filteredCustomers.length}/{snap.totalActive} shown
-          </span>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">Showing</div>
+            <div className="text-xs text-white">
+              <strong className="text-zoca-pink-text">{filteredCustomers.length.toLocaleString()}</strong>
+              <span className="text-zoca-text-soft"> / {snap.totalActive.toLocaleString()}</span>
+            </div>
+            <div className="text-[10px] text-zoca-text-soft">as of {snap.generatedAt.slice(11, 19)}Z · {snap.generatedAt.slice(0, 10)}</div>
+          </div>
           <button
             className="zoca-btn zoca-btn-ghost"
             onClick={() => downloadCsv(filteredCustomers)}
@@ -246,12 +325,13 @@ export default function Dashboard() {
             ⇣ CSV
           </button>
           <button
-            className="zoca-btn zoca-btn-dark"
+            className="zoca-btn"
             onClick={handleRefresh}
             disabled={refreshing}
             title="Re-score from live Chargebee + Metabase now"
           >
-            <span className={refreshing ? "refresh-spinning" : ""}>↻</span> Refresh
+            <span className={refreshing ? "refresh-spinning" : ""}>↻</span>
+            {refreshing ? "Refreshing…" : "Refresh live data"}
           </button>
         </div>
       </div>
@@ -289,11 +369,12 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Tab body */}
-      {tab === "overview" && <Overview snap={snap} setTab={setTab} setFilters={setFilters} />}
-      {tab === "tiers" && <TiersView snap={snap} setFilters={setFilters} setTab={setTab} />}
-      {tab === "signals" && <SignalsView snap={snap} setFilters={setFilters} setTab={setTab} />}
-      {tab === "ams" && <AmExposureView snap={snap} setFilters={setFilters} setTab={setTab} />}
+      {/* Tab body — viewSnap recomputes aggregates from the filtered customer list
+          so every chart + card reacts to tier / AM / signal / search filters. */}
+      {tab === "overview" && <Overview snap={snap} viewSnap={viewSnap} setTab={setTab} setFilters={setFilters} />}
+      {tab === "tiers" && <TiersView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
+      {tab === "signals" && <SignalsView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
+      {tab === "ams" && <AmExposureView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
       {tab === "risk_list" && <RiskList customers={filteredCustomers.length ? filteredCustomers : snap.customers.filter((c) => c.signals.tier === "HIGH")} openDetail={setModal} />}
       {tab === "all" && <RiskList customers={filteredCustomers} openDetail={setModal} />}
 
@@ -305,15 +386,17 @@ export default function Dashboard() {
 /* ================================================================= views */
 
 function Overview({
-  snap, setTab, setFilters,
+  snap, viewSnap, setTab, setFilters,
 }: {
   snap: Snapshot;
+  viewSnap: ViewSnap | null;
   setTab: (k: TabKey) => void;
   setFilters: (f: Filters) => void;
 }) {
-  const tc = snap.tierCounts;
-  const total = snap.totalActive || 1;
-  const sig = snap.signalCounts;
+  if (!viewSnap) return null;
+  const tc = viewSnap.tierCounts;
+  const total = viewSnap.totalActive || 1;
+  const sig = viewSnap.signalCounts;
   const h = snap.health;
 
   return (
@@ -326,6 +409,7 @@ function Overview({
             label="Entity-ID matched"
             value={`${h.customersWithEntityId.toLocaleString()} · ${pctOf(h.customersWithEntityId, snap.totalActive)}%`}
             ok={h.customersWithEntityId / Math.max(1, snap.totalActive) >= 0.9}
+            sub={h.matchBreakdown ? `${h.matchBreakdown.byCustomerId} by ID · ${h.matchBreakdown.byBizName} by name` : undefined}
           />
           <HealthStat
             label="Any comms (90d)"
@@ -349,6 +433,42 @@ function Overview({
             sub={`${h.perSourceEventCount.phone} phone · ${h.perSourceEventCount.video} vid · ${h.perSourceEventCount.sms} sms · ${h.perSourceEventCount.email} email`}
           />
         </div>
+        {h.perSourceRawRows && (
+          <div className="mt-3 grid gap-2 rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/30 p-3 text-[11px] sm:grid-cols-6">
+            <div className="text-zoca-text-soft">Raw CSV rows →</div>
+            <div><span className="text-zoca-text-soft">chat</span> <strong className="text-white">{h.perSourceRawRows.chat.toLocaleString()}</strong></div>
+            <div><span className="text-zoca-text-soft">email</span> <strong className="text-white">{h.perSourceRawRows.email.toLocaleString()}</strong></div>
+            <div><span className="text-zoca-text-soft">phone</span> <strong className="text-white">{h.perSourceRawRows.phone.toLocaleString()}</strong></div>
+            <div><span className="text-zoca-text-soft">video</span> <strong className="text-white">{h.perSourceRawRows.video.toLocaleString()}</strong></div>
+            <div><span className="text-zoca-text-soft">sms</span> <strong className="text-white">{h.perSourceRawRows.sms.toLocaleString()}</strong></div>
+          </div>
+        )}
+        {h.duplicateEventsRemoved !== undefined && h.duplicateEventsRemoved > 0 && (
+          <div className="mt-2 rounded-zoca border border-zoca-pink-text/40 bg-zoca-pink-text/10 p-2 text-xs text-zoca-pink-text">
+            <strong>Dedup guard removed {h.duplicateEventsRemoved.toLocaleString()} duplicate events.</strong>{" "}
+            Any non-zero value here indicates the source data or runtime was duplicating events — the dedup is now suppressing them.
+          </div>
+        )}
+        {h.matchBreakdown && (h.matchBreakdown.unmatched > 0 || h.matchBreakdown.notInChrone > 0) && (
+          <div className="mt-3 grid gap-2 rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/30 p-3 text-xs sm:grid-cols-4">
+            <div>
+              <span className="text-zoca-text-soft">Matched by customer_id:</span>{" "}
+              <strong className="text-white">{h.matchBreakdown.byCustomerId}</strong>
+            </div>
+            <div>
+              <span className="text-zoca-text-soft">Matched by business name:</span>{" "}
+              <strong className="text-[#ffb74d]">{h.matchBreakdown.byBizName}</strong>
+            </div>
+            <div>
+              <span className="text-zoca-text-soft">Not in BaseSheet:</span>{" "}
+              <strong className="text-zoca-pink-text">{h.matchBreakdown.unmatched}</strong>
+            </div>
+            <div>
+              <span className="text-zoca-text-soft">Matched but not Chrone:</span>{" "}
+              <strong className="text-zoca-pink-text">{h.matchBreakdown.notInChrone}</strong>
+            </div>
+          </div>
+        )}
         {h.fetchErrors.length > 0 && (
           <div className="mt-3 rounded-zoca border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-200">
             <strong>Fetch errors:</strong>
@@ -407,7 +527,7 @@ function Overview({
               data={{
                 labels: [...SCORE_BUCKET_LABELS],
                 datasets: [{
-                  data: snap.scoreDistribution,
+                  data: viewSnap.scoreDistribution,
                   backgroundColor: SCORE_BUCKET_LABELS.map((_, i) => scoreBucketColor(i)),
                   borderRadius: 5,
                 }],
@@ -473,13 +593,13 @@ function Overview({
                 datasets: [
                   {
                     label: "30d",
-                    data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d30[c] || 0),
+                    data: ["chat", "phone", "video", "sms", "email"].map((c) => viewSnap.channelCounts.d30[c] || 0),
                     backgroundColor: "#ff86e1",
                     borderRadius: 6,
                   },
                   {
                     label: "90d",
-                    data: ["chat", "phone", "video", "sms", "email"].map((c) => snap.channelCounts.d90[c] || 0),
+                    data: ["chat", "phone", "video", "sms", "email"].map((c) => viewSnap.channelCounts.d90[c] || 0),
                     backgroundColor: "#7868f4",
                     borderRadius: 6,
                   },
@@ -499,7 +619,7 @@ function Overview({
       </div>
 
       {/* ---- AM exposure: tier-stacked horizontal bar ---- */}
-      {snap.amTierBreakdown && snap.amTierBreakdown.length > 0 && (
+      {viewSnap.amTierBreakdown && viewSnap.amTierBreakdown.length > 0 && (
         <Card className="zoca-fade-in">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <SectionTitle>AM exposure · tier mix per account manager</SectionTitle>
@@ -512,13 +632,13 @@ function Overview({
               ))}
             </div>
           </div>
-          <div style={{ height: Math.max(260, snap.amTierBreakdown.length * 26 + 80) }}>
+          <div style={{ height: Math.max(260, viewSnap.amTierBreakdown.length * 26 + 80) }}>
             <Bar
               data={{
-                labels: snap.amTierBreakdown.map((r) => r.am),
+                labels: viewSnap.amTierBreakdown.map((r) => r.am),
                 datasets: TIER_ORDER.map((t) => ({
                   label: t,
-                  data: snap.amTierBreakdown.map((r) => r[t]),
+                  data: viewSnap.amTierBreakdown.map((r) => r[t]),
                   backgroundColor: TIER_COLORS[t],
                   borderWidth: 0,
                 })),
@@ -538,7 +658,7 @@ function Overview({
                   if (elems[0] != null) {
                     const rowIdx = elems[0].index;
                     const dsIdx = elems[0].datasetIndex;
-                    const am = snap.amTierBreakdown[rowIdx].am;
+                    const am = viewSnap.amTierBreakdown[rowIdx].am;
                     const tier = TIER_ORDER[dsIdx];
                     setFilters({ ...emptyFilters(), am, tier });
                     setTab("risk_list");
@@ -563,7 +683,7 @@ function Overview({
             data={{
               datasets: TIER_ORDER.map((t) => ({
                 label: t,
-                data: snap.customers
+                data: viewSnap.customers
                   .filter((c) => c.signals.tier === t && c.metrics.total_30d > 0)
                   .map((c) => ({
                     x: c.metrics.total_30d,
@@ -612,7 +732,7 @@ function Overview({
           </div>
           <div>
             <p>Signals (each 0–100): We-Silent, Client-Silent, Response-Drop, Volume/Channel-Collapse. Composite = 30%·WeSilent + 30%·ClientSilent + 25%·ResponseDrop + 15%·VolumeCollapse.</p>
-            <p className="mt-2">Tier cuts: HIGH ≥ 65 (or zero comms in 90d), MEDIUM 35–64, LOW 15–34, HEALTHY &lt; 15. Data refreshed nightly at 22:00 UTC.</p>
+            <p className="mt-2">Tier cuts: HIGH ≥ 65 (or zero comms in 90d), MEDIUM 35–64, LOW 15–34, HEALTHY &lt; 15. Hit <strong>Refresh</strong> at the top of the page any time for fresh data.</p>
           </div>
         </div>
         {snap.errors && snap.errors.length > 0 && (
@@ -627,15 +747,16 @@ function Overview({
 }
 
 function TiersView({
-  snap, setFilters, setTab,
+  viewSnap, setFilters, setTab,
 }: {
-  snap: Snapshot; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
+  viewSnap: ViewSnap | null; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
 }) {
+  if (!viewSnap) return null;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {TIER_ORDER.map((t) => {
-        const count = snap.tierCounts[t] || 0;
-        const sample = snap.customers.filter((c) => c.signals.tier === t).slice(0, 5);
+        const count = viewSnap.tierCounts[t] || 0;
+        const sample = viewSnap.customers.filter((c) => c.signals.tier === t).slice(0, 5);
         return (
           <Card key={t} className="zoca-fade-in">
             <div className="mb-3 flex items-center justify-between">
@@ -673,20 +794,21 @@ function TiersView({
 }
 
 function SignalsView({
-  snap, setFilters, setTab,
+  viewSnap, setFilters, setTab,
 }: {
-  snap: Snapshot; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
+  viewSnap: ViewSnap | null; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
 }) {
+  if (!viewSnap) return null;
   const entries: { key: Filters["signal"]; label: string; count: number; field: keyof ScoredCustomer["signals"] }[] = [
-    { key: "ws", label: "We went silent", count: snap.signalCounts.we_silent_any, field: "sig_we_silent" },
-    { key: "cs", label: "Client went silent", count: snap.signalCounts.client_silent_any, field: "sig_client_silent" },
-    { key: "rd", label: "Response rate dropped", count: snap.signalCounts.response_drop_any, field: "sig_response_drop" },
-    { key: "vc", label: "Volume/channel collapse", count: snap.signalCounts.volume_collapse_any, field: "sig_volume_collapse" },
+    { key: "ws", label: "We went silent", count: viewSnap.signalCounts.we_silent_any, field: "sig_we_silent" },
+    { key: "cs", label: "Client went silent", count: viewSnap.signalCounts.client_silent_any, field: "sig_client_silent" },
+    { key: "rd", label: "Response rate dropped", count: viewSnap.signalCounts.response_drop_any, field: "sig_response_drop" },
+    { key: "vc", label: "Volume/channel collapse", count: viewSnap.signalCounts.volume_collapse_any, field: "sig_volume_collapse" },
   ];
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {entries.map((e) => {
-        const top = [...snap.customers]
+        const top = [...viewSnap.customers]
           .filter((c) => Number(c.signals[e.field as keyof ScoredCustomer["signals"]]) >= 70)
           .slice(0, 6);
         return (
@@ -695,7 +817,7 @@ function SignalsView({
               <div>
                 <h3 className="font-display text-lg font-bold text-white">{e.label}</h3>
                 <p className="text-xs text-zoca-text-soft">
-                  {e.count} customers ({((e.count / Math.max(1, snap.totalActive)) * 100).toFixed(1)}% of book) with score ≥ 30
+                  {e.count} customers ({((e.count / Math.max(1, viewSnap.totalActive)) * 100).toFixed(1)}% of view) with score ≥ 30
                 </p>
               </div>
               <button
@@ -727,11 +849,12 @@ function SignalsView({
 }
 
 function AmExposureView({
-  snap, setFilters, setTab,
+  viewSnap, setFilters, setTab,
 }: {
-  snap: Snapshot; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
+  viewSnap: ViewSnap | null; setFilters: (f: Filters) => void; setTab: (k: TabKey) => void;
 }) {
-  const sorted = [...snap.amExposure].sort((a, b) => (b.high - a.high) || (b.total - a.total));
+  if (!viewSnap) return null;
+  const sorted = [...viewSnap.amExposure].sort((a, b) => (b.high - a.high) || (b.total - a.total));
   return (
     <Card className="zoca-fade-in">
       <SectionTitle>AM exposure across the book</SectionTitle>

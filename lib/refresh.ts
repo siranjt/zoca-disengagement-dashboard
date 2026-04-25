@@ -1,5 +1,5 @@
 import { fetchAllLiveSubs } from "./chargebee";
-import { fetchBaseSheet, fetchAllComms, groupCommsByEntity } from "./metabase";
+import { fetchBaseSheet, fetchAllComms, groupCommsByEntity, normalizeBizName } from "./metabase";
 import { computeMetrics, scoreCustomer } from "./scoring";
 import { TIER_ORDER } from "./config";
 import type {
@@ -9,6 +9,7 @@ import type {
   BaseSheetRow,
   AmTierRow,
   DataHealth,
+  MatchSource,
 } from "./types";
 import type { Tier } from "./config";
 
@@ -23,20 +24,35 @@ export async function buildSnapshot(): Promise<Snapshot> {
   const todayIso = new Date(todayMs).toISOString();
 
   // Run fetches in parallel — they're independent
-  const [subs, baseSheet, comms] = await Promise.all([
+  const [subs, baseSheet, commsResult] = await Promise.all([
     fetchAllLiveSubs().catch((e: Error) => {
       errors.push(`Chargebee: ${e.message}`);
       return [] as Awaited<ReturnType<typeof fetchAllLiveSubs>>;
     }),
     fetchBaseSheet().catch((e: Error) => {
       errors.push(`BaseSheet: ${e.message}`);
-      return { rows: [] as BaseSheetRow[], byCustomerId: {} as Record<string, BaseSheetRow>, byEntityId: {} as Record<string, BaseSheetRow> };
+      return {
+        rows: [] as BaseSheetRow[],
+        byCustomerId: {} as Record<string, BaseSheetRow>,
+        byEntityId: {} as Record<string, BaseSheetRow>,
+        byBizName: {} as Record<string, BaseSheetRow>,
+      };
     }),
     fetchAllComms(todayMs).catch((e: Error) => {
       errors.push(`Comms: ${e.message}`);
-      return [] as CommsEvent[];
+      return {
+        events: [] as CommsEvent[],
+        stats: {
+          rawRows: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+          eventsKept: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+          eventsDeduped: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+          totalDuplicatesRemoved: 0,
+        },
+      };
     }),
   ]);
+  const comms = commsResult.events;
+  const commsStats = commsResult.stats;
 
   const byEntity = groupCommsByEntity(comms);
 
@@ -48,8 +64,25 @@ export async function buildSnapshot(): Promise<Snapshot> {
   for (const s of subs) {
     if (seen.has(s.customer_id)) continue;
     seen.add(s.customer_id);
-    const bs = baseSheet.byCustomerId[s.customer_id];
+
+    // 1. Try exact customer_id match first
+    let bs: BaseSheetRow | undefined = baseSheet.byCustomerId[s.customer_id];
+    let matchSource: MatchSource = bs ? "customer_id" : "unmatched";
+
+    // 2. Fallback: normalized bizname match (only unambiguous names)
+    if (!bs) {
+      const norm = normalizeBizName(s.company || "");
+      if (norm) {
+        const byName = baseSheet.byBizName[norm];
+        if (byName) {
+          bs = byName;
+          matchSource = "bizname";
+        }
+      }
+    }
+
     const entityId = bs?.entity_id || "";
+    const inChrone = (bs?.chrone_zoca_status || "").toUpperCase() === "ZOCA";
     const evs = entityId ? byEntity.get(entityId) || [] : [];
     const metrics = computeMetrics(evs, todayMs);
     const signals = scoreCustomer(metrics);
@@ -72,6 +105,8 @@ export async function buildSnapshot(): Promise<Snapshot> {
       churn_potential_flag: bs?.churn_potential_flag || "",
       activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
       ob_date: bs?.ob_date || "",
+      match_source: matchSource,
+      in_chrone: inChrone,
       metrics,
       signals,
     });
@@ -153,12 +188,22 @@ export async function buildSnapshot(): Promise<Snapshot> {
   const customersWithAnyComms90d = scored.filter((c) => c.metrics.total_90d > 0).length;
   const customersWithEntityId = scored.filter((c) => c.entity_id).length;
 
+  const matchBreakdown = {
+    byCustomerId: scored.filter((c) => c.match_source === "customer_id").length,
+    byBizName: scored.filter((c) => c.match_source === "bizname").length,
+    unmatched: scored.filter((c) => c.match_source === "unmatched").length,
+    notInChrone: scored.filter((c) => c.match_source !== "unmatched" && !c.in_chrone).length,
+  };
+
   const health: DataHealth = {
     totalSubsFetched: subs.length,
     customersWithEntityId,
     customersWithAnyComms90d,
+    matchBreakdown,
     perSourceEventCount,
+    perSourceRawRows: commsStats.rawRows,
     perDirectionCount,
+    duplicateEventsRemoved: commsStats.totalDuplicatesRemoved,
     baseSheetRowCount: baseSheet.rows.length,
     fetchErrors: errors,
     refreshDurationMs: Date.now() - started,

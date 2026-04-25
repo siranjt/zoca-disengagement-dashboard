@@ -68,6 +68,9 @@ export type CustomerSignals = {
   notes: string;
 };
 
+/** How this Chargebee sub was joined to a BaseSheet row */
+export type MatchSource = "customer_id" | "bizname" | "unmatched";
+
 /** Full scored customer row (joined Chargebee + BaseSheet + metrics + signals) */
 export type ScoredCustomer = {
   // identity
@@ -89,6 +92,9 @@ export type ScoredCustomer = {
   churn_potential_flag: string;
   activated_at: string | null;
   ob_date: string;
+  // matching diagnostic
+  match_source: MatchSource;   // customer_id / bizname / unmatched
+  in_chrone: boolean;          // chrone_zoca_status === "ZOCA" on the matched row
   // metrics
   metrics: CustomerMetrics;
   // signals
@@ -108,9 +114,22 @@ export type AmTierRow = {
 /** Data-health stats — surfaced in the UI strip so we can spot pipeline issues */
 export type DataHealth = {
   totalSubsFetched: number;        // raw count from Chargebee before dedup
-  customersWithEntityId: number;    // matched to BaseSheet
+  customersWithEntityId: number;    // matched to BaseSheet (either via customer_id or bizname)
   customersWithAnyComms90d: number; // any event in the last 90 days
-  perSourceEventCount: {            // how many events came from each feed
+  matchBreakdown: {                 // how each Chargebee sub was joined to BaseSheet
+    byCustomerId: number;
+    byBizName: number;
+    unmatched: number;
+    notInChrone: number;            // matched but chrone_zoca_status !== "ZOCA"
+  };
+  perSourceEventCount: {            // how many events ended up in the dashboard per channel
+    chat: number;
+    email: number;
+    phone: number;
+    video: number;
+    sms: number;
+  };
+  perSourceRawRows: {               // raw papaparse row count per source — for sanity-checking
     chat: number;
     email: number;
     phone: number;
@@ -121,6 +140,7 @@ export type DataHealth = {
     in: number;
     out: number;
   };
+  duplicateEventsRemoved: number;   // events dropped by the dedup guard (any > 0 = anomaly)
   baseSheetRowCount: number;        // how many rows BaseSheet returned
   fetchErrors: string[];
   refreshDurationMs: number;
