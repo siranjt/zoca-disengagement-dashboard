@@ -46,13 +46,28 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "all",       label: "All customers" },
 ];
 
+type WindowDays = 7 | 14 | 30 | 60 | 90;
+const WINDOW_OPTIONS: WindowDays[] = [7, 14, 30, 60, 90];
+
 type Filters = {
   tier: Tier | null;
   am: string | null;
   signal: "ws" | "cs" | "rd" | "vc" | null;
   search: string;
+  windowDays: WindowDays;
 };
-const emptyFilters = (): Filters => ({ tier: null, am: null, signal: null, search: "" });
+const emptyFilters = (): Filters => ({ tier: null, am: null, signal: null, search: "", windowDays: 30 });
+
+// Pull the right per-window metrics off a customer regardless of which window is active.
+function windowMetrics(m: ScoredCustomer["metrics"], w: WindowDays) {
+  switch (w) {
+    case 7:  return { total: m.total_7d,  in: m.in_7d,  out: m.out_7d,  channels: m.channels_7d };
+    case 14: return { total: m.total_14d, in: m.in_14d, out: m.out_14d, channels: m.channels_14d };
+    case 30: return { total: m.total_30d, in: m.in_30d, out: m.out_30d, channels: m.channels_30d };
+    case 60: return { total: m.total_60d, in: m.in_60d, out: m.out_60d, channels: m.channels_60d };
+    case 90: return { total: m.total_90d, in: m.in_90d, out: m.out_90d, channels: m.channels_90d };
+  }
+}
 
 /* ================================================================= helpers */
 
@@ -111,6 +126,8 @@ function computeViewAggregates(snap: Snapshot, customers: ScoredCustomer[]): Vie
     volume_collapse_any: customers.filter((r) => r.signals.sig_volume_collapse >= 30).length,
   };
 
+  // Channel counts: only have data for 30d and 90d on the snapshot. Other windows
+  // are approximated by reading per-customer channel breadth.
   const channelCounts = { d30: {} as Record<string, number>, d90: {} as Record<string, number> };
   for (const c of customers) {
     for (const ch of (c.metrics.channels_used_30d || "").split(",").filter(Boolean)) {
@@ -270,51 +287,61 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Top bar: filters + controls */}
-      <div className="flex flex-wrap items-center gap-3 rounded-zoca-xl border border-zoca-border-2 bg-zoca-bg-2/55 p-3 backdrop-blur-sm">
-        <input
-          type="search"
-          placeholder="Search biz name, AM, email…"
-          value={filters.search}
-          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-          className="min-w-[220px] flex-1 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-4 py-1.5 text-sm text-white placeholder:text-zoca-text-soft focus:border-zoca-pink-1 focus:outline-none"
-        />
-        <select
-          value={filters.tier || ""}
-          onChange={(e) => setFilters({ ...filters, tier: (e.target.value || null) as Tier | null })}
-          className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-1.5 text-sm text-white"
-        >
-          <option value="">All tiers</option>
-          {TIER_ORDER.map((t) => <option key={t} value={t}>{t} · {snap.tierCounts[t] || 0}</option>)}
-        </select>
-        <select
-          value={filters.am || ""}
-          onChange={(e) => setFilters({ ...filters, am: e.target.value || null })}
-          className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-1.5 text-sm text-white"
-        >
-          <option value="">All AMs</option>
-          {snap.amExposure.map(({ am, total }) => <option key={am} value={am}>{am} · {total}</option>)}
-        </select>
-        <select
-          value={filters.signal || ""}
-          onChange={(e) => setFilters({ ...filters, signal: (e.target.value || null) as Filters["signal"] })}
-          className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-1.5 text-sm text-white"
-        >
-          <option value="">All signals</option>
-          <option value="ws">We went silent</option>
-          <option value="cs">Client went silent</option>
-          <option value="rd">Response rate dropped</option>
-          <option value="vc">Volume/channel collapse</option>
-        </select>
+      {/* Top bar: filters + controls — uses a 12-col grid so every cell aligns
+          regardless of select width. Mobile collapses to stacked rows. */}
+      <div className="rounded-zoca-xl border border-zoca-border-2 bg-zoca-bg-2/55 p-3 backdrop-blur-sm">
+        <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-12">
+          <input
+            type="search"
+            placeholder="Search biz name, AM, email…"
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-4 py-2 text-sm text-white placeholder:text-zoca-text-soft focus:border-zoca-pink-1 focus:outline-none lg:col-span-3"
+          />
+          <select
+            value={filters.tier || ""}
+            onChange={(e) => setFilters({ ...filters, tier: (e.target.value || null) as Tier | null })}
+            className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-2 text-sm text-white lg:col-span-2"
+          >
+            <option value="">All tiers</option>
+            {TIER_ORDER.map((t) => <option key={t} value={t}>{t} · {snap.tierCounts[t] || 0}</option>)}
+          </select>
+          <select
+            value={filters.am || ""}
+            onChange={(e) => setFilters({ ...filters, am: e.target.value || null })}
+            className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-2 text-sm text-white lg:col-span-2"
+          >
+            <option value="">All AMs</option>
+            {snap.amExposure.map(({ am, total }) => <option key={am} value={am}>{am} · {total}</option>)}
+          </select>
+          <select
+            value={filters.signal || ""}
+            onChange={(e) => setFilters({ ...filters, signal: (e.target.value || null) as Filters["signal"] })}
+            className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-2 text-sm text-white lg:col-span-3"
+          >
+            <option value="">All signals</option>
+            <option value="ws">We went silent</option>
+            <option value="cs">Client went silent</option>
+            <option value="rd">Response rate dropped</option>
+            <option value="vc">Volume/channel collapse</option>
+          </select>
+          <select
+            value={String(filters.windowDays)}
+            onChange={(e) => setFilters({ ...filters, windowDays: Number(e.target.value) as WindowDays })}
+            className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-3/50 px-3 py-2 text-sm text-white lg:col-span-2"
+            title="Time window for comms-volume charts (does not affect tier scoring)"
+          >
+            {WINDOW_OPTIONS.map((w) => <option key={w} value={w}>Last {w} days</option>)}
+          </select>
+        </div>
 
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">Showing</div>
-            <div className="text-xs text-white">
-              <strong className="text-zoca-pink-text">{filteredCustomers.length.toLocaleString()}</strong>
-              <span className="text-zoca-text-soft"> / {snap.totalActive.toLocaleString()}</span>
-            </div>
-            <div className="text-[10px] text-zoca-text-soft">as of {snap.generatedAt.slice(11, 19)}Z · {snap.generatedAt.slice(0, 10)}</div>
+        {/* Status + actions row — clean baseline alignment, right-aligned */}
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-3 border-t border-zoca-border pt-3">
+          <div className="mr-auto text-xs text-zoca-text-soft">
+            <span className="font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">Showing</span>{" "}
+            <strong className="text-zoca-pink-text">{filteredCustomers.length.toLocaleString()}</strong>
+            <span className="text-zoca-text-soft"> / {snap.totalActive.toLocaleString()} · last refresh </span>
+            <span className="text-white">{snap.generatedAt.slice(11, 19)}Z · {snap.generatedAt.slice(0, 10)}</span>
           </div>
           <button
             className="zoca-btn zoca-btn-ghost"
@@ -370,13 +397,14 @@ export default function Dashboard() {
       </div>
 
       {/* Tab body — viewSnap recomputes aggregates from the filtered customer list
-          so every chart + card reacts to tier / AM / signal / search filters. */}
-      {tab === "overview" && <Overview snap={snap} viewSnap={viewSnap} setTab={setTab} setFilters={setFilters} />}
+          so every chart + card reacts to tier / AM / signal / search filters.
+          windowDays drives the rolling-window selector for comms-volume charts. */}
+      {tab === "overview" && <Overview snap={snap} viewSnap={viewSnap} windowDays={filters.windowDays} setTab={setTab} setFilters={setFilters} />}
       {tab === "tiers" && <TiersView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
       {tab === "signals" && <SignalsView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
       {tab === "ams" && <AmExposureView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
-      {tab === "risk_list" && <RiskList customers={filteredCustomers.length ? filteredCustomers : snap.customers.filter((c) => c.signals.tier === "HIGH")} openDetail={setModal} />}
-      {tab === "all" && <RiskList customers={filteredCustomers} openDetail={setModal} />}
+      {tab === "risk_list" && <RiskList customers={filteredCustomers.length ? filteredCustomers : snap.customers.filter((c) => c.signals.tier === "HIGH")} windowDays={filters.windowDays} openDetail={setModal} />}
+      {tab === "all" && <RiskList customers={filteredCustomers} windowDays={filters.windowDays} openDetail={setModal} />}
 
       {modal && <CustomerModal customer={modal} onClose={() => setModal(null)} />}
     </div>
@@ -386,10 +414,11 @@ export default function Dashboard() {
 /* ================================================================= views */
 
 function Overview({
-  snap, viewSnap, setTab, setFilters,
+  snap, viewSnap, windowDays, setTab, setFilters,
 }: {
   snap: Snapshot;
   viewSnap: ViewSnap | null;
+  windowDays: WindowDays;
   setTab: (k: TabKey) => void;
   setFilters: (f: Filters) => void;
 }) {
@@ -398,6 +427,9 @@ function Overview({
   const total = viewSnap.totalActive || 1;
   const sig = viewSnap.signalCounts;
   const h = snap.health;
+  // Channel-usage chart can only show 30d / 90d aggregates from the snapshot.
+  // For windowDays of 7 / 14 / 60, fall back to the closest aggregate.
+  const channelWindow: 30 | 90 = windowDays >= 60 ? 90 : 30;
 
   return (
     <div className="space-y-4">
@@ -597,22 +629,16 @@ function Overview({
         </Card>
 
         <Card className="zoca-fade-in">
-          <SectionTitle>Channel usage</SectionTitle>
+          <SectionTitle>Channel usage · {channelWindow}-day window</SectionTitle>
           <div style={{ height: 220 }}>
             <Bar
               data={{
                 labels: ["chat", "phone", "video", "sms", "email"].map((s) => s.toUpperCase()),
                 datasets: [
                   {
-                    label: "30d",
-                    data: ["chat", "phone", "video", "sms", "email"].map((c) => viewSnap.channelCounts.d30[c] || 0),
-                    backgroundColor: "#ff86e1",
-                    borderRadius: 6,
-                  },
-                  {
-                    label: "90d",
-                    data: ["chat", "phone", "video", "sms", "email"].map((c) => viewSnap.channelCounts.d90[c] || 0),
-                    backgroundColor: "#7868f4",
+                    label: `Last ${channelWindow}d`,
+                    data: ["chat", "phone", "video", "sms", "email"].map((c) => (channelWindow === 30 ? viewSnap.channelCounts.d30[c] : viewSnap.channelCounts.d90[c]) || 0),
+                    backgroundColor: channelWindow === 30 ? "#ff86e1" : "#7868f4",
                     borderRadius: 6,
                   },
                 ],
@@ -685,9 +711,9 @@ function Overview({
 
       {/* ---- Team pulse bubble chart ---- */}
       <Card className="zoca-fade-in">
-        <SectionTitle>Team pulse — volume vs response rate</SectionTitle>
+        <SectionTitle>Team pulse — volume vs response rate · {windowDays}-day window</SectionTitle>
         <p className="mb-2 text-xs text-zoca-text-soft">
-          Each bubble = one customer · X = 30d comms · Y = in / out response rate · size = 90d total · color = tier.
+          Each bubble = one customer · X = {windowDays}d comms · Y = in / out response rate · size = 90d total · color = tier.
           Bottom-left = disengaged, top-right = healthy two-way. Click any bubble for details.
         </p>
         <div style={{ height: 320 }}>
@@ -696,13 +722,17 @@ function Overview({
               datasets: TIER_ORDER.map((t) => ({
                 label: t,
                 data: viewSnap.customers
-                  .filter((c) => c.signals.tier === t && c.metrics.total_30d > 0)
-                  .map((c) => ({
-                    x: c.metrics.total_30d,
-                    y: c.metrics.out_30d > 0 ? c.metrics.in_30d / c.metrics.out_30d : 0,
-                    r: Math.max(3, Math.min(14, 3 + Math.sqrt(c.metrics.total_90d))),
-                    _c: c,
-                  })),
+                  .filter((c) => c.signals.tier === t)
+                  .map((c) => {
+                    const w = windowMetrics(c.metrics, windowDays);
+                    return {
+                      x: w.total,
+                      y: w.out > 0 ? w.in / w.out : 0,
+                      r: Math.max(3, Math.min(14, 3 + Math.sqrt(c.metrics.total_90d))),
+                      _c: c,
+                    };
+                  })
+                  .filter((p) => p.x > 0),
                 backgroundColor: TIER_COLORS[t] + "aa",
                 borderColor: TIER_COLORS[t],
                 borderWidth: 1,
@@ -717,17 +747,18 @@ function Overview({
                   callbacks: {
                     label: (ctx) => {
                       const d = ctx.raw as { x: number; y: number; r: number; _c: ScoredCustomer };
+                      const w = windowMetrics(d._c.metrics, windowDays);
                       return [
                         d._c.company,
                         `${d._c.am_name || "—"} · ${d._c.signals.tier}`,
-                        `30d: ${d._c.metrics.in_30d} in / ${d._c.metrics.out_30d} out · 90d: ${d._c.metrics.total_90d}`,
+                        `${windowDays}d: ${w.in} in / ${w.out} out · 90d: ${d._c.metrics.total_90d}`,
                       ];
                     },
                   },
                 },
               },
               scales: {
-                x: { title: { display: true, text: "30-day comms volume", color: "#c8cafe" }, beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
+                x: { title: { display: true, text: `${windowDays}-day comms volume`, color: "#c8cafe" }, beginAtZero: true, grid: { color: "rgba(200,202,254,0.06)" } },
                 y: { title: { display: true, text: "Response rate (in / out)", color: "#c8cafe" }, beginAtZero: true, suggestedMax: 2, grid: { color: "rgba(200,202,254,0.06)" } },
               },
             }}
@@ -910,8 +941,8 @@ function AmExposureView({
 }
 
 function RiskList({
-  customers, openDetail,
-}: { customers: ScoredCustomer[]; openDetail: (c: ScoredCustomer) => void }) {
+  customers, windowDays, openDetail,
+}: { customers: ScoredCustomer[]; windowDays: WindowDays; openDetail: (c: ScoredCustomer) => void }) {
   if (!customers.length) {
     return (
       <Card className="zoca-fade-in">
@@ -932,7 +963,7 @@ function RiskList({
               <Th>Tier</Th>
               <Th num>Days since we touched</Th>
               <Th num>Days since client touched</Th>
-              <Th num>30d</Th>
+              <Th num>{windowDays}d</Th>
               <Th num>90d</Th>
               <Th>Signals</Th>
               <Th>Why</Th>
@@ -945,9 +976,10 @@ function RiskList({
               if (c.signals.sig_client_silent >= 30) sigs.push("Client");
               if (c.signals.sig_response_drop >= 30) sigs.push("Drop");
               if (c.signals.sig_volume_collapse >= 30) sigs.push("Vol");
+              const w = windowMetrics(c.metrics, windowDays);
               return (
                 <tr
-                  key={c.customer_id}
+                  key={`${c.customer_id}::${c.entity_id}`}
                   className="cursor-pointer border-t border-zoca-border hover:bg-zoca-bg-3/40"
                   onClick={() => openDetail(c)}
                 >
@@ -967,7 +999,7 @@ function RiskList({
                   <Td><TierChip tier={c.signals.tier} /></Td>
                   <Td num>{fmtDaysSince(c.metrics.days_since_out)}</Td>
                   <Td num>{fmtDaysSince(c.metrics.days_since_in)}</Td>
-                  <Td num>{c.metrics.total_30d}</Td>
+                  <Td num>{w.total}</Td>
                   <Td num>{c.metrics.total_90d}</Td>
                   <Td>
                     <div className="flex gap-1">
