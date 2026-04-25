@@ -16,7 +16,7 @@ export default function Home() {
           <div className="hidden items-center gap-6 text-sm text-zoca-text-muted md:flex">
             <span className="transition hover:text-white">Live book · Chargebee + Metabase</span>
             <span className="text-zoca-text-soft">·</span>
-            <span className="transition hover:text-white">Scored nightly</span>
+            <span className="transition hover:text-white">Refresh on demand</span>
           </div>
         </div>
       </nav>
@@ -45,7 +45,7 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-6 pb-4 pt-14 text-center">
           <div className="zoca-chip mb-5 mx-auto">
             <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-zoca-pink-2" />
-            Comms-quality review · refreshed nightly
+            Comms-quality review · refresh on demand
           </div>
           <h1 className="font-display text-5xl font-black tracking-zoca-tighter text-white md:text-zoca-h1">
             Customer{" "}
@@ -82,7 +82,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-2">
           <div className="opacity-70"><ZocaLogo height={20} /></div>
           <p className="text-xs text-zoca-text-soft">
-            Data: Chargebee · Metabase · Scored nightly at 22:00 UTC.
+            Data: Chargebee · Metabase · Hit Refresh any time to pull the latest.
           </p>
         </div>
       </footer>
