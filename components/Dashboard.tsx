@@ -449,6 +449,18 @@ function Overview({
             Any non-zero value here indicates the source data or runtime was duplicating events — the dedup is now suppressing them.
           </div>
         )}
+        {((h.excludedEntities ?? 0) > 0 || (h.multiEntityExpansion ?? 0) > 0) && (
+          <div className="mt-2 grid gap-2 rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/30 p-3 text-xs sm:grid-cols-2">
+            <div>
+              <span className="text-zoca-text-soft">Excluded entities (test / orphan):</span>{" "}
+              <strong className="text-white">{(h.excludedEntities ?? 0).toLocaleString()}</strong>
+            </div>
+            <div>
+              <span className="text-zoca-text-soft">Extra rows from multi-location expansion:</span>{" "}
+              <strong className="text-white">{(h.multiEntityExpansion ?? 0).toLocaleString()}</strong>
+            </div>
+          </div>
+        )}
         {h.matchBreakdown && (h.matchBreakdown.unmatched > 0 || h.matchBreakdown.notInChrone > 0) && (
           <div className="mt-3 grid gap-2 rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/30 p-3 text-xs sm:grid-cols-4">
             <div>

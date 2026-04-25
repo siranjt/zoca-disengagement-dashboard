@@ -30,14 +30,15 @@ export function normalizeBizName(s: string): string {
 
 /**
  * Fetch BaseSheet and return rows + multiple lookup maps:
- * - byCustomerId: Chargebee customer_id → row
- * - byEntityId:   Zoca entity_id → row
- * - byBizName:    normalized bizname → row (only for UNAMBIGUOUS names — if a bizname appears in
- *                 >1 BaseSheet row, it's excluded to avoid false matches)
+ * - byCustomerId:      Chargebee customer_id → first row (legacy single-row lookup)
+ * - byCustomerIdMulti: Chargebee customer_id → ALL rows (for multi-location customers)
+ * - byEntityId:        Zoca entity_id → row
+ * - byBizName:         normalized bizname → row (only for UNAMBIGUOUS names)
  */
 export async function fetchBaseSheet(): Promise<{
   rows: BaseSheetRow[];
   byCustomerId: Record<string, BaseSheetRow>;
+  byCustomerIdMulti: Record<string, BaseSheetRow[]>;
   byEntityId: Record<string, BaseSheetRow>;
   byBizName: Record<string, BaseSheetRow>;
 }> {
@@ -59,10 +60,14 @@ export async function fetchBaseSheet(): Promise<{
     ob_date: r["ob_date"] || "",
   }));
   const byCustomerId: Record<string, BaseSheetRow> = {};
+  const byCustomerIdMulti: Record<string, BaseSheetRow[]> = {};
   const byEntityId: Record<string, BaseSheetRow> = {};
   const bizNameGroups: Record<string, BaseSheetRow[]> = {};
   for (const r of rows) {
-    if (r.customer_id) byCustomerId[r.customer_id] = r;
+    if (r.customer_id) {
+      byCustomerId[r.customer_id] = r;
+      (byCustomerIdMulti[r.customer_id] = byCustomerIdMulti[r.customer_id] || []).push(r);
+    }
     if (r.entity_id) byEntityId[r.entity_id] = r;
     const norm = normalizeBizName(r.bizname);
     if (norm) (bizNameGroups[norm] = bizNameGroups[norm] || []).push(r);
@@ -72,7 +77,7 @@ export async function fetchBaseSheet(): Promise<{
   for (const [k, v] of Object.entries(bizNameGroups)) {
     if (v.length === 1) byBizName[k] = v[0];
   }
-  return { rows, byCustomerId, byEntityId, byBizName };
+  return { rows, byCustomerId, byCustomerIdMulti, byEntityId, byBizName };
 }
 
 function parseTs(s: string | undefined): number | null {

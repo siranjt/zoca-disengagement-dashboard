@@ -1,7 +1,7 @@
 import { fetchAllLiveSubs } from "./chargebee";
 import { fetchBaseSheet, fetchAllComms, groupCommsByEntity, normalizeBizName } from "./metabase";
 import { computeMetrics, scoreCustomer } from "./scoring";
-import { TIER_ORDER } from "./config";
+import { TIER_ORDER, EXCLUDED_ENTITIES } from "./config";
 import type {
   ScoredCustomer,
   Snapshot,
@@ -34,6 +34,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
       return {
         rows: [] as BaseSheetRow[],
         byCustomerId: {} as Record<string, BaseSheetRow>,
+        byCustomerIdMulti: {} as Record<string, BaseSheetRow[]>,
         byEntityId: {} as Record<string, BaseSheetRow>,
         byBizName: {} as Record<string, BaseSheetRow>,
       };
@@ -61,56 +62,108 @@ export async function buildSnapshot(): Promise<Snapshot> {
   const seen = new Set<string>();
   const scored: ScoredCustomer[] = [];
 
+  // Counters for the multi-entity expansion + exclude logic
+  let excludedCount = 0;
+  let multiEntityExpansionCount = 0;
+  // Dedupe by entity_id so a single entity isn't double-counted across multiple subs
+  const seenEntities = new Set<string>();
+
   for (const s of subs) {
     if (seen.has(s.customer_id)) continue;
     seen.add(s.customer_id);
 
-    // 1. Try exact customer_id match first
-    let bs: BaseSheetRow | undefined = baseSheet.byCustomerId[s.customer_id];
-    let matchSource: MatchSource = bs ? "customer_id" : "unmatched";
+    // 1. Try exact customer_id match first — get ALL linked BaseSheet entities
+    //    (a Chargebee customer can bill for multiple Zoca locations).
+    let matchedRows: BaseSheetRow[] = baseSheet.byCustomerIdMulti[s.customer_id] || [];
+    let matchSource: MatchSource = matchedRows.length > 0 ? "customer_id" : "unmatched";
 
     // 2. Fallback: normalized bizname match (only unambiguous names)
-    if (!bs) {
+    if (matchedRows.length === 0) {
       const norm = normalizeBizName(s.company || "");
       if (norm) {
         const byName = baseSheet.byBizName[norm];
         if (byName) {
-          bs = byName;
+          matchedRows = [byName];
           matchSource = "bizname";
         }
       }
     }
 
-    const entityId = bs?.entity_id || "";
-    const inChrone = (bs?.chrone_zoca_status || "").toUpperCase() === "ZOCA";
-    const evs = entityId ? byEntity.get(entityId) || [] : [];
-    const metrics = computeMetrics(evs, todayMs);
-    const signals = scoreCustomer(metrics);
+    // 3. Apply entity-level exclude list (test accounts, orphan rows, etc.)
+    const beforeExclude = matchedRows.length;
+    matchedRows = matchedRows.filter((r) => !(r.entity_id in EXCLUDED_ENTITIES));
+    excludedCount += beforeExclude - matchedRows.length;
 
-    scored.push({
-      customer_id: s.customer_id,
-      entity_id: entityId,
-      subscription_id: s.subscription_id,
-      company: bs?.bizname || s.company || "",
-      email: bs?.app_email || s.email || "",
-      phone: bs?.phone_number || s.phone || "",
-      am_name: bs?.am_name || "",
-      ae_name: bs?.ae_name || "",
-      sp_name: bs?.sp_name || "",
-      cb_status: s.status,
-      auto_collection: s.auto_collection,
-      plan_amount: s.plan_amount / 100,
-      mrr_basesheet: bs?.total_monthly_revenue || "",
-      zoca_status: bs?.chrone_zoca_status || "",
-      churn_potential_flag: bs?.churn_potential_flag || "",
-      activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
-      ob_date: bs?.ob_date || "",
-      match_source: matchSource,
-      in_chrone: inChrone,
-      metrics,
-      signals,
-    });
+    if (matchedRows.length === 0) {
+      // No usable BaseSheet match — emit a single "unmatched" row so the customer
+      // still surfaces in the dashboard (with zero comms, auto-HIGH).
+      const evs: typeof comms = [];
+      const metrics = computeMetrics(evs, todayMs);
+      const signals = scoreCustomer(metrics);
+      scored.push({
+        customer_id: s.customer_id,
+        entity_id: "",
+        subscription_id: s.subscription_id,
+        company: s.company || "",
+        email: s.email || "",
+        phone: s.phone || "",
+        am_name: "", ae_name: "", sp_name: "",
+        cb_status: s.status,
+        auto_collection: s.auto_collection,
+        plan_amount: s.plan_amount / 100,
+        mrr_basesheet: "",
+        zoca_status: "",
+        churn_potential_flag: "",
+        activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
+        ob_date: "",
+        match_source: "unmatched",
+        in_chrone: false,
+        metrics,
+        signals,
+      });
+      continue;
+    }
+
+    // 4. Expand: one customer row per linked entity (each gets its own
+    //    bizname / AM / entity_id / comms history / score).
+    if (matchedRows.length > 1) multiEntityExpansionCount += matchedRows.length - 1;
+
+    for (const bs of matchedRows) {
+      if (seenEntities.has(bs.entity_id)) continue;
+      seenEntities.add(bs.entity_id);
+
+      const inChrone = (bs.chrone_zoca_status || "").toUpperCase() === "ZOCA";
+      const evs = bs.entity_id ? byEntity.get(bs.entity_id) || [] : [];
+      const metrics = computeMetrics(evs, todayMs);
+      const signals = scoreCustomer(metrics);
+
+      scored.push({
+        customer_id: s.customer_id,
+        entity_id: bs.entity_id,
+        subscription_id: s.subscription_id,
+        company: bs.bizname || s.company || "",
+        email: bs.app_email || s.email || "",
+        phone: bs.phone_number || s.phone || "",
+        am_name: bs.am_name || "",
+        ae_name: bs.ae_name || "",
+        sp_name: bs.sp_name || "",
+        cb_status: s.status,
+        auto_collection: s.auto_collection,
+        plan_amount: s.plan_amount / 100,
+        mrr_basesheet: bs.total_monthly_revenue || "",
+        zoca_status: bs.chrone_zoca_status || "",
+        churn_potential_flag: bs.churn_potential_flag || "",
+        activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
+        ob_date: bs.ob_date || "",
+        match_source: matchSource,
+        in_chrone: inChrone,
+        metrics,
+        signals,
+      });
+    }
   }
+
+  console.log("[buildSnapshot] excluded entities:", excludedCount, "extra rows from multi-entity expansion:", multiEntityExpansionCount);
 
   // Sort by score desc, then 90d volume desc
   scored.sort((a, b) => {
@@ -205,6 +258,8 @@ export async function buildSnapshot(): Promise<Snapshot> {
     perDirectionCount,
     duplicateEventsRemoved: commsStats.totalDuplicatesRemoved,
     baseSheetRowCount: baseSheet.rows.length,
+    excludedEntities: excludedCount,
+    multiEntityExpansion: multiEntityExpansionCount,
     fetchErrors: errors,
     refreshDurationMs: Date.now() - started,
   };

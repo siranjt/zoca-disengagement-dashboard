@@ -52,3 +52,17 @@ export const SNAPSHOT_KEY = "disengagement:snapshot:latest";
 export const WE_SILENT_DAYS = { high: 60, med: 30, low: 14 };
 export const CLIENT_SILENT_DAYS = { high: 45, med: 30, low: 14 };
 export const ZERO_COMMS_BASELINE_SCORE = 85; // score applied when total_90d === 0
+
+// ---------------------------------------------------------------------------
+// Entity-level exclude list — entities that should NEVER appear in the dashboard
+// regardless of their Chargebee status. Add to this when you find more orphan /
+// test rows in BaseSheet. The exclusion is logged in the Data Health strip so
+// you can see how many were dropped on each refresh.
+// Format: { entity_id: "human-readable reason" }
+// ---------------------------------------------------------------------------
+export const EXCLUDED_ENTITIES: Record<string, string> = {
+  "7a82fdbb-f519-4d38-b3f9-b8dfd5760d0b": "Slayishhh Blast (test account)",
+  "d2c8625f-fb4a-4376-973c-b02b36593b05": "Beauty by Hailey (orphan; customer_id links to other businesses)",
+  "e2ac8f53-d1d9-4bce-b61d-9b4d14d0c4cc": "Image Sun Tanning Center (orphan; customer_id links to Fortitude CrossFit)",
+  "8643a977-6dc5-4fcc-a957-cbb37062eccc": "Hollywood Skin Atlanta Sugar Hill (orphan; customer_id links to Hollywood Skin Atlanta)",
+};

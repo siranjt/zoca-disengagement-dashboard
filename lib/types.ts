@@ -142,6 +142,8 @@ export type DataHealth = {
   };
   duplicateEventsRemoved: number;   // events dropped by the dedup guard (any > 0 = anomaly)
   baseSheetRowCount: number;        // how many rows BaseSheet returned
+  excludedEntities: number;         // entities dropped via lib/config.ts EXCLUDED_ENTITIES
+  multiEntityExpansion: number;     // extra customer rows produced by multi-location expansion
   fetchErrors: string[];
   refreshDurationMs: number;
 };
