@@ -49,14 +49,20 @@ const TABS: { key: TabKey; label: string }[] = [
 type WindowDays = 7 | 14 | 30 | 60 | 90;
 const WINDOW_OPTIONS: WindowDays[] = [7, 14, 30, 60, 90];
 
+type SortKey = null | "score" | "comms_window" | "ratio" | "active_in_window";
 type Filters = {
   tier: Tier | null;
   am: string | null;
   signal: "ws" | "cs" | "rd" | "vc" | null;
   search: string;
   windowDays: WindowDays;
+  sort: SortKey;          // when set, RiskList sorts by this key
+  activeInWindow: boolean; // when true, RiskList only shows customers with > 0 comms in chosen window
 };
-const emptyFilters = (): Filters => ({ tier: null, am: null, signal: null, search: "", windowDays: 30 });
+const emptyFilters = (): Filters => ({
+  tier: null, am: null, signal: null, search: "", windowDays: 30,
+  sort: null, activeInWindow: false,
+});
 
 // Pull the right per-window metrics off a customer regardless of which window is active.
 function windowMetrics(m: ScoredCustomer["metrics"], w: WindowDays) {
@@ -255,23 +261,39 @@ export default function Dashboard() {
     }
   }
 
-  /* -------- derived: filtered customer list -------- */
+  /* -------- derived: filtered + sorted customer list -------- */
   const filteredCustomers = useMemo(() => {
     if (!snap) return [];
     const q = filters.search.trim().toLowerCase();
-    return snap.customers.filter((c) => {
+    const filtered = snap.customers.filter((c) => {
       if (filters.tier && c.signals.tier !== filters.tier) return false;
       if (filters.am && (c.am_name || "(unassigned)") !== filters.am) return false;
       if (filters.signal === "ws" && c.signals.sig_we_silent < 30) return false;
       if (filters.signal === "cs" && c.signals.sig_client_silent < 30) return false;
       if (filters.signal === "rd" && c.signals.sig_response_drop < 30) return false;
       if (filters.signal === "vc" && c.signals.sig_volume_collapse < 30) return false;
+      if (filters.activeInWindow && windowMetrics(c.metrics, filters.windowDays).total <= 0) return false;
       if (q) {
         const hay = `${c.company} ${c.am_name} ${c.email} ${c.customer_id}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
+    // Apply sort if set; otherwise keep snapshot order (already by score desc)
+    if (filters.sort === "comms_window") {
+      filtered.sort((a, b) => windowMetrics(b.metrics, filters.windowDays).total - windowMetrics(a.metrics, filters.windowDays).total);
+    } else if (filters.sort === "ratio") {
+      const ratio = (c: ScoredCustomer) => {
+        const w = windowMetrics(c.metrics, filters.windowDays);
+        return w.out > 0 ? w.in / w.out : (w.in > 0 ? Infinity : -1);
+      };
+      filtered.sort((a, b) => ratio(b) - ratio(a));
+    } else if (filters.sort === "active_in_window") {
+      filtered.sort((a, b) => windowMetrics(b.metrics, filters.windowDays).total - windowMetrics(a.metrics, filters.windowDays).total);
+    } else if (filters.sort === "score") {
+      filtered.sort((a, b) => b.signals.score - a.signals.score);
+    }
+    return filtered;
   }, [snap, filters]);
 
   /* -------- derived: aggregates for the filtered set -------- */
@@ -364,11 +386,13 @@ export default function Dashboard() {
       </div>
 
       {/* Active filter chips */}
-      {(filters.tier || filters.am || filters.signal) && (
+      {(filters.tier || filters.am || filters.signal || filters.activeInWindow || filters.sort) && (
         <div className="flex flex-wrap items-center gap-2">
           {filters.tier && <FilterChip label={`tier: ${filters.tier}`} onClear={() => setFilters({ ...filters, tier: null })} />}
           {filters.am && <FilterChip label={`AM: ${filters.am}`} onClear={() => setFilters({ ...filters, am: null })} />}
           {filters.signal && <FilterChip label={`signal: ${filters.signal}`} onClear={() => setFilters({ ...filters, signal: null })} />}
+          {filters.activeInWindow && <FilterChip label={`active in last ${filters.windowDays}d`} onClear={() => setFilters({ ...filters, activeInWindow: false })} />}
+          {filters.sort && <FilterChip label={`sort: ${filters.sort.replace("_", " ")}`} onClear={() => setFilters({ ...filters, sort: null })} />}
           <button
             className="text-xs text-zoca-text-soft underline-offset-2 hover:text-white hover:underline"
             onClick={() => setFilters(emptyFilters())}
@@ -399,7 +423,7 @@ export default function Dashboard() {
       {/* Tab body — viewSnap recomputes aggregates from the filtered customer list
           so every chart + card reacts to tier / AM / signal / search filters.
           windowDays drives the rolling-window selector for comms-volume charts. */}
-      {tab === "overview" && <Overview snap={snap} viewSnap={viewSnap} windowDays={filters.windowDays} setTab={setTab} setFilters={setFilters} />}
+      {tab === "overview" && <Overview snap={snap} viewSnap={viewSnap} windowDays={filters.windowDays} setTab={setTab} setFilters={setFilters} openDetail={setModal} currentFilters={filters} />}
       {tab === "tiers" && <TiersView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
       {tab === "signals" && <SignalsView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
       {tab === "ams" && <AmExposureView viewSnap={viewSnap} setFilters={setFilters} setTab={setTab} />}
@@ -414,13 +438,15 @@ export default function Dashboard() {
 /* ================================================================= views */
 
 function Overview({
-  snap, viewSnap, windowDays, setTab, setFilters,
+  snap, viewSnap, windowDays, setTab, setFilters, openDetail, currentFilters,
 }: {
   snap: Snapshot;
   viewSnap: ViewSnap | null;
   windowDays: WindowDays;
   setTab: (k: TabKey) => void;
   setFilters: (f: Filters) => void;
+  openDetail: (c: ScoredCustomer) => void;
+  currentFilters: Filters;
 }) {
   if (!viewSnap) return null;
   const tc = viewSnap.tierCounts;
@@ -565,12 +591,48 @@ function Overview({
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <HealthStat label={`Total comms (${windowDays}d)`} value={sumTotal.toLocaleString()} sub={`${sumIn.toLocaleString()} in · ${sumOut.toLocaleString()} out`} />
-              <HealthStat label="Customers active" value={`${withActivity.toLocaleString()} / ${viewSnap.totalActive.toLocaleString()}`} sub={`${pctOf(withActivity, viewSnap.totalActive)}% of view`} />
-              <HealthStat label={`Median ${windowDays}d`} value={median.toLocaleString()} sub="per customer" />
-              <HealthStat label={`Mean ${windowDays}d`} value={mean.toFixed(1)} sub="per customer" />
-              <HealthStat label="Response rate" value={sumOut > 0 ? (sumIn / sumOut).toFixed(2) : "—"} sub="in / out across view" />
-              <HealthStat label={`Most active (${windowDays}d)`} value={topVolume.toLocaleString()} sub={(topCustomer?.company || "—").slice(0, 24)} />
+              <HealthStat
+                label={`Total comms (${windowDays}d)`}
+                value={sumTotal.toLocaleString()}
+                sub={`${sumIn.toLocaleString()} in · ${sumOut.toLocaleString()} out`}
+                hint={`See all customers sorted by ${windowDays}-day comms volume`}
+                onClick={() => { setFilters({ ...currentFilters, sort: "comms_window" }); setTab("all"); }}
+              />
+              <HealthStat
+                label="Customers active"
+                value={`${withActivity.toLocaleString()} / ${viewSnap.totalActive.toLocaleString()}`}
+                sub={`${pctOf(withActivity, viewSnap.totalActive)}% of view`}
+                hint={`See only customers with ≥1 comms event in the last ${windowDays} days`}
+                onClick={() => { setFilters({ ...currentFilters, activeInWindow: true, sort: "comms_window" }); setTab("all"); }}
+              />
+              <HealthStat
+                label={`Median ${windowDays}d`}
+                value={median.toLocaleString()}
+                sub="per customer"
+                hint={`See full ${windowDays}-day distribution`}
+                onClick={() => { setFilters({ ...currentFilters, sort: "comms_window" }); setTab("all"); }}
+              />
+              <HealthStat
+                label={`Mean ${windowDays}d`}
+                value={mean.toFixed(1)}
+                sub="per customer"
+                hint={`See full ${windowDays}-day distribution`}
+                onClick={() => { setFilters({ ...currentFilters, sort: "comms_window" }); setTab("all"); }}
+              />
+              <HealthStat
+                label="Response rate"
+                value={sumOut > 0 ? (sumIn / sumOut).toFixed(2) : "—"}
+                sub="in / out across view"
+                hint="See customers sorted by response rate"
+                onClick={() => { setFilters({ ...currentFilters, sort: "ratio" }); setTab("all"); }}
+              />
+              <HealthStat
+                label={`Most active (${windowDays}d)`}
+                value={topVolume.toLocaleString()}
+                sub={(topCustomer?.company || "—").slice(0, 24)}
+                hint="Open this customer's drill-down"
+                onClick={() => { if (topCustomer) openDetail(topCustomer); }}
+              />
             </div>
           </Card>
         );
@@ -1236,15 +1298,27 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function HealthStat({
-  label, value, sub, ok,
-}: { label: string; value: string; sub?: string; ok?: boolean }) {
+  label, value, sub, ok, onClick, hint,
+}: { label: string; value: string; sub?: string; ok?: boolean; onClick?: () => void; hint?: string }) {
   const valueColor = ok === true ? "text-[#76FF03]" : ok === false ? "text-zoca-pink-text" : "text-white";
+  const clickable = !!onClick;
+  const Tag: "button" | "div" = clickable ? "button" : "div";
   return (
-    <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/40 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">{label}</div>
+    <Tag
+      onClick={onClick}
+      title={clickable ? hint || "Click to drill in" : undefined}
+      className={cls(
+        "group block w-full text-left rounded-zoca-lg border border-zoca-border bg-zoca-bg-3/40 p-3 transition",
+        clickable && "cursor-pointer hover:border-zoca-pink-1/40 hover:bg-zoca-bg-3/70 hover:shadow-zoca-glow",
+      )}
+    >
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-zoca-text-soft">
+        <span>{label}</span>
+        {clickable && <span className="text-zoca-text-soft transition group-hover:translate-x-0.5 group-hover:text-zoca-pink-2">→</span>}
+      </div>
       <div className={`num mt-1 font-display text-base font-semibold leading-tight ${valueColor}`}>{value}</div>
       {sub && <div className="mt-0.5 text-[11px] text-zoca-text-muted">{sub}</div>}
-    </div>
+    </Tag>
   );
 }
 
