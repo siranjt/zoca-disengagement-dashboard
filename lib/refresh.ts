@@ -1,33 +1,79 @@
-import { fetchAllLiveSubs } from "./chargebee";
-import { fetchBaseSheet, fetchAllComms, groupCommsByEntity, normalizeBizName } from "./metabase";
-import { computeMetrics, scoreCustomer } from "./scoring";
-import { TIER_ORDER, EXCLUDED_ENTITIES } from "./config";
+import { fetchAllLiveSubsWithEntityMap } from "./chargebee";
+import { fetchUnpaidInvoices, fetchRecentTransactions, buildBillingMetrics, scoreBilling } from "./billing";
+import { fetchBaseSheet, fetchAllComms, groupCommsByEntity } from "./metabase";
+import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
+import { fetchPerformanceMetrics } from "./performance";
+import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";
+import { writeSnapshotV2 } from "./postgres";
+import {
+  TIER_ORDER,
+  EXCLUDED_ENTITIES,
+  POD_MAP,
+  pgConfigured,
+} from "./config";
 import type {
   ScoredCustomer,
+  ScoredCustomerV2,
   Snapshot,
+  SnapshotV2,
   CommsEvent,
   BaseSheetRow,
   AmTierRow,
+  PodTierRow,
   DataHealth,
-  MatchSource,
+  ChargebeeSub,
+  ChargebeeInvoice,
+  ChargebeeTransaction,
+  UsageMetrics,
+  PerformanceMetrics,
+  BillingMetrics,
+  TicketsMetrics,
 } from "./types";
-import type { Tier } from "./config";
+import type { Tier, Stoplight } from "./config";
+
+const todayMs = () => Date.now();
 
 /**
- * End-to-end refresh: pull live subs, pull comms feeds, score every customer,
- * build aggregate stats, and return the snapshot.
+ * v2 orchestrator. Pulls everything in parallel, builds active-entity universe
+ * from Chargebee cf_entity_id (no BaseSheet dependency for the universe),
+ * scores every active entity with the hybrid composite, writes the snapshot
+ * to Postgres, and returns the in-memory snapshot.
+ *
+ * The active-entity universe is the intersection:
+ *   Chargebee active subs (status ∈ {active, non_renewing, future}) → cf_entity_id
+ *
+ * BaseSheet is still pulled for AM/biz-name enrichment + tickets flag, but
+ * it's no longer the source of "who's active".
  */
-export async function buildSnapshot(): Promise<Snapshot> {
+export async function buildSnapshotV2(): Promise<SnapshotV2> {
   const started = Date.now();
   const errors: string[] = [];
-  const todayMs = Date.now();
-  const todayIso = new Date(todayMs).toISOString();
+  const today = todayMs();
+  const todayIso = new Date(today).toISOString();
 
-  // Run fetches in parallel — they're independent
-  const [subs, baseSheet, commsResult] = await Promise.all([
-    fetchAllLiveSubs().catch((e: Error) => {
-      errors.push(`Chargebee: ${e.message}`);
-      return [] as Awaited<ReturnType<typeof fetchAllLiveSubs>>;
+  // -------------------------------------------------------------------------
+  // Pull all sources in parallel
+  // -------------------------------------------------------------------------
+  const [
+    cbResult,
+    invoicesResult,
+    transactionsResult,
+    baseSheetResult,
+    commsResult,
+    usageResult,
+    perfResult,
+  ] = await Promise.all([
+    fetchAllLiveSubsWithEntityMap().catch((e: Error) => {
+      errors.push(`Chargebee subs: ${e.message}`);
+      return { subs: [] as ChargebeeSub[], customerToEntities: new Map<string, string[]>() };
+    }),
+    fetchUnpaidInvoices().catch((e: Error) => {
+      errors.push(`Chargebee invoices: ${e.message}`);
+      return [] as ChargebeeInvoice[];
+    }),
+    fetchRecentTransactions().catch((e: Error) => {
+      errors.push(`Chargebee transactions: ${e.message}`);
+      return [] as ChargebeeTransaction[];
     }),
     fetchBaseSheet().catch((e: Error) => {
       errors.push(`BaseSheet: ${e.message}`);
@@ -39,7 +85,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
         byBizName: {} as Record<string, BaseSheetRow>,
       };
     }),
-    fetchAllComms(todayMs).catch((e: Error) => {
+    fetchAllComms(today).catch((e: Error) => {
       errors.push(`Comms: ${e.message}`);
       return {
         events: [] as CommsEvent[],
@@ -51,143 +97,195 @@ export async function buildSnapshot(): Promise<Snapshot> {
         },
       };
     }),
+    fetchUsageMetrics(today).catch((e: Error) => {
+      errors.push(`Mixpanel: ${e.message}`);
+      return { metrics: new Map<string, UsageMetrics>(), rowCount: 0 };
+    }),
+    fetchPerformanceMetrics().catch((e: Error) => {
+      errors.push(`Performance: ${e.message}`);
+      return {
+        metrics: new Map<string, PerformanceMetrics>(),
+        rowCounts: { gbpClicksMonthly: 0, rankings: 0, reviews12w: 0, locationInsights: 0, bookingEnquiries: 0 },
+      };
+    }),
   ]);
+
+  const { subs, customerToEntities } = cbResult;
+  const baseSheet = baseSheetResult;
   const comms = commsResult.events;
   const commsStats = commsResult.stats;
+  const usageMetrics = usageResult.metrics;
+  const perfMetrics = perfResult.metrics;
 
-  const byEntity = groupCommsByEntity(comms);
+  // -------------------------------------------------------------------------
+  // Build billing metrics keyed by entity_id
+  // -------------------------------------------------------------------------
+  const billingMetrics = buildBillingMetrics(
+    invoicesResult,
+    transactionsResult,
+    subs,
+    customerToEntities,
+  );
 
-  // Build scored customer list — only customers with an entity_id mapping
-  // (otherwise we can't join to comms).
-  const seen = new Set<string>();
-  const scored: ScoredCustomer[] = [];
-
-  // Counters for the multi-entity expansion + exclude logic
+  // -------------------------------------------------------------------------
+  // Build active-entity universe
+  // -------------------------------------------------------------------------
+  // Universe = union of all entity_ids from Chargebee cf_entity_id across active subs
+  const activeEntityIds = new Set<string>();
+  for (const [, entIds] of customerToEntities) {
+    for (const eid of entIds) {
+      if (!EXCLUDED_ENTITIES[eid]) activeEntityIds.add(eid);
+    }
+  }
   let excludedCount = 0;
-  let multiEntityExpansionCount = 0;
-  // Dedupe by entity_id so a single entity isn't double-counted across multiple subs
-  const seenEntities = new Set<string>();
-
-  for (const s of subs) {
-    if (seen.has(s.customer_id)) continue;
-    seen.add(s.customer_id);
-
-    // 1. Try exact customer_id match first — get ALL linked BaseSheet entities
-    //    (a Chargebee customer can bill for multiple Zoca locations).
-    let matchedRows: BaseSheetRow[] = baseSheet.byCustomerIdMulti[s.customer_id] || [];
-    let matchSource: MatchSource = matchedRows.length > 0 ? "customer_id" : "unmatched";
-
-    // 2. Fallback: normalized bizname match (only unambiguous names)
-    if (matchedRows.length === 0) {
-      const norm = normalizeBizName(s.company || "");
-      if (norm) {
-        const byName = baseSheet.byBizName[norm];
-        if (byName) {
-          matchedRows = [byName];
-          matchSource = "bizname";
-        }
-      }
-    }
-
-    // 3. Apply entity-level exclude list (test accounts, orphan rows, etc.)
-    const beforeExclude = matchedRows.length;
-    matchedRows = matchedRows.filter((r) => !(r.entity_id in EXCLUDED_ENTITIES));
-    excludedCount += beforeExclude - matchedRows.length;
-
-    if (matchedRows.length === 0) {
-      // No usable BaseSheet match — emit a single "unmatched" row so the customer
-      // still surfaces in the dashboard (with zero comms, auto-HIGH).
-      const evs: typeof comms = [];
-      const metrics = computeMetrics(evs, todayMs);
-      const signals = scoreCustomer(metrics);
-      scored.push({
-        customer_id: s.customer_id,
-        entity_id: "",
-        subscription_id: s.subscription_id,
-        company: s.company || "",
-        email: s.email || "",
-        phone: s.phone || "",
-        am_name: "", ae_name: "", sp_name: "",
-        cb_status: s.status,
-        auto_collection: s.auto_collection,
-        plan_amount: s.plan_amount / 100,
-        mrr_basesheet: "",
-        zoca_status: "",
-        churn_potential_flag: "",
-        activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
-        ob_date: "",
-        match_source: "unmatched",
-        in_chrone: false,
-        metrics,
-        signals,
-      });
-      continue;
-    }
-
-    // 4. Expand: one customer row per linked entity (each gets its own
-    //    bizname / AM / entity_id / comms history / score).
-    if (matchedRows.length > 1) multiEntityExpansionCount += matchedRows.length - 1;
-
-    for (const bs of matchedRows) {
-      if (seenEntities.has(bs.entity_id)) continue;
-      seenEntities.add(bs.entity_id);
-
-      const inChrone = (bs.chrone_zoca_status || "").toUpperCase() === "ZOCA";
-      const evs = bs.entity_id ? byEntity.get(bs.entity_id) || [] : [];
-      const metrics = computeMetrics(evs, todayMs);
-      const signals = scoreCustomer(metrics);
-
-      scored.push({
-        customer_id: s.customer_id,
-        entity_id: bs.entity_id,
-        subscription_id: s.subscription_id,
-        company: bs.bizname || s.company || "",
-        email: bs.app_email || s.email || "",
-        phone: bs.phone_number || s.phone || "",
-        am_name: bs.am_name || "",
-        ae_name: bs.ae_name || "",
-        sp_name: bs.sp_name || "",
-        cb_status: s.status,
-        auto_collection: s.auto_collection,
-        plan_amount: s.plan_amount / 100,
-        mrr_basesheet: bs.total_monthly_revenue || "",
-        zoca_status: bs.chrone_zoca_status || "",
-        churn_potential_flag: bs.churn_potential_flag || "",
-        activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
-        ob_date: bs.ob_date || "",
-        match_source: matchSource,
-        in_chrone: inChrone,
-        metrics,
-        signals,
-      });
+  for (const [, entIds] of customerToEntities) {
+    for (const eid of entIds) {
+      if (EXCLUDED_ENTITIES[eid]) excludedCount++;
     }
   }
 
-  console.log("[buildSnapshot] excluded entities:", excludedCount, "extra rows from multi-entity expansion:", multiEntityExpansionCount);
+  // Reverse map: entity_id → customer_id (for joining billing)
+  const entityToCustomer = new Map<string, string>();
+  for (const [cid, entIds] of customerToEntities) {
+    for (const eid of entIds) entityToCustomer.set(eid, cid);
+  }
 
-  // Sort by score desc, then 90d volume desc
+  // Sub lookup by customer_id for plan_amount / auto_collection
+  const subsByCustomer = new Map<string, ChargebeeSub>();
+  for (const s of subs) {
+    if (!s.customer_id) continue;
+    // Prefer active over non_renewing/future; take first if multiple
+    if (!subsByCustomer.has(s.customer_id) || s.status === "active") {
+      subsByCustomer.set(s.customer_id, s);
+    }
+  }
+
+  const commsByEntity = groupCommsByEntity(comms);
+
+  // -------------------------------------------------------------------------
+  // Score each active entity
+  // -------------------------------------------------------------------------
+  const scored: ScoredCustomerV2[] = [];
+  let multiEntityExpansionCount = 0;
+  let mixpanelCoverage = 0;
+
+  for (const entityId of activeEntityIds) {
+    const customerId = entityToCustomer.get(entityId) || "";
+    const sub = subsByCustomer.get(customerId);
+    const bs = baseSheet.byEntityId[entityId];
+
+    // Comms metrics
+    const events = commsByEntity.get(entityId) || [];
+    const cMetrics = computeMetrics(events, today);
+    const v1Signals = scoreCustomer(cMetrics);
+
+    // Usage metrics + score
+    const usage = usageMetrics.get(entityId) || null;
+    if (usage) mixpanelCoverage++;
+    const usageScore = scoreUsage(usage);
+
+    // Billing metrics + score
+    const billing = billingMetrics.get(entityId) || null;
+    const billingScore = scoreBilling(billing);
+
+    // Performance + tickets flags
+    const perf = perfMetrics.get(entityId) || null;
+    const tickets = computeTicketsFlag(
+      entityId,
+      Number(bs?.open_tickets_30d || 0),
+      Number(bs?.unresolved_issues_last_30_days || 0),
+    );
+
+    // Compose hybrid signals
+    const signalsV2 = composeHybridSignals({
+      commsSignals: v1Signals,
+      usageScore,
+      billingScore,
+      performance: perf,
+      tickets,
+      commsMetrics: cMetrics,
+      mixpanelHasData: usage !== null,
+    });
+
+    // Pod lookup from AM
+    const amName = bs?.am_name || "";
+    const pod = POD_MAP[amName] || "";
+
+    scored.push({
+      // v1 fields
+      customer_id: customerId,
+      entity_id: entityId,
+      subscription_id: sub?.subscription_id || "",
+      company: bs?.bizname || sub?.company || "",
+      email: bs?.app_email || sub?.email || "",
+      phone: bs?.phone_number || sub?.phone || "",
+      am_name: amName,
+      ae_name: bs?.ae_name || "",
+      sp_name: bs?.sp_name || "",
+      cb_status: sub?.status || "",
+      auto_collection: sub?.auto_collection || null,
+      plan_amount: (sub?.plan_amount || 0) / 100,
+      mrr_basesheet: bs?.total_monthly_revenue || "",
+      zoca_status: bs?.chrone_zoca_status || "",
+      churn_potential_flag: bs?.churn_potential_flag || "",
+      activated_at: sub?.activated_at ? new Date(sub.activated_at).toISOString() : null,
+      ob_date: bs?.ob_date || "",
+      match_source: bs ? "customer_id" : "unmatched",
+      in_chrone: ((bs?.chrone_zoca_status || "").toUpperCase() === "ZOCA"),
+      metrics: cMetrics,
+      signals: v1Signals,
+      // v2 extensions
+      pod,
+      usage,
+      billing,
+      performance: perf,
+      tickets,
+      signals_v2: signalsV2,
+    });
+  }
+
+  // Count multi-entity customers (for instrumentation)
+  for (const [, entIds] of customerToEntities) {
+    if (entIds.length > 1) multiEntityExpansionCount += entIds.length - 1;
+  }
+
+  // Sort by composite desc, then comms volume desc
   scored.sort((a, b) => {
-    if (b.signals.score !== a.signals.score) return b.signals.score - a.signals.score;
+    if (b.signals_v2.composite !== a.signals_v2.composite) return b.signals_v2.composite - a.signals_v2.composite;
     return b.metrics.total_90d - a.metrics.total_90d;
   });
 
-  // Aggregate: tier counts
+  // -------------------------------------------------------------------------
+  // Aggregates
+  // -------------------------------------------------------------------------
   const tierCounts: Record<Tier, number> = { HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0 };
-  for (const c of scored) tierCounts[c.signals.tier]++;
+  const stoplightCounts: Record<Stoplight, number> = { RED: 0, YELLOW: 0, GREEN: 0 };
+  for (const c of scored) {
+    tierCounts[c.signals_v2.tier]++;
+    stoplightCounts[c.signals_v2.stoplight]++;
+  }
 
-  // Signal counts (≥ 30)
+  const signalCountsV2 = {
+    we_silent_any: scored.filter((r) => r.signals_v2.sig_we_silent >= 30).length,
+    client_silent_any: scored.filter((r) => r.signals_v2.sig_client_silent >= 30).length,
+    response_drop_any: scored.filter((r) => r.signals_v2.sig_response_drop >= 30).length,
+    volume_collapse_any: scored.filter((r) => r.signals_v2.sig_volume_collapse >= 30).length,
+    usage_dormant: scored.filter((r) => r.signals_v2.sig_usage >= 65).length,
+    billing_crisis: scored.filter((r) => r.signals_v2.sig_billing >= 50).length,
+    performance_flagged: scored.filter((r) => r.signals_v2.flag_performance).length,
+    tickets_flagged: scored.filter((r) => r.signals_v2.flag_tickets).length,
+  };
+
+  // v1 signal counts (kept for compat)
   const signalCounts = {
-    we_silent_any: scored.filter((r) => r.signals.sig_we_silent >= 30).length,
-    client_silent_any: scored.filter((r) => r.signals.sig_client_silent >= 30).length,
-    response_drop_any: scored.filter((r) => r.signals.sig_response_drop >= 30).length,
-    volume_collapse_any: scored.filter((r) => r.signals.sig_volume_collapse >= 30).length,
+    we_silent_any: signalCountsV2.we_silent_any,
+    client_silent_any: signalCountsV2.client_silent_any,
+    response_drop_any: signalCountsV2.response_drop_any,
+    volume_collapse_any: signalCountsV2.volume_collapse_any,
   };
 
-  // Channel counts (distinct customers per channel per window)
-  const channelCounts = {
-    d30: {} as Record<string, number>,
-    d90: {} as Record<string, number>,
-  };
+  // Channel counts
+  const channelCounts = { d30: {} as Record<string, number>, d90: {} as Record<string, number> };
   for (const c of scored) {
     for (const ch of (c.metrics.channels_used_30d || "").split(",").filter(Boolean)) {
       channelCounts.d30[ch] = (channelCounts.d30[ch] || 0) + 1;
@@ -197,18 +295,17 @@ export async function buildSnapshot(): Promise<Snapshot> {
     }
   }
 
-  // AM exposure — both the legacy shape (high/total) and the new per-tier breakdown
+  // AM breakdown (legacy + tier)
   const amMap = new Map<string, { high: number; total: number }>();
   const amBreakdownMap = new Map<string, AmTierRow>();
   for (const c of scored) {
     const am = c.am_name || "(unassigned)";
     const cur = amMap.get(am) || { high: 0, total: 0 };
     cur.total++;
-    if (c.signals.tier === "HIGH") cur.high++;
+    if (c.signals_v2.tier === "HIGH") cur.high++;
     amMap.set(am, cur);
-
     const row = amBreakdownMap.get(am) || { am, HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0, total: 0 };
-    row[c.signals.tier]++;
+    row[c.signals_v2.tier]++;
     row.total++;
     amBreakdownMap.set(am, row);
   }
@@ -217,21 +314,34 @@ export async function buildSnapshot(): Promise<Snapshot> {
   const amTierBreakdown = Array.from(amBreakdownMap.values())
     .sort((a, b) => (b.HIGH - a.HIGH) || (b.total - a.total));
 
-  // Score distribution — 10 buckets (0-10, 10-20, …, 90-100)
+  // Pod breakdown
+  const podMap = new Map<string, PodTierRow>();
+  for (const c of scored) {
+    const pod = c.pod || "(unassigned)";
+    const row = podMap.get(pod) || { pod, HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0, total: 0, ams: [] };
+    row[c.signals_v2.tier]++;
+    row.total++;
+    if (c.am_name && !row.ams.includes(c.am_name)) row.ams.push(c.am_name);
+    podMap.set(pod, row);
+  }
+  const podBreakdown = Array.from(podMap.values())
+    .sort((a, b) => (b.HIGH - a.HIGH) || (b.total - a.total));
+
+  // Score distribution
   const scoreDistribution: number[] = new Array(10).fill(0);
   for (const c of scored) {
-    const s = Math.max(0, Math.min(99, c.signals.score));
+    const s = Math.max(0, Math.min(99, c.signals_v2.composite));
     scoreDistribution[Math.floor(s / 10)]++;
   }
 
-  // Book-wide numeric stats
+  // Book-wide stats
   const t30 = scored.map((c) => c.metrics.total_30d).sort((a, b) => a - b);
   const t90 = scored.map((c) => c.metrics.total_90d).sort((a, b) => a - b);
   const med = (arr: number[]) => (arr.length ? arr[Math.floor(arr.length / 2)] : 0);
   const mean = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
   const totalComms90d = scored.reduce((a, c) => a + c.metrics.total_90d, 0);
 
-  // Data-health instrumentation — lets us see pipeline state at a glance
+  // Data health
   const perSourceEventCount = { chat: 0, email: 0, phone: 0, video: 0, sms: 0 };
   const perDirectionCount = { in: 0, out: 0 };
   for (const e of comms) {
@@ -240,41 +350,57 @@ export async function buildSnapshot(): Promise<Snapshot> {
   }
   const customersWithAnyComms90d = scored.filter((c) => c.metrics.total_90d > 0).length;
   const customersWithEntityId = scored.filter((c) => c.entity_id).length;
-
   const matchBreakdown = {
     byCustomerId: scored.filter((c) => c.match_source === "customer_id").length,
-    byBizName: scored.filter((c) => c.match_source === "bizname").length,
+    byBizName: 0,
     unmatched: scored.filter((c) => c.match_source === "unmatched").length,
-    notInChrone: scored.filter((c) => c.match_source !== "unmatched" && !c.in_chrone).length,
+    notInChrone: scored.filter((c) => !c.in_chrone).length,
   };
 
   const health: DataHealth = {
     totalSubsFetched: subs.length,
     customersWithEntityId,
     customersWithAnyComms90d,
+    customersWithMixpanelData: mixpanelCoverage,
+    customersWithBillingIssues: scored.filter((c) => c.billing && c.billing.unpaid_invoice_count > 0).length,
+    customersWithPerformanceFlag: signalCountsV2.performance_flagged,
+    customersWithTicketsFlag: signalCountsV2.tickets_flagged,
     matchBreakdown,
     perSourceEventCount,
     perSourceRawRows: commsStats.rawRows,
     perDirectionCount,
     duplicateEventsRemoved: commsStats.totalDuplicatesRemoved,
     baseSheetRowCount: baseSheet.rows.length,
+    mixpanelRowCount: usageResult.rowCount,
+    performanceRowCounts: perfResult.rowCounts,
+    chargebeeInvoiceCount: invoicesResult.length,
+    chargebeeTransactionCount: transactionsResult.length,
     excludedEntities: excludedCount,
     multiEntityExpansion: multiEntityExpansionCount,
     fetchErrors: errors,
     refreshDurationMs: Date.now() - started,
   };
 
-  const snapshot: Snapshot = {
+  const snapshot: SnapshotV2 = {
+    version: "v2",
     generatedAt: new Date().toISOString(),
     todayIso,
     totalActive: scored.length,
     tierCounts,
+    stoplightCounts,
     signalCounts,
+    signalCountsV2,
     channelCounts,
     amExposure,
     amTierBreakdown,
+    podBreakdown,
     scoreDistribution,
     customers: scored,
+    activeEntityIds: Array.from(activeEntityIds).sort(),
+    mixpanelCoverage: {
+      activeWithMixpanel: mixpanelCoverage,
+      activeWithoutMixpanel: scored.length - mixpanelCoverage,
+    },
     stats: {
       total_comms_90d: totalComms90d,
       median_30d: med(t30),
@@ -287,10 +413,82 @@ export async function buildSnapshot(): Promise<Snapshot> {
     errors: errors.length ? errors : undefined,
   };
 
-  // Ensure every tier is represented (for UI stability)
+  // Ensure all tiers represented for UI stability
   for (const t of TIER_ORDER) {
     if (snapshot.tierCounts[t] == null) snapshot.tierCounts[t] = 0;
   }
 
+  // Write to Postgres if configured
+  if (pgConfigured()) {
+    try {
+      await writeSnapshotV2(snapshot);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[buildSnapshotV2] Postgres write failed:", msg);
+      errors.push(`Postgres write: ${msg}`);
+    }
+  }
+
+  console.log(
+    "[buildSnapshotV2] active:", scored.length,
+    "tiers:", tierCounts,
+    "stoplight:", stoplightCounts,
+    "errors:", errors.length,
+    "duration:", health.refreshDurationMs + "ms",
+  );
+
   return snapshot;
 }
+
+/**
+ * v1 wrapper — kept for backward compatibility with existing UI code that
+ * reads Snapshot (not SnapshotV2). Returns the v1-shaped subset of v2 output.
+ */
+export async function buildSnapshot(): Promise<Snapshot> {
+  const v2 = await buildSnapshotV2();
+  // Strip v2-specific fields, downcast customers
+  const customersV1: ScoredCustomer[] = v2.customers.map((c) => ({
+    customer_id: c.customer_id,
+    entity_id: c.entity_id,
+    subscription_id: c.subscription_id,
+    company: c.company,
+    email: c.email,
+    phone: c.phone,
+    am_name: c.am_name,
+    ae_name: c.ae_name,
+    sp_name: c.sp_name,
+    cb_status: c.cb_status,
+    auto_collection: c.auto_collection,
+    plan_amount: c.plan_amount,
+    mrr_basesheet: c.mrr_basesheet,
+    zoca_status: c.zoca_status,
+    churn_potential_flag: c.churn_potential_flag,
+    activated_at: c.activated_at,
+    ob_date: c.ob_date,
+    match_source: c.match_source,
+    in_chrone: c.in_chrone,
+    metrics: c.metrics,
+    signals: c.signals,
+  }));
+
+  return {
+    generatedAt: v2.generatedAt,
+    todayIso: v2.todayIso,
+    totalActive: v2.totalActive,
+    tierCounts: v2.tierCounts,
+    signalCounts: v2.signalCounts,
+    channelCounts: v2.channelCounts,
+    amExposure: v2.amExposure,
+    amTierBreakdown: v2.amTierBreakdown,
+    scoreDistribution: v2.scoreDistribution,
+    customers: customersV1,
+    stats: v2.stats,
+    health: v2.health,
+    errors: v2.errors,
+  };
+}
+
+// Re-export individual fetchers for convenience (used by API routes)
+export { buildBillingMetrics, fetchUnpaidInvoices, fetchRecentTransactions } from "./billing";
+export { fetchUsageMetrics } from "./mixpanel";
+export { fetchPerformanceMetrics } from "./performance";

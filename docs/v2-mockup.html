@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoca · Customer Health — AM View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0422;
+    --bg-elev-1: #160a35;
+    --bg-elev-2: #1f1148;
+    --bg-card: #1a0e3a;
+    --border: rgba(243, 237, 253, 0.08);
+    --border-strong: rgba(243, 237, 253, 0.16);
+    --text-primary: #f3edfd;
+    --text-secondary: rgba(243, 237, 253, 0.65);
+    --text-tertiary: rgba(243, 237, 253, 0.42);
+    --accent-purple: #8b5cf6;
+    --accent-pink: #ec4899;
+    --red: #ef4444;
+    --red-bg: rgba(239, 68, 68, 0.12);
+    --red-border: rgba(239, 68, 68, 0.32);
+    --yellow: #f59e0b;
+    --yellow-bg: rgba(245, 158, 11, 0.12);
+    --yellow-border: rgba(245, 158, 11, 0.32);
+    --green: #10b981;
+    --green-bg: rgba(16, 185, 129, 0.12);
+    --green-border: rgba(16, 185, 129, 0.32);
+    --glow: 0 0 40px rgba(139, 92, 246, 0.25);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background: radial-gradient(ellipse at top left, rgba(139, 92, 246, 0.12), transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.08), transparent 50%),
+                var(--bg);
+    background-attachment: fixed;
+  }
+  .display { font-family: 'Montserrat', sans-serif; font-weight: 900; letter-spacing: -0.02em; }
+
+  /* Top bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 4, 34, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 20px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 20px; letter-spacing: -0.01em;
+    background: linear-gradient(135deg, #f3edfd 0%, #c4b5fd 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .am-selector {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .am-selector:hover { background: var(--bg-elev-2); }
+  .am-selector .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .freshness {
+    font-size: 11px; color: var(--text-tertiary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .freshness .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+  }
+  .view-switcher { margin-left: auto; display: flex; gap: 4px; background: var(--bg-elev-1); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+  .view-switcher button {
+    background: transparent; border: 0; color: var(--text-secondary);
+    padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .view-switcher button.active { background: var(--accent-purple); color: white; }
+  .view-switcher button:hover:not(.active) { color: var(--text-primary); }
+
+  /* Welcome strip */
+  .welcome {
+    margin: 24px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(236, 72, 153, 0.10));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  }
+  .welcome.hidden { display: none; }
+  .welcome .greet { font-size: 14px; color: var(--text-primary); }
+  .welcome .greet b { color: white; }
+  .welcome .actions { display: flex; gap: 10px; align-items: center; }
+  .btn-primary, .btn-ghost {
+    border: 0; border-radius: 9px; padding: 9px 16px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent-purple); color: white; }
+  .btn-primary:hover { background: #7c3aed; box-shadow: var(--glow); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
+  .btn-ghost:hover { background: var(--bg-elev-1); color: var(--text-primary); }
+
+  /* Main column */
+  main { max-width: 920px; margin: 0 auto; padding: 0 24px 100px; }
+
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 28px 0 16px;
+  }
+  .section-head h1 {
+    font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 26px; margin: 0; letter-spacing: -0.02em;
+  }
+  .section-head h1 .count { color: var(--accent-pink); }
+  .section-head .sub { font-size: 13px; color: var(--text-secondary); }
+
+  /* Filter chips */
+  .filters {
+    display: flex; gap: 10px; margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    padding: 8px 14px;
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip:hover { color: var(--text-primary); border-color: rgba(243, 237, 253, 0.25); }
+  .chip.active {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: var(--accent-purple);
+    color: var(--text-primary);
+  }
+  .chip .badge {
+    background: rgba(255,255,255,0.1); padding: 1px 8px;
+    border-radius: 999px; font-size: 11px;
+  }
+
+  /* Customer cards */
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .card:hover { border-color: var(--border-strong); }
+  .card-main {
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+  .stoplight {
+    width: 12px; height: 12px; border-radius: 50%;
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+  .stoplight.red { background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .stoplight.yellow { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+  .stoplight.green { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .card-body { min-width: 0; }
+  .biz-name {
+    font-size: 16px; font-weight: 600;
+    margin: 0 0 4px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .biz-name .trend {
+    font-size: 11px; padding: 2px 8px; border-radius: 6px;
+    font-weight: 600;
+  }
+  .trend.up { background: var(--red-bg); color: #fca5a5; }
+  .trend.down { background: var(--green-bg); color: #6ee7b7; }
+  .trend.flat { background: rgba(243, 237, 253, 0.05); color: var(--text-tertiary); }
+  .biz-meta {
+    font-size: 12px; color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+  .reason {
+    font-size: 14px; color: var(--text-primary);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .reason b { color: white; font-weight: 600; }
+  .card-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .btn-call {
+    background: linear-gradient(135deg, var(--accent-purple), #6d28d9);
+    color: white; border: 0; border-radius: 9px;
+    padding: 9px 16px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+    transition: all 0.15s;
+  }
+  .btn-call:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(139, 92, 246, 0.4); }
+  .card .quick-actions {
+    display: flex; gap: 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .quick-actions a {
+    color: var(--text-secondary); text-decoration: none; cursor: pointer;
+    border-bottom: 1px dashed transparent;
+    transition: all 0.15s;
+  }
+  .quick-actions a:hover { color: var(--text-primary); border-bottom-color: var(--text-secondary); }
+
+  /* Drawer */
+  .drawer {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: rgba(10, 4, 34, 0.4);
+    padding: 18px 20px 20px;
+  }
+  .drawer.open { display: block; }
+  .drawer-head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary); font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .drawer-why {
+    font-size: 13px; color: var(--text-secondary);
+    line-height: 1.6; margin-bottom: 18px;
+  }
+  .drawer-why b { color: var(--text-primary); }
+  .signal-bars { display: grid; gap: 10px; margin-bottom: 18px; }
+  .signal-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 40px;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .signal-row .label { color: var(--text-secondary); }
+  .signal-bar-wrap {
+    height: 6px; background: rgba(243, 237, 253, 0.06);
+    border-radius: 999px; overflow: hidden;
+  }
+  .signal-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s; }
+  .signal-row .value { color: var(--text-tertiary); font-variant-numeric: tabular-nums; text-align: right; }
+  .flags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .flag-chip {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+    background: var(--yellow-bg); color: #fcd34d;
+    border: 1px solid var(--yellow-border);
+  }
+  .recent-notes {
+    background: rgba(243, 237, 253, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .recent-notes .note {
+    font-size: 12px; color: var(--text-secondary);
+    margin: 4px 0;
+  }
+  .recent-notes .note .when { color: var(--text-tertiary); }
+  .drawer-actions { display: flex; gap: 10px; }
+
+  /* Wins section */
+  .wins-section { margin-top: 40px; }
+  .wins-toggle {
+    width: 100%; text-align: left;
+    background: transparent; border: 0;
+    color: var(--text-secondary); font-family: inherit;
+    font-size: 14px; font-weight: 600;
+    padding: 12px 0; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .wins-toggle .chevron { transition: transform 0.2s; font-size: 12px; }
+  .wins-section.open .chevron { transform: rotate(90deg); }
+  .wins-body { display: none; padding-top: 16px; }
+  .wins-section.open .wins-body { display: flex; flex-direction: column; gap: 10px; }
+  .win-card {
+    background: var(--bg-card);
+    border: 1px solid var(--green-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
+    align-items: center;
+  }
+  .win-card .delta { color: var(--green); font-size: 13px; font-weight: 600; }
+
+  .full-book-link {
+    margin-top: 32px; text-align: center;
+    color: var(--text-tertiary); font-size: 13px;
+  }
+  .full-book-link a { color: var(--accent-purple); cursor: pointer; }
+
+  /* Modals */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10, 4, 34, 0.7);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-strong);
+    border-radius: 18px;
+    max-width: 760px; width: 100%;
+    max-height: 88vh;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .modal-head {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-head .biz-row {
+    display: flex; align-items: center; gap: 14px; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .modal-head h2 {
+    margin: 0; font-family: 'Montserrat', sans-serif;
+    font-weight: 700; font-size: 22px; letter-spacing: -0.01em;
+  }
+  .modal-head .meta {
+    font-size: 12px; color: var(--text-tertiary);
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .modal-close {
+    background: transparent; border: 0;
+    color: var(--text-secondary); font-size: 24px;
+    cursor: pointer; line-height: 1;
+    padding: 0; margin-left: auto;
+  }
+  .modal-tabs {
+    display: flex; gap: 4px;
+    padding: 0 28px; border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .modal-tabs button {
+    background: transparent; border: 0;
+    color: var(--text-secondary); padding: 12px 14px;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .modal-tabs button.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-purple);
+  }
+  .modal-body {
+    padding: 22px 28px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-section { display: none; }
+  .modal-section.active { display: block; }
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .stat-card .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary); margin-bottom: 6px;
+  }
+  .stat-card .value {
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 22px; letter-spacing: -0.01em;
+  }
+  .stat-card .value.red { color: #fca5a5; }
+  .stat-card .value.yellow { color: #fcd34d; }
+  .stat-card .value.green { color: #6ee7b7; }
+  .stat-card .sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+  .modal-body h3 {
+    margin: 18px 0 10px;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 14px; letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--text-secondary);
+  }
+  .timeline { display: flex; flex-direction: column; gap: 10px; }
+  .timeline-item {
+    display: grid; grid-template-columns: 80px 1fr;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .timeline-item .date { color: var(--text-tertiary); font-size: 11px; }
+  .timeline-item .channel { color: var(--accent-purple); font-weight: 500; font-size: 11px; }
+  .timeline-item.in .channel { color: var(--accent-pink); }
+
+  /* Contacted modal (small) */
+  .modal-small { max-width: 480px; }
+  .outcome-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin: 16px 0;
+  }
+  .outcome-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 14px 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+  }
+  .outcome-btn:hover, .outcome-btn.selected {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: var(--accent-purple);
+  }
+  .note-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 10px 12px;
+    font-family: inherit; font-size: 13px;
+    resize: vertical;
+    min-height: 60px;
+  }
+  .note-input:focus { outline: 0; border-color: var(--accent-purple); }
+  .modal-foot {
+    padding: 16px 28px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+
+  /* Tour */
+  .tour-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(10, 4, 34, 0.85);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .tour-overlay.open { display: flex; }
+  .tour-card {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    max-width: 460px; width: 100%;
+    padding: 26px;
+    box-shadow: 0 20px 60px rgba(139, 92, 246, 0.2);
+  }
+  .tour-step-num {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent-pink); font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .tour-card h2 {
+    margin: 0 0 10px;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 20px;
+  }
+  .tour-card p {
+    margin: 0 0 18px;
+    color: var(--text-secondary); font-size: 14px; line-height: 1.55;
+  }
+  .tour-dots { display: flex; gap: 6px; margin-bottom: 18px; }
+  .tour-dots .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border-strong);
+  }
+  .tour-dots .dot.active { background: var(--accent-pink); }
+  .tour-foot { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: var(--bg-elev-2);
+    border: 1px solid var(--green-border);
+    border-radius: 12px;
+    padding: 14px 22px;
+    font-size: 13px;
+    color: var(--text-primary);
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 150;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .icon { color: var(--green); margin-right: 8px; }
+
+  /* View placeholder (for Pod / Leadership switching) */
+  .view-placeholder {
+    margin: 40px auto;
+    max-width: 600px;
+    text-align: center;
+    padding: 60px 40px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 16px;
+  }
+  .view-placeholder h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px; margin: 0 0 10px;
+  }
+  .view-placeholder p { color: var(--text-secondary); font-size: 14px; }
+
+  /* Mobile */
+  @media (max-width: 720px) {
+    .topbar { gap: 10px; padding: 12px 16px; }
+    .view-switcher { width: 100%; margin: 8px 0 0; order: 10; }
+    .view-switcher button { flex: 1; padding: 8px 6px; }
+    main { padding: 0 16px 80px; }
+    .welcome { margin: 16px; flex-direction: column; align-items: flex-start; }
+    .card-main { grid-template-columns: auto 1fr; gap: 12px; padding: 16px; }
+    .card-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+    .btn-call { width: 100%; padding: 12px; }
+    .card-actions .btn-call { width: auto; flex-shrink: 0; }
+    .section-head h1 { font-size: 22px; }
+    .signal-row { grid-template-columns: 90px 1fr 36px; }
+    .modal { max-height: 92vh; }
+    .modal-head { padding: 18px 20px 14px; }
+    .modal-body { padding: 16px 20px; }
+    .modal-tabs { padding: 0 20px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">zoca</div>
+  <button class="am-selector" onclick="toggleAMMenu()">
+    <span class="avatar">SG</span>
+    <span>Sudha Goutami</span>
+    <span style="font-size: 10px; color: var(--text-tertiary);">▾</span>
+  </button>
+  <div class="freshness"><span class="dot"></span>Updated 4 hrs ago · Tap to refresh</div>
+  <div class="view-switcher">
+    <button class="active" onclick="switchView('am', this)">My customers</button>
+    <button onclick="switchView('pod', this)">Pod view</button>
+    <button onclick="switchView('leadership', this)">Leadership</button>
+  </div>
+</div>
+
+<!-- Welcome strip -->
+<div class="welcome" id="welcome">
+  <div class="greet">
+    <b>Welcome back, Sudha.</b> Two new customers showed up on your list overnight.
+  </div>
+  <div class="actions">
+    <button class="btn-primary" onclick="startTour()">Show me around</button>
+    <button class="btn-ghost" onclick="document.getElementById('welcome').classList.add('hidden')">Maybe later</button>
+  </div>
+</div>
+
+<main id="main-view">
+
+  <div class="section-head">
+    <h1>Today, you have <span class="count" id="today-count">5</span> customers to act on</h1>
+    <div class="sub">Sorted by urgency · Updated 9:00 AM IST</div>
+  </div>
+
+  <div class="filters">
+    <button class="chip active" onclick="setFilter(this, 'act')">Need to call today <span class="badge" id="filter-count-act">5</span></button>
+    <button class="chip" onclick="setFilter(this, 'improving')">Improving <span class="badge">3</span></button>
+    <button class="chip" onclick="setFilter(this, 'quiet')">Haven't talked to in 30+ days <span class="badge">2</span></button>
+  </div>
+
+  <div class="cards" id="card-list">
+    <!-- Cards injected by JS -->
+  </div>
+
+  <div class="wins-section" id="wins" onclick="if(event.target.closest('.wins-toggle')) toggleWins()">
+    <button class="wins-toggle">
+      <span class="chevron">▶</span>
+      <span>Wins this week — 3 customers improving</span>
+    </button>
+    <div class="wins-body" id="wins-body"></div>
+  </div>
+
+  <div class="full-book-link">
+    <a onclick="showFullBook()">Show my full book (87 customers)</a>
+  </div>
+
+</main>
+
+<!-- Customer modal -->
+<div class="overlay" id="customer-modal-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="biz-row">
+        <div>
+          <h2 id="modal-biz">Bella Hair Studio</h2>
+          <div class="meta" id="modal-meta">
+            <span>AM: Sudha Goutami</span>
+            <span>Pod 1</span>
+            <span>$180/mo plan</span>
+            <span>Customer since Jan 2024</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+    </div>
+    <div class="modal-tabs" id="modal-tabs">
+      <button class="active" onclick="setModalTab('overview', this)">Overview</button>
+      <button onclick="setModalTab('comms', this)">Comms</button>
+      <button onclick="setModalTab('usage', this)">App usage</button>
+      <button onclick="setModalTab('billing', this)">Billing</button>
+      <button onclick="setModalTab('performance', this)">Performance</button>
+      <button onclick="setModalTab('notes', this)">Notes</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section active" data-section="overview">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="label">Status</div><div class="value red">Needs attention</div><div class="sub">↑ Worsening · was yellow 7d ago</div></div>
+          <div class="stat-card"><div class="label">Last we talked</div><div class="value">14 d</div><div class="sub">Apr 28 · Email (outbound)</div></div>
+          <div class="stat-card"><div class="label">App opens</div><div class="value yellow">0 / 7d</div><div class="sub">Dormant · last open Apr 25</div></div>
+          <div class="stat-card"><div class="label">Unpaid</div><div class="value red">2</div><div class="sub">$1,340 · oldest 18 d past due</div></div>
+        </div>
+        <h3>Why this customer is flagged</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">Their team stopped opening the Zoca app two weeks ago. Around the same time, two invoices went past due and we haven't successfully reached them by phone. The combination suggests something operational broke in mid-April — likely a card issue plus a person stepping away.</p>
+        <h3>Suggested talking points</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">Lead with the unpaid invoice — it's the concrete thing they'll want to fix. After that's resolved, ask gently who's been running the app on their team lately; the usage gap may signal staff turnover.</p>
+      </div>
+      <div class="modal-section" data-section="comms">
+        <h3>Last 90 days · 12 touches</h3>
+        <div class="timeline">
+          <div class="timeline-item"><div class="date">Apr 28</div><div><div class="channel">Email · outbound</div>Sent recap of March Discovery Agent leads</div></div>
+          <div class="timeline-item in"><div class="date">Apr 22</div><div><div class="channel">App Chat · inbound</div>"How do I respond to multiple reviews at once?"</div></div>
+          <div class="timeline-item"><div class="date">Apr 18</div><div><div class="channel">Phone · outbound</div>2-min check-in call</div></div>
+          <div class="timeline-item in"><div class="date">Apr 09</div><div><div class="channel">Email · inbound</div>Asked about ranking for "balayage near me"</div></div>
+          <div class="timeline-item"><div class="date">Mar 28</div><div><div class="channel">Video · meeting</div>Q1 review (30 min)</div></div>
+        </div>
+      </div>
+      <div class="modal-section" data-section="usage">
+        <h3>App activity · last 90 days</h3>
+        <p style="font-size: 13px; color: var(--text-secondary);">App opens dropped from 24/wk (early March) to 0 in the last 7 days. Engagement tier: <b style="color:#fca5a5;">Dormant</b>.</p>
+        <div class="timeline">
+          <div class="timeline-item"><div class="date">Apr 25</div><div><div class="channel">App opened</div>Last session · 4 min</div></div>
+          <div class="timeline-item"><div class="date">Apr 25</div><div><div class="channel">Leads viewed</div>Opened 2 leads</div></div>
+          <div class="timeline-item"><div class="date">Apr 12</div><div><div class="channel">Review reply</div>Sent 3 review responses</div></div>
+          <div class="timeline-item"><div class="date">Mar 28</div><div><div class="channel">Leads marked</div>Marked 4 leads as "won"</div></div>
+        </div>
+      </div>
+      <div class="modal-section" data-section="billing">
+        <h3>Open invoices</h3>
+        <div class="timeline">
+          <div class="timeline-item"><div class="date">Apr 24</div><div><div class="channel" style="color: var(--red);">$680 · 18 d past due</div>April subscription · Auto-debit failed Apr 26 (card declined)</div></div>
+          <div class="timeline-item"><div class="date">Apr 03</div><div><div class="channel" style="color: var(--red);">$660 · 7 d past due</div>March subscription · Auto-debit not attempted (account flagged)</div></div>
+        </div>
+        <h3>Auto-debit</h3>
+        <p style="font-size: 13px; color: var(--text-secondary);">Status: <b style="color: #fcd34d;">ON with recent failure.</b> Card declined Apr 26. No newer payment method on file. Customer last updated card Jan 2024.</p>
+      </div>
+      <div class="modal-section" data-section="performance">
+        <h3>GBP profile clicks</h3>
+        <p style="font-size: 13px; color: var(--text-secondary);">March (last complete month): 412 clicks · April in-progress: 38 clicks so far. Compared to 6-month peak of 580 in January, clicks down 29%.</p>
+        <h3>Leads YTD</h3>
+        <p style="font-size: 13px; color: var(--text-secondary);">82 leads through end of April · trailing same period 2025 by 12%.</p>
+        <h3>Top keywords</h3>
+        <p style="font-size: 13px; color: var(--text-secondary);">14 active rankings. 4 in top-3 (was 6 in Q1), 7 in top-10, 3 outside.</p>
+      </div>
+      <div class="modal-section" data-section="notes">
+        <h3>Recent AM actions</h3>
+        <div class="recent-notes" style="margin: 0;">
+          <div class="note"><span class="when">Apr 28 · Sudha</span> — Sent email recap. No response yet.</div>
+          <div class="note"><span class="when">Apr 18 · Sudha</span> — Called. Spoke briefly. They mentioned hiring a new front-desk person.</div>
+          <div class="note"><span class="when">Mar 28 · Sudha</span> — Q1 review meeting. Owner happy with March numbers. Discussed adding a second location.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <a style="font-size: 12px; color: var(--text-tertiary); margin-right: auto; cursor: pointer;" onclick="showToast('Thanks — we will review this scoring.')">Report an issue with this scoring</a>
+      <button class="btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn-primary" onclick="openContacted()">Mark as contacted</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mark contacted small modal -->
+<div class="overlay" id="contacted-overlay">
+  <div class="modal modal-small">
+    <div class="modal-head">
+      <div class="biz-row">
+        <h2 style="font-size: 18px;">How did the call go?</h2>
+        <button class="modal-close" onclick="closeContacted()">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="outcome-grid">
+        <button class="outcome-btn" onclick="selectOutcome(this, 'connected')">Connected</button>
+        <button class="outcome-btn" onclick="selectOutcome(this, 'vm')">Voicemail</button>
+        <button class="outcome-btn" onclick="selectOutcome(this, 'noreach')">Couldn't reach</button>
+      </div>
+      <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Quick note (optional)</label>
+      <textarea class="note-input" placeholder="What did they say?"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeContacted()">Cancel</button>
+      <button class="btn-primary" onclick="submitContacted()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding tour -->
+<div class="tour-overlay" id="tour">
+  <div class="tour-card">
+    <div class="tour-step-num">Step <span id="tour-num">1</span> of 5</div>
+    <h2 id="tour-title">This is your daily list</h2>
+    <p id="tour-body">Every morning, you'll see the 5 to 10 customers in your book who need attention most. Sorted by urgency. The rest of your book is one click away.</p>
+    <div class="tour-dots" id="tour-dots">
+      <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <div class="tour-foot">
+      <button class="btn-ghost" onclick="endTour()">Skip tour</button>
+      <button class="btn-primary" onclick="tourNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span class="icon">✓</span><span id="toast-text">Logged. We'll quiet this customer for 7 days.</span></div>
+
+<script>
+  // Data ----------------------------------------------------------------
+  const customers = [
+    { id: 'bella', name: 'Bella Hair Studio', light: 'red', trend: 'up',
+      meta: '$180/mo · Pod 1 · Jan 2024 · Sudha',
+      reason: "Hasn't opened the Zoca app in <b>18 days</b>. <b>2 invoices past due</b> ($1,340 total). Auto-debit failed Apr 26.",
+      action: 'Call about the unpaid invoice',
+      filter: ['act', 'quiet'],
+      drawerWhy: "Their team stopped opening the Zoca app two weeks ago. Around the same time, two invoices went past due and we haven't successfully reached them by phone. The combination suggests something operational broke in mid-April — likely a card issue plus a staff change.",
+      signals: { 'We went silent': 28, 'Client silent': 72, 'Response drop': 45, 'Volume collapse': 38, 'App usage': 92, 'Billing': 88 },
+      flags: ['Performance flag · GBP clicks ↓ 29%'],
+      notes: [
+        { when: 'Apr 28 · Sudha', text: 'Sent email recap. No response yet.' },
+        { when: 'Apr 18 · Sudha', text: 'Called. Mentioned hiring a new front-desk person.' },
+        { when: 'Mar 28 · Sudha', text: 'Q1 review. Owner happy. Discussed second location.' }
+      ]
+    },
+    { id: 'curl', name: 'Curl & Co. Salon', light: 'red', trend: 'up',
+      meta: '$220/mo · Pod 1 · Mar 2023 · Sudha',
+      reason: "<b>Zero communication</b> across all channels for <b>90 days</b>. App opens dropped to zero in February.",
+      action: 'Cold-reach: email + phone today',
+      filter: ['act', 'quiet'],
+      drawerWhy: "This customer has gone fully silent — no comms, no app activity, no support tickets in 90 days. They are paying on time, which is the only reason they have not churned, but every other signal says they have mentally disengaged. Highest priority for a re-engagement call.",
+      signals: { 'We went silent': 65, 'Client silent': 98, 'Response drop': 80, 'Volume collapse': 95, 'App usage': 100, 'Billing': 10 },
+      flags: [],
+      notes: [
+        { when: 'Feb 14 · Sudha', text: 'Sent a check-in. No reply.' },
+        { when: 'Jan 22 · Sudha', text: 'Phone — left voicemail.' }
+      ]
+    },
+    { id: 'glow', name: 'Glow Med Spa', light: 'red', trend: 'up',
+      meta: '$340/mo · Pod 1 · Nov 2023 · Sudha',
+      reason: "GBP profile clicks <b>down 38%</b> in April. No outbound from us in <b>22 days</b>. Owner sent two emails in last week.",
+      action: 'Email back today · share GBP optimizer doc',
+      filter: ['act'],
+      drawerWhy: "The performance trajectory dropped sharply in April — GBP clicks fell from 920/month peak to 570 in the most recent complete month. The customer has been emailing us about it; we have not responded in over three weeks. This is recoverable if we re-engage this week.",
+      signals: { 'We went silent': 82, 'Client silent': 12, 'Response drop': 60, 'Volume collapse': 25, 'App usage': 38, 'Billing': 5 },
+      flags: ['Performance flag · GBP clicks ↓ 38%'],
+      notes: [
+        { when: 'Apr 20 · Sudha', text: 'Saw their email but got pulled into onboarding. Need to reply.' },
+        { when: 'Mar 18 · Sudha', text: 'Walked through Discovery Agent. Owner excited.' }
+      ]
+    },
+    { id: 'skin', name: 'SKIN and TONIC Facial Bar', light: 'yellow', trend: 'flat',
+      meta: '$160/mo · Pod 1 · Jul 2024 · Sudha',
+      reason: "Comms looks healthy, but their <b>GBP clicks dropped 28%</b> and they have <b>3 open tickets</b>.",
+      action: 'Walk through GBP optimizer + clear tickets',
+      filter: ['act'],
+      drawerWhy: "On the surface this customer looks fine — we are talking regularly. But their underlying business signals are worsening: GBP clicks down 28%, three unresolved tickets sitting for 9+ days. Worth a proactive 15-minute call before the comms relationship cracks too.",
+      signals: { 'We went silent': 18, 'Client silent': 22, 'Response drop': 20, 'Volume collapse': 10, 'App usage': 35, 'Billing': 8 },
+      flags: ['Performance flag · GBP clicks ↓ 28%', 'Tickets flag · 3 open'],
+      notes: [
+        { when: 'May 04 · Sudha', text: 'Quick email exchange about pricing tiers.' },
+        { when: 'Apr 22 · Sudha', text: 'Replied to chat about review reply settings.' }
+      ]
+    },
+    { id: 'lash', name: 'Lash Lounge LA', light: 'yellow', trend: 'up',
+      meta: '$140/mo · Pod 1 · Oct 2024 · Sudha',
+      reason: "<b>Auto-debit failed twice</b> in March. Currently paid but card on file is expiring soon.",
+      action: 'Confirm card update before May 15',
+      filter: ['act'],
+      drawerWhy: "Two auto-debit failures in March, both retried successfully. Card on file expires May 31. If we do not get a new card before then, we are looking at a third failure cycle. Five-minute call.",
+      signals: { 'We went silent': 25, 'Client silent': 28, 'Response drop': 22, 'Volume collapse': 18, 'App usage': 42, 'Billing': 55 },
+      flags: [],
+      notes: [
+        { when: 'Apr 12 · Sudha', text: 'Mentioned card update needed — they said "this week" but did not.' }
+      ]
+    },
+    { id: 'boss', name: 'Boss Nails Studio', light: 'yellow', trend: 'down',
+      meta: '$130/mo · Pod 1 · Feb 2024 · Sudha',
+      reason: "App usage <b>dropped to Light</b> (was Active in Q1). Last app open 9 days ago.",
+      action: 'Check in · feature walkthrough',
+      filter: [],
+      drawerWhy: "Engagement tier slipped from Active to Light in April. Their app opens went from 18/wk in Q1 to 4/wk now. Comms and billing are fine. This is an early warning — worth a feature reminder call before it drops further.",
+      signals: { 'We went silent': 22, 'Client silent': 18, 'Response drop': 12, 'Volume collapse': 14, 'App usage': 52, 'Billing': 6 },
+      flags: [],
+      notes: [
+        { when: 'Apr 30 · Sudha', text: 'Sent monthly review summary.' }
+      ]
+    },
+    { id: 'tranquil', name: 'Tranquil Spa & Wellness', light: 'yellow', trend: 'flat',
+      meta: '$210/mo · Pod 1 · May 2023 · Sudha',
+      reason: "<b>3 open tickets</b> sitting unresolved for 10+ days. We've been quiet for 16 days.",
+      action: 'Resolve tickets + send recap',
+      filter: ['act'],
+      drawerWhy: "Three customer-raised tickets are sitting in the support queue without resolution. Two relate to review-reply settings, one to GBP photo sync. We have not proactively followed up. Customer is patient but pattern of un-responded tickets is a churn precursor.",
+      signals: { 'We went silent': 48, 'Client silent': 25, 'Response drop': 28, 'Volume collapse': 22, 'App usage': 38, 'Billing': 4 },
+      flags: ['Tickets flag · 3 open'],
+      notes: [
+        { when: 'Apr 26 · Sudha', text: 'Told them I was looking into the ticket — never circled back.' }
+      ]
+    },
+    { id: 'bliss', name: 'Bliss Yoga Studio', light: 'green', trend: 'down',
+      meta: '$110/mo · Pod 1 · Aug 2024 · Sudha',
+      reason: "<b>Improving fast.</b> Composite dropped 22 pts in 7 days. Started using the leads feature in April.",
+      action: 'Send a quick thank-you note',
+      filter: ['improving'],
+      drawerWhy: "This customer was a yellow last week. After our April 28 walkthrough call on the leads-marking flow, their team started actively using it. App opens up 3x. GBP clicks recovering. This is a win — worth a one-line thank-you to keep the momentum.",
+      signals: { 'We went silent': 12, 'Client silent': 8, 'Response drop': 10, 'Volume collapse': 5, 'App usage': 15, 'Billing': 2 },
+      flags: [],
+      notes: [
+        { when: 'Apr 28 · Sudha', text: 'Walked owner through Leads-Marked feature. Owner excited.' }
+      ]
+    },
+    { id: 'pure', name: 'Pure Pilates House', light: 'green', trend: 'flat',
+      meta: '$180/mo · Pod 1 · Jun 2024 · Sudha',
+      reason: "Active across all signals. App opens, leads engagement, review replies all strong.",
+      action: 'No action needed',
+      filter: ['improving'],
+      drawerWhy: "Healthy across every dimension. Talked to us 11 days ago. Using the app daily. No billing issues. Doing what we want every customer to do.",
+      signals: { 'We went silent': 8, 'Client silent': 11, 'Response drop': 6, 'Volume collapse': 4, 'App usage': 8, 'Billing': 0 },
+      flags: [],
+      notes: [
+        { when: 'May 01 · Sudha', text: 'Quick check-in. They are happy.' }
+      ]
+    },
+    { id: 'lavender', name: 'Lavender Massage Co', light: 'green', trend: 'down',
+      meta: '$120/mo · Pod 1 · Mar 2025 · Sudha',
+      reason: "Strong app usage, leads up 18% MoM. Brand new customer doing well.",
+      action: 'No action needed',
+      filter: ['improving'],
+      drawerWhy: "New customer (March 2025). Adopted the platform quickly. Active in the app. No tickets, no billing issues. Doing fine — keep an eye on it but no intervention needed.",
+      signals: { 'We went silent': 14, 'Client silent': 12, 'Response drop': 8, 'Volume collapse': 6, 'App usage': 12, 'Billing': 1 },
+      flags: [],
+      notes: []
+    }
+  ];
+
+  // Rendering ----------------------------------------------------------
+  let activeFilter = 'act';
+  function renderCards() {
+    const list = document.getElementById('card-list');
+    const cards = customers.filter(c => c.filter.includes(activeFilter));
+    list.innerHTML = cards.map(c => `
+      <div class="card" data-id="${c.id}">
+        <div class="card-main">
+          <div class="stoplight ${c.light}"></div>
+          <div class="card-body">
+            <h3 class="biz-name">
+              <span>${c.name}</span>
+              <span class="trend ${c.trend}">${c.trend === 'up' ? '↑ Worsening' : c.trend === 'down' ? '↓ Improving' : '— Stable'}</span>
+            </h3>
+            <div class="biz-meta">${c.meta}</div>
+            <p class="reason">${c.reason}</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn-call" onclick="openContacted('${c.id}')">${c.action}</button>
+            <div class="quick-actions">
+              <a onclick="toggleDrawer('${c.id}')">Why flagged ▾</a>
+              <a onclick="openCustomer('${c.id}')">Full profile →</a>
+            </div>
+          </div>
+        </div>
+        <div class="drawer" id="drawer-${c.id}">
+          <div class="drawer-head">Why this customer is flagged</div>
+          <div class="drawer-why">${c.drawerWhy}</div>
+          ${c.flags.length ? `<div class="flags">${c.flags.map(f => `<span class="flag-chip">${f}</span>`).join('')}</div>` : ''}
+          <div class="drawer-head" style="margin-top: 8px;">Signal scores</div>
+          <div class="signal-bars">
+            ${Object.entries(c.signals).map(([name, val]) => `
+              <div class="signal-row">
+                <span class="label">${name}</span>
+                <div class="signal-bar-wrap"><div class="signal-bar-fill" style="width: ${val}%; background: ${val >= 65 ? 'var(--red)' : val >= 35 ? 'var(--yellow)' : 'var(--green)'};"></div></div>
+                <span class="value">${val}</span>
+              </div>
+            `).join('')}
+          </div>
+          ${c.notes.length ? `
+            <div class="drawer-head" style="margin-top: 14px;">Last 3 notes</div>
+            <div class="recent-notes">
+              ${c.notes.slice(0,3).map(n => `<div class="note"><span class="when">${n.when}</span> — ${n.text}</div>`).join('')}
+            </div>
+          ` : ''}
+          <div class="drawer-actions">
+            <button class="btn-primary" onclick="openCustomer('${c.id}')">Open full profile</button>
+            <button class="btn-ghost" onclick="toggleDrawer('${c.id}')">Close</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('today-count').textContent = customers.filter(c => c.filter.includes('act')).length;
+  }
+  function renderWins() {
+    const body = document.getElementById('wins-body');
+    const wins = customers.filter(c => c.trend === 'down' && c.light === 'green');
+    body.innerHTML = wins.map(c => `
+      <div class="win-card">
+        <div class="stoplight green"></div>
+        <div>
+          <div style="font-weight: 600; margin-bottom: 4px;">${c.name}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${c.reason.replace(/<[^>]+>/g, '')}</div>
+        </div>
+        <div class="delta">↓ improving</div>
+      </div>
+    `).join('') || '<div style="color: var(--text-tertiary); font-size: 13px; padding: 10px 0;">No wins this week — yet.</div>';
+  }
+
+  // Interactions -------------------------------------------------------
+  function toggleDrawer(id) {
+    document.getElementById('drawer-' + id).classList.toggle('open');
+  }
+  function setFilter(el, key) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    activeFilter = key;
+    renderCards();
+  }
+  function toggleWins() {
+    document.getElementById('wins').classList.toggle('open');
+  }
+  function showFullBook() {
+    alert('Full book view (87 customers) would open here. Same card design, paginated, more filters.');
+  }
+  function openCustomer(id) {
+    const c = customers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('modal-biz').textContent = c.name;
+    document.getElementById('modal-meta').innerHTML = c.meta.split(' · ').map(m => `<span>${m}</span>`).join('');
+    document.getElementById('customer-modal-overlay').classList.add('open');
+    setModalTab('overview', document.querySelector('#modal-tabs button'));
+  }
+  function closeModal() {
+    document.getElementById('customer-modal-overlay').classList.remove('open');
+  }
+  function setModalTab(name, btn) {
+    document.querySelectorAll('#modal-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.modal-section').forEach(s => s.classList.remove('active'));
+    document.querySelector(`[data-section="${name}"]`).classList.add('active');
+  }
+
+  let pendingCustomer = null;
+  let pendingOutcome = null;
+  function openContacted(id) {
+    pendingCustomer = id;
+    document.getElementById('contacted-overlay').classList.add('open');
+  }
+  function closeContacted() {
+    document.getElementById('contacted-overlay').classList.remove('open');
+    document.querySelectorAll('.outcome-btn').forEach(b => b.classList.remove('selected'));
+    pendingOutcome = null;
+  }
+  function selectOutcome(el, key) {
+    document.querySelectorAll('.outcome-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    pendingOutcome = key;
+  }
+  function submitContacted() {
+    closeContacted();
+    closeModal();
+    showToast(`Logged. ${pendingOutcome === 'connected' ? 'Quieting for 7 days.' : pendingOutcome === 'vm' ? 'We will surface them again in 3 days.' : 'Try again tomorrow.'}`);
+  }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+  }
+  function toggleAMMenu() {
+    showToast('Demo: AM switcher would open here (13 active AMs + All).');
+  }
+  function switchView(key, el) {
+    document.querySelectorAll('.view-switcher button').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    if (key === 'am') {
+      document.getElementById('main-view').innerHTML = mainTemplate;
+      renderCards(); renderWins();
+    } else if (key === 'pod') {
+      document.getElementById('main-view').innerHTML = `
+        <div class="view-placeholder">
+          <h2>Pod 1 view</h2>
+          <p>Sudha · Kanak · Santhosh<br>This view would show pod-level rollups: tier distribution across the pod's three AMs, AM leaderboard (book size, % needs-attention, week-over-week change), pod-level signal heatmap, and recent tier-movers.</p>
+          <p style="margin-top: 20px; color: var(--text-tertiary); font-size: 12px;">[Mockup placeholder — full pod view to be built in Phase 2]</p>
+        </div>`;
+    } else {
+      document.getElementById('main-view').innerHTML = `
+        <div class="view-placeholder">
+          <h2>Leadership view</h2>
+          <p>All 927 active customers · MRR-weighted · 90-day trend</p>
+          <p>Book-level health summary, signal-mix analysis (what's driving risk this week), AM-level distribution table, and tier-movement trend chart.</p>
+          <p style="margin-top: 20px; color: var(--text-tertiary); font-size: 12px;">[Mockup placeholder — full leadership view to be built in Phase 2]</p>
+        </div>`;
+    }
+  }
+  const mainTemplate = document.getElementById('main-view').innerHTML;
+
+  // Tour ----------------------------------------------------------------
+  const tourSteps = [
+    { title: "This is your daily list", body: "Every morning, you'll see the 5–10 customers in your book who need your attention most. Sorted by urgency. The rest of your book is one click away." },
+    { title: "Each card tells you what to do", body: "Three things matter on every card: how serious it is (red, yellow, green), what's going on in plain language, and the one action we recommend. That's it." },
+    { title: "Click 'Mark as contacted' after every call", body: "One tap to log the call. Connected, voicemail, or couldn't reach — your choice. The customer drops off your list for a few days so you focus on who's next." },
+    { title: "Want more detail? Tap any card", body: "'Why flagged?' shows the signals behind the score. 'Full profile' opens the customer's complete picture — comms history, app usage, billing, performance, your past notes." },
+    { title: "You're set", body: "Slack will DM you each morning at 9 AM with your top 5. The rest is here when you want it. Welcome to the new dashboard." }
+  ];
+  let tourStep = 0;
+  function startTour() {
+    document.getElementById('welcome').classList.add('hidden');
+    tourStep = 0; updateTour();
+    document.getElementById('tour').classList.add('open');
+  }
+  function updateTour() {
+    document.getElementById('tour-num').textContent = tourStep + 1;
+    document.getElementById('tour-title').textContent = tourSteps[tourStep].title;
+    document.getElementById('tour-body').textContent = tourSteps[tourStep].body;
+    document.querySelectorAll('#tour-dots .dot').forEach((d, i) => d.classList.toggle('active', i === tourStep));
+  }
+  function tourNext() {
+    if (tourStep < tourSteps.length - 1) { tourStep++; updateTour(); }
+    else endTour();
+  }
+  function endTour() {
+    document.getElementById('tour').classList.remove('open');
+  }
+
+  // Init
+  renderCards();
+  renderWins();
+
+  // Click overlay to close
+  document.getElementById('customer-modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'customer-modal-overlay') closeModal();
+  });
+  document.getElementById('contacted-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'contacted-overlay') closeContacted();
+  });
+</script>
+</body>
+</html>

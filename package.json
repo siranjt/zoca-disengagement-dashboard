@@ -1,8 +1,8 @@
 {
   "name": "zoca-disengagement-dashboard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Zoca Customer Disengagement Dashboard — nightly-scored comms-quality review across active Chargebee customers. Next.js + Vercel Cron + KV.",
+  "description": "Zoca Customer Disengagement Dashboard — v2 rework with hybrid signals (comms + usage + billing + performance/tickets flags), pod rollups, Postgres snapshot history.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,6 +16,7 @@
     "chart.js": "4.4.4",
     "react-chartjs-2": "5.2.0",
     "@vercel/kv": "2.0.0",
+    "@neondatabase/serverless": "0.10.4",
     "papaparse": "5.4.1"
   },
   "devDependencies": {

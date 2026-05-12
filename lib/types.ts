@@ -1,11 +1,11 @@
-import type { Tier } from "./config";
+import type { Tier, Stoplight, EngagementTier } from "./config";
 
 /** Raw Chargebee subscription (slimmed) */
 export type ChargebeeSub = {
   subscription_id: string;
   customer_id: string;
   status: string;
-  plan_amount: number;      // in cents
+  plan_amount: number;
   created_at: number | null;
   activated_at: number | null;
   auto_collection: string | null;
@@ -14,6 +14,41 @@ export type ChargebeeSub = {
   last_name: string | null;
   company: string | null;
   phone: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// v2 — Chargebee invoices + transactions (for billing health signal)
+// ---------------------------------------------------------------------------
+export type ChargebeeInvoice = {
+  invoice_id: string;
+  customer_id: string;
+  subscription_id: string | null;
+  status: "payment_due" | "not_paid";
+  amount_due: number;         // cents
+  date: number;               // epoch seconds
+  due_date: number | null;    // epoch seconds
+  days_overdue: number;       // computed from due_date or date
+};
+
+export type ChargebeeTransaction = {
+  id: string;
+  customer_id: string;
+  status: "in_progress" | "failure";
+  amount: number;
+  date: number;
+  linked_invoice_ids: string[];
+};
+
+/** Per-entity billing rollup */
+export type BillingMetrics = {
+  entity_id: string;
+  customer_id: string;
+  unpaid_invoice_count: number;
+  total_amount_due_cents: number;
+  days_past_oldest_unpaid: number;
+  has_ach_in_progress: boolean;
+  auto_debit_off_with_failures: boolean;
+  recent_failed_transaction_count: number;
 };
 
 /** Metabase BaseSheet row (slimmed — only the fields we use) */
@@ -31,17 +66,19 @@ export type BaseSheetRow = {
   churn_potential_flag: string;
   churn_potential_status: string;
   ob_date: string;
+  open_tickets_30d: string;
+  unresolved_issues_last_30_days: string;
 };
 
-/** A single comms event (after normalization across all 5 channels) */
+/** A single comms event */
 export type CommsEvent = {
   entityId: string;
-  ts: number;                      // epoch ms
+  ts: number;
   channel: "chat" | "email" | "phone" | "video" | "sms";
   direction: "in" | "out";
 };
 
-/** Per-window metrics for a single customer */
+/** Per-window metrics */
 export type CustomerMetrics = {
   total_7d: number;  in_7d: number;  out_7d: number;  channels_7d: number;
   total_14d: number; in_14d: number; out_14d: number; channels_14d: number;
@@ -53,11 +90,11 @@ export type CustomerMetrics = {
   last_any_iso: string | null;
   last_in_iso: string | null;
   last_out_iso: string | null;
-  days_since_in: number;    // 9999 = never
-  days_since_out: number;   // 9999 = never
+  days_since_in: number;
+  days_since_out: number;
 };
 
-/** Scored signals for a single customer */
+/** v1 signals (kept for backward compat) */
 export type CustomerSignals = {
   score: number;
   tier: Tier;
@@ -68,12 +105,147 @@ export type CustomerSignals = {
   notes: string;
 };
 
-/** How this Chargebee sub was joined to a BaseSheet row */
+// ---------------------------------------------------------------------------
+// v2 — Product usage (Mixpanel-derived)
+// ---------------------------------------------------------------------------
+
+/** Per-event-type rollup for an entity */
+export type MixpanelEventCount = {
+  event_type: string;
+  event_count: number;
+  last_event_at: string;       // ISO
+  days_since_last: number;
+};
+
+/** Per-entity usage rollup over 30/60/90 day windows */
+export type UsageMetrics = {
+  entity_id: string;
+  total_events_7d: number;
+  total_events_30d: number;
+  total_events_90d: number;
+  distinct_event_days_30d: number;        // # days in last 30 with ≥1 event
+  distinct_app_open_days_30d: number;     // # days with App/Site Opened
+  app_opens_30d: number;
+  leads_engagement_30d: number;           // Leads-View-Home + Leads-Click-Lead
+  leads_marked_30d: number;               // Leads-Select-LeadStatusSheet
+  contact_attempts_30d: number;           // Leads-Click-LeadContact + ChatCall + DetailCopyNumber
+  review_actions_30d: number;             // Reviews-* + Review-Click-SendInviteSingle
+  last_event_at: string | null;
+  days_since_last_event: number;
+  engagement_tier: EngagementTier;
+};
+
+// ---------------------------------------------------------------------------
+// v2 — Performance trajectory (Aurora-derived via Metabase cards)
+// ---------------------------------------------------------------------------
+
+/** Per-entity, per-month GBP profile-clicks row */
+export type GbpClicksMonthRow = {
+  entity_id: string;
+  month_start: string;          // ISO date
+  profile_clicks: number;
+  last_day_in_month: string;
+  is_complete_month: boolean;
+};
+
+/** Per-entity rankings aggregate */
+export type RankingsRow = {
+  entity_id: string;
+  active_ranking_count: number;
+  rankings_top_3: number;
+  rankings_top_10: number;
+  rankings_outside_10: number;
+};
+
+/** Per-entity reviews 12-week activity */
+export type Reviews12wRow = {
+  entity_id: string;
+  reviews_last_12_weeks_total: number;
+  weeks_with_zero_reviews: number;
+};
+
+/** Per-entity latest location_insights (filtered to valid rows) */
+export type LocationInsightsRow = {
+  entity_id: string;
+  review_target_weekly: number;
+  with_zoca_6_month_profile_clicks: number;
+  insights_generated_at: string;
+};
+
+/** Per-entity YTD booking enquiries */
+export type BookingEnquiriesRow = {
+  entity_id: string;
+  ytd_leads: number;
+  prior_ytd_leads: number;
+};
+
+/** Composite per-entity performance metrics + flag verdict */
+export type PerformanceMetrics = {
+  entity_id: string;
+  // GBP clicks
+  gbp_clicks_peak_complete_month: number | null;
+  gbp_clicks_current_complete_month: number | null;
+  gbp_clicks_in_progress_month: number | null;
+  gbp_clicks_drop_pct: number | null;        // (peak - current) / peak * 100
+  // Leads YTD
+  ytd_leads: number | null;
+  prior_ytd_leads: number | null;
+  ytd_leads_change_pct: number | null;
+  // Rankings distribution
+  active_ranking_count: number | null;
+  rankings_top_3: number | null;
+  rankings_top_10: number | null;
+  rankings_outside_10: number | null;
+  // Reviews
+  reviews_last_12_weeks_total: number | null;
+  weeks_with_zero_reviews: number | null;
+  review_target_weekly: number | null;
+  // Flag verdict (true = performance trajectory concerning)
+  flag: boolean;
+  flag_reasons: string[];                    // human-readable list of triggers
+};
+
+// ---------------------------------------------------------------------------
+// v2 — Tickets flag (BaseSheet-derived)
+// ---------------------------------------------------------------------------
+export type TicketsMetrics = {
+  entity_id: string;
+  open_tickets_30d: number;
+  unresolved_issues_last_30_days: number;
+  flag: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// v2 — Hybrid composite signals
+// ---------------------------------------------------------------------------
+export type CustomerSignalsV2 = {
+  composite: number;
+  tier: Tier;
+  stoplight: Stoplight;
+  // Per-signal sub-scores (0-100)
+  sig_we_silent: number;
+  sig_client_silent: number;
+  sig_response_drop: number;
+  sig_volume_collapse: number;
+  sig_usage: number;
+  sig_billing: number;
+  // Modifier flags
+  flag_performance: boolean;
+  flag_tickets: boolean;
+  flag_count: number;
+  // Trajectory: composite delta vs. 7d ago (filled by snapshot writer when prev exists)
+  trajectory_7d: "improving" | "worsening" | "stable" | "unknown";
+  composite_7d_ago: number | null;
+  // Narrative + suggested next action (template-driven, Haiku-substitutable later)
+  reason_one_line: string;
+  suggested_action: string;
+  notes: string;
+};
+
 export type MatchSource = "customer_id" | "bizname" | "unmatched";
 
-/** Full scored customer row (joined Chargebee + BaseSheet + metrics + signals) */
+/** v1 scored customer (preserved for backward compat) */
 export type ScoredCustomer = {
-  // identity
   customer_id: string;
   entity_id: string;
   subscription_id: string;
@@ -83,7 +255,6 @@ export type ScoredCustomer = {
   am_name: string;
   ae_name: string;
   sp_name: string;
-  // commercial
   cb_status: string;
   auto_collection: string | null;
   plan_amount: number;
@@ -92,16 +263,22 @@ export type ScoredCustomer = {
   churn_potential_flag: string;
   activated_at: string | null;
   ob_date: string;
-  // matching diagnostic
-  match_source: MatchSource;   // customer_id / bizname / unmatched
-  in_chrone: boolean;          // chrone_zoca_status === "ZOCA" on the matched row
-  // metrics
+  match_source: MatchSource;
+  in_chrone: boolean;
   metrics: CustomerMetrics;
-  // signals
   signals: CustomerSignals;
 };
 
-/** Per-AM tier breakdown (for stacked horizontal bar) */
+/** v2 scored customer — superset of v1 with usage, billing, performance, tickets, pod */
+export type ScoredCustomerV2 = ScoredCustomer & {
+  pod: string;                              // "Pod 1" - "Pod 5" / "Floating" / ""
+  usage: UsageMetrics | null;
+  billing: BillingMetrics | null;
+  performance: PerformanceMetrics | null;
+  tickets: TicketsMetrics | null;
+  signals_v2: CustomerSignalsV2;
+};
+
 export type AmTierRow = {
   am: string;
   HIGH: number;
@@ -111,47 +288,59 @@ export type AmTierRow = {
   total: number;
 };
 
-/** Data-health stats — surfaced in the UI strip so we can spot pipeline issues */
+export type PodTierRow = {
+  pod: string;
+  HIGH: number;
+  MEDIUM: number;
+  LOW: number;
+  HEALTHY: number;
+  total: number;
+  ams: string[];
+};
+
 export type DataHealth = {
-  totalSubsFetched: number;        // raw count from Chargebee before dedup
-  customersWithEntityId: number;    // matched to BaseSheet (either via customer_id or bizname)
-  customersWithAnyComms90d: number; // any event in the last 90 days
-  matchBreakdown: {                 // how each Chargebee sub was joined to BaseSheet
+  totalSubsFetched: number;
+  customersWithEntityId: number;
+  customersWithAnyComms90d: number;
+  customersWithMixpanelData: number;        // v2
+  customersWithBillingIssues: number;       // v2
+  customersWithPerformanceFlag: number;     // v2
+  customersWithTicketsFlag: number;         // v2
+  matchBreakdown: {
     byCustomerId: number;
     byBizName: number;
     unmatched: number;
-    notInChrone: number;            // matched but chrone_zoca_status !== "ZOCA"
+    notInChrone: number;
   };
-  perSourceEventCount: {            // how many events ended up in the dashboard per channel
-    chat: number;
-    email: number;
-    phone: number;
-    video: number;
-    sms: number;
+  perSourceEventCount: {
+    chat: number; email: number; phone: number; video: number; sms: number;
   };
-  perSourceRawRows: {               // raw papaparse row count per source — for sanity-checking
-    chat: number;
-    email: number;
-    phone: number;
-    video: number;
-    sms: number;
+  perSourceRawRows: {
+    chat: number; email: number; phone: number; video: number; sms: number;
   };
-  perDirectionCount: {              // sanity check — in vs out across the book
-    in: number;
-    out: number;
+  perDirectionCount: { in: number; out: number };
+  duplicateEventsRemoved: number;
+  baseSheetRowCount: number;
+  mixpanelRowCount: number;                 // v2
+  performanceRowCounts: {                   // v2 — per Metabase card
+    gbpClicksMonthly: number;
+    rankings: number;
+    reviews12w: number;
+    locationInsights: number;
+    bookingEnquiries: number;
   };
-  duplicateEventsRemoved: number;   // events dropped by the dedup guard (any > 0 = anomaly)
-  baseSheetRowCount: number;        // how many rows BaseSheet returned
-  excludedEntities: number;         // entities dropped via lib/config.ts EXCLUDED_ENTITIES
-  multiEntityExpansion: number;     // extra customer rows produced by multi-location expansion
+  chargebeeInvoiceCount: number;            // v2
+  chargebeeTransactionCount: number;        // v2
+  excludedEntities: number;
+  multiEntityExpansion: number;
   fetchErrors: string[];
   refreshDurationMs: number;
 };
 
-/** Snapshot stored in KV */
+/** v1 snapshot — preserved for backward compat */
 export type Snapshot = {
-  generatedAt: string;      // ISO
-  todayIso: string;         // ISO, used as the "as-of" anchor for windows
+  generatedAt: string;
+  todayIso: string;
   totalActive: number;
   tierCounts: Record<Tier, number>;
   signalCounts: {
@@ -165,8 +354,8 @@ export type Snapshot = {
     d90: Record<string, number>;
   };
   amExposure: { am: string; high: number; total: number }[];
-  amTierBreakdown: AmTierRow[];            // NEW — for the stacked horizontal bar
-  scoreDistribution: number[];              // NEW — 10 buckets of 10 (0-10, 10-20, …, 90-100)
+  amTierBreakdown: AmTierRow[];
+  scoreDistribution: number[];
   customers: ScoredCustomer[];
   stats: {
     total_comms_90d: number;
@@ -176,15 +365,73 @@ export type Snapshot = {
     mean_90d: number;
     fetch_duration_ms: number;
   };
-  health: DataHealth;                       // NEW — pipeline validation stats
+  health: DataHealth;
   errors?: string[];
 };
 
-/** Refresh result (what cron returns) */
+/** v2 snapshot — superset with usage/billing/performance + pod rollups */
+export type SnapshotV2 = Snapshot & {
+  version: "v2";
+  customers: ScoredCustomerV2[];            // override v1 type
+  stoplightCounts: Record<Stoplight, number>;
+  signalCountsV2: {
+    we_silent_any: number;
+    client_silent_any: number;
+    response_drop_any: number;
+    volume_collapse_any: number;
+    usage_dormant: number;
+    billing_crisis: number;
+    performance_flagged: number;
+    tickets_flagged: number;
+  };
+  podBreakdown: PodTierRow[];
+  activeEntityIds: string[];                // 922-ish from Chargebee × BaseSheet intersect
+  mixpanelCoverage: {
+    activeWithMixpanel: number;
+    activeWithoutMixpanel: number;
+  };
+};
+
 export type RefreshResult = {
   ok: boolean;
   generatedAt: string;
   totalActive: number;
   durationMs: number;
   errors: string[];
+};
+
+// ---------------------------------------------------------------------------
+// Postgres — daily snapshot rows
+// ---------------------------------------------------------------------------
+export type DashboardSnapshotRow = {
+  snapshot_date: string;          // YYYY-MM-DD
+  generated_at: string;           // ISO timestamp
+  total_customers: number;
+  total_high_risk: number;
+  total_watch: number;
+  total_medium: number;
+  total_low: number;
+  total_healthy: number;
+  customer_data: SnapshotV2;
+  data_sources_status: Record<string, string>;
+  refresh_duration_ms: number;
+};
+
+export type AmActionRow = {
+  id?: number;
+  am_name: string;
+  entity_id: string;
+  action_type: "contacted_connected" | "contacted_vm" | "contacted_noreach";
+  note?: string | null;
+  composite_at_action?: number | null;
+  created_at?: string;
+};
+
+export type SignalFeedbackRow = {
+  id?: number;
+  entity_id: string;
+  signal_name: string;
+  am_name: string;
+  comment?: string | null;
+  created_at?: string;
 };
