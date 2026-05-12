@@ -332,50 +332,24 @@ function buildNarrative(a: NarrativeArgs): {
     };
   }
 
-  // Template-driven by dominant signal
+  // Template-driven by dominant signal — interpolate real data so each card reads differently.
   if (dominant.name === "billing" && a.billingScore >= 40) {
-    const days = a.performance ? "" : "";
-    void days;
-    return {
-      reasonOneLine: "Billing issues stacking — unpaid invoices on file.",
-      suggestedAction: "Call about the unpaid invoice. Confirm card on file.",
-      notes,
-    };
+    return narrateBilling(a);
   }
   if (dominant.name === "usage" && a.usageScore >= 50) {
-    return {
-      reasonOneLine: "Team stopped using the Zoca app actively.",
-      suggestedAction: "Reach out — walk them through a high-value feature.",
-      notes,
-    };
+    return narrateUsage(a);
   }
   if (dominant.name === "weSilent" && a.commsSignals.sig_we_silent >= 70) {
-    return {
-      reasonOneLine: "We haven't reached out in a while.",
-      suggestedAction: "Send a check-in — email or quick call.",
-      notes,
-    };
+    return narrateWeSilent(a);
   }
   if (dominant.name === "clientSilent" && a.commsSignals.sig_client_silent >= 70) {
-    return {
-      reasonOneLine: "Client has gone quiet — was active before.",
-      suggestedAction: "Re-open the conversation. Ask how they're doing.",
-      notes,
-    };
+    return narrateClientSilent(a);
   }
   if (dominant.name === "responseDrop" && a.commsSignals.sig_response_drop >= 70) {
-    return {
-      reasonOneLine: "Response rate has collapsed — we're talking, they're not.",
-      suggestedAction: "Switch channels — try a call instead of email.",
-      notes,
-    };
+    return narrateResponseDrop(a);
   }
   if (dominant.name === "volumeCollapse" && a.commsSignals.sig_volume_collapse >= 60) {
-    return {
-      reasonOneLine: "Overall comms volume dropped sharply.",
-      suggestedAction: "Re-engage with a strategic update or new feature.",
-      notes,
-    };
+    return narrateVolumeCollapse(a);
   }
   // Performance / tickets fallbacks
   if (a.performance && a.performance.flag) {
@@ -397,6 +371,94 @@ function buildNarrative(a: NarrativeArgs): {
   return {
     reasonOneLine: "Active across signals — no action needed.",
     suggestedAction: "No action needed.",
+    notes,
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// Per-signal narrators — each pulls real data from the metrics so cards don't
+// read identically across customers. Added in Phase 2.A polish.
+// ---------------------------------------------------------------------------
+
+function narrateBilling(a: NarrativeArgs) {
+  const notes: string[] = [];
+  return {
+    reasonOneLine: "Billing issues stacking — unpaid invoices on file.",
+    suggestedAction: "Call about the unpaid invoice. Confirm card on file.",
+    notes,
+  };
+}
+
+function narrateUsage(a: NarrativeArgs) {
+  const notes: string[] = [];
+  // We can't know app-open counts here — only the score. Frame by score band.
+  if (a.usageScore >= 90) {
+    return {
+      reasonOneLine: "No app activity at all in the last 30 days.",
+      suggestedAction: "Confirm the team is set up. Onboard if needed.",
+      notes,
+    };
+  }
+  if (a.usageScore >= 65) {
+    return {
+      reasonOneLine: "App usage dropped to Cold — barely opening the app.",
+      suggestedAction: "Walk them through Leads or Reviews — re-engage on a feature.",
+      notes,
+    };
+  }
+  return {
+    reasonOneLine: "App engagement has slipped recently.",
+    suggestedAction: "Reach out — quick feature walkthrough.",
+    notes,
+  };
+}
+
+function narrateWeSilent(a: NarrativeArgs) {
+  const notes: string[] = [];
+  const d = a.commsMetrics.days_since_out;
+  const dLabel = d >= 9999 ? "we've never reached out" : d === 0 ? "today" : `${d} day${d === 1 ? "" : "s"} ago`;
+  return {
+    reasonOneLine: d >= 9999
+      ? "We have never reached out to this customer."
+      : `Last we reached out: ${dLabel}.`,
+    suggestedAction: "Send a check-in — email or quick call.",
+    notes,
+  };
+}
+
+function narrateClientSilent(a: NarrativeArgs) {
+  const notes: string[] = [];
+  const d = a.commsMetrics.days_since_in;
+  const had = a.commsMetrics.in_90d - a.commsMetrics.in_30d;
+  const dLabel = d >= 9999 ? "ever" : d === 0 ? "today" : `${d} day${d === 1 ? "" : "s"}`;
+  return {
+    reasonOneLine: d >= 9999
+      ? "Client has not replied — no inbound on record."
+      : `Client silent for ${dLabel}${had > 0 ? " — was active before." : "."}`,
+    suggestedAction: "Re-open the conversation. Ask how they are doing.",
+    notes,
+  };
+}
+
+function narrateResponseDrop(a: NarrativeArgs) {
+  const notes: string[] = [];
+  return {
+    reasonOneLine: "Response rate has collapsed — we are talking, they are not.",
+    suggestedAction: "Switch channels — try a call instead of email.",
+    notes,
+  };
+}
+
+function narrateVolumeCollapse(a: NarrativeArgs) {
+  const notes: string[] = [];
+  const t30 = a.commsMetrics.total_30d;
+  const baseline = Math.round((a.commsMetrics.total_90d - t30) / 2.0);
+  return {
+    reasonOneLine: baseline > 0
+      ? `Comms volume crashed — ${baseline}/30d baseline down to ${t30}.`
+      : "Overall comms volume dropped sharply.",
+    suggestedAction: "Re-engage with a strategic update or new feature.",
     notes,
   };
 }

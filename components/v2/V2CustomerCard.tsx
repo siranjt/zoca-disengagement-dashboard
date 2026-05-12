@@ -72,7 +72,7 @@ export default function V2CustomerCard({ customer }: Props) {
         <div className="flex flex-col items-end gap-2">
           <button
             type="button"
-            className="rounded-zoca-pill bg-zoca-pink-cta px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-zoca-sm transition hover:shadow-zoca-glow md:px-4 md:text-[13px]"
+            className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow md:max-w-[300px] md:px-4 md:text-[13px]"
             onClick={() => alert("Mark contacted — Phase 2.C")}
           >
             {actionLabel(customer)}
@@ -176,8 +176,8 @@ function computeTrend(t: "improving" | "worsening" | "stable" | "unknown"): {
 function actionLabel(c: ScoredCustomerV2): string {
   const action = c.signals_v2.suggested_action || "";
   if (!action || action === "No action needed.") return "Note · doing fine";
-  // Trim trailing periods + keep concise
-  return action.replace(/\.$/, "").slice(0, 48);
+  // Trim trailing period, keep full text — CSS handles wrapping.
+  return action.replace(/\.$/, "");
 }
 
 function daysSince(iso: string): number {
