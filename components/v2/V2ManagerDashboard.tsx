@@ -9,12 +9,33 @@ import V2SignalHeatmap from "./V2SignalHeatmap";
 import V2Rollup from "./V2Rollup";
 import V2ManagerToolbar, { type SavedView, nearestAvailable } from "./V2ManagerToolbar";
 import V2StoplightMovement from "./V2StoplightMovement";
+import V2Sparkline from "./V2Sparkline";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
 const STORAGE_DELETED_DEFAULTS_KEY = "zoca_v2_manager_deleted_defaults";
 const STORAGE_CURRENT_DATE_KEY = "zoca_v2_manager_date";
 const STORAGE_COMPARE_KEY = "zoca_v2_manager_compare";
+
+type TierTrendRow = {
+  snapshot_date: string;
+  total_customers: number;
+  total_high_risk: number;
+  total_watch: number;
+  total_medium: number;
+  total_low: number;
+  total_healthy: number;
+};
+
+type AmTrendPoint = {
+  date: string;
+  total: number;
+  red: number;
+  yellow: number;
+  green: number;
+  mrr: number;
+  mrr_at_risk: number;
+};
 
 type SnapshotState =
   | { status: "loading" }
@@ -142,6 +163,8 @@ export default function V2ManagerDashboard() {
   const [deletedDefaults, setDeletedDefaults] = useState<Set<string>>(new Set());
   const [currentViewName, setCurrentViewName] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [tierTrend, setTierTrend] = useState<TierTrendRow[]>([]);
+  const [amTrends, setAmTrends] = useState<Record<string, AmTrendPoint[]>>({});
 
   // Hydrate: URL params override localStorage
   useEffect(() => {
@@ -217,6 +240,20 @@ export default function V2ManagerDashboard() {
         if (!res.ok) return;
         const json = (await res.json()) as { dates: string[] };
         setAvailableDates(json.dates || []);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  // Fetch 14-day tier trend for KPI sparklines
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/v2/snapshot/trend?days=14", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as { rows: TierTrendRow[] };
+        setTierTrend(json.rows || []);
       } catch {
         /* ignore */
       }
@@ -395,6 +432,42 @@ export default function V2ManagerDashboard() {
       })
       .slice(0, 5);
   }, [snapshot, compareRedByAm]);
+
+  // Fetch per-AM 14-day trend for the top movers (single bundled request)
+  useEffect(() => {
+    if (topMovers.length === 0) {
+      setAmTrends({});
+      return;
+    }
+    let cancelled = false;
+    const amNames = topMovers.map((m) => m.am);
+    (async () => {
+      try {
+        const params = new URLSearchParams({
+          days: "14",
+          ams: amNames.join(","),
+        });
+        const res = await fetch(`/api/v2/trends/ams?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data: { am_name: string; points: AmTrendPoint[] }[];
+        };
+        if (cancelled) return;
+        const map: Record<string, AmTrendPoint[]> = {};
+        for (const b of json.data || []) {
+          map[b.am_name] = b.points;
+        }
+        setAmTrends(map);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [topMovers]);
 
   const freshnessLabel = useMemo(() => {
     if (snapshot.status !== "ready") return "loading…";
@@ -647,7 +720,12 @@ export default function V2ManagerDashboard() {
               className="sticky top-[60px] z-40 -mx-4 mb-6 border-y border-zoca-border-2 bg-zoca-body/90 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6 print:static print:border-none print:bg-transparent print:p-0"
             >
               <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <Kpi label="Customers" value={String(kpis.total)} />
+                <Kpi
+                  label="Customers"
+                  value={String(kpis.total)}
+                  sparkValues={tierTrend.map((r) => r.total_customers)}
+                  sparkColor="rgb(148 163 184)"
+                />
                 <Kpi
                   label="RED"
                   value={String(kpis.RED)}
@@ -656,6 +734,8 @@ export default function V2ManagerDashboard() {
                   delta={compareKpis ? kpis.RED - compareKpis.RED : null}
                   deltaUnit="vs prev"
                   deltaSemantic="lowerIsBetter"
+                  sparkValues={tierTrend.map((r) => r.total_high_risk)}
+                  sparkColor="rgb(251 113 133)"
                 />
                 <Kpi
                   label="YELLOW"
@@ -664,6 +744,8 @@ export default function V2ManagerDashboard() {
                   delta={compareKpis ? kpis.YELLOW - compareKpis.YELLOW : null}
                   deltaUnit="vs prev"
                   deltaSemantic="neutral"
+                  sparkValues={tierTrend.map((r) => r.total_watch)}
+                  sparkColor="rgb(252 211 77)"
                 />
                 <Kpi
                   label="GREEN"
@@ -672,6 +754,8 @@ export default function V2ManagerDashboard() {
                   delta={compareKpis ? kpis.GREEN - compareKpis.GREEN : null}
                   deltaUnit="vs prev"
                   deltaSemantic="higherIsBetter"
+                  sparkValues={tierTrend.map((r) => r.total_healthy)}
+                  sparkColor="rgb(110 231 183)"
                 />
                 <Kpi
                   label="MRR @ risk"
@@ -756,6 +840,20 @@ export default function V2ManagerDashboard() {
                       </span>
                       {m.delta !== null && (
                         <DeltaBadge delta={m.delta} unit="RED" lowerIsBetter />
+                      )}
+                      {amTrends[m.am]?.length > 1 && (
+                        <span
+                          className="hidden text-rose-300 md:inline"
+                          title={`${m.am} RED-count trend, last ${amTrends[m.am].length} days`}
+                        >
+                          <V2Sparkline
+                            values={amTrends[m.am].map((p) => p.red)}
+                            width={60}
+                            height={18}
+                            color="rgb(251 113 133)"
+                            label={`${m.am} RED-count trend`}
+                          />
+                        </span>
                       )}
                       <span
                         className="hidden text-[11px] text-rose-300 tabular-nums sm:inline"
@@ -842,6 +940,8 @@ function Kpi({
   delta,
   deltaUnit,
   deltaSemantic,
+  sparkValues,
+  sparkColor,
 }: {
   label: string;
   value: string;
@@ -850,6 +950,8 @@ function Kpi({
   delta?: number | null;
   deltaUnit?: string;
   deltaSemantic?: "higherIsBetter" | "lowerIsBetter" | "neutral";
+  sparkValues?: number[];
+  sparkColor?: string;
 }) {
   const valueClass =
     tone === "rose"
@@ -877,6 +979,17 @@ function Kpi({
             unit={deltaUnit}
             lowerIsBetter={deltaSemantic === "lowerIsBetter"}
             neutral={deltaSemantic === "neutral"}
+          />
+        </div>
+      )}
+      {sparkValues && sparkValues.length > 1 && (
+        <div className="mt-2 print:hidden" aria-hidden={false}>
+          <V2Sparkline
+            values={sparkValues}
+            width={120}
+            height={22}
+            color={sparkColor || "currentColor"}
+            label={`${label} trend, last ${sparkValues.length} days`}
           />
         </div>
       )}

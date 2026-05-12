@@ -4,12 +4,17 @@ type Props = {
   values: number[];
   width?: number;
   height?: number;
-  color?: string; // CSS color or tailwind text-* via currentColor
-  fillColor?: string; // optional fill under the line
+  color?: string; // CSS color or "currentColor"
+  fillColor?: string;
   label?: string;
   min?: number;
   max?: number;
   showLastPoint?: boolean;
+  showLastValue?: boolean; // Render last value as a text badge to the right
+  formatLastValue?: (n: number) => string;
+  // Optional reference line drawn at a given Y-value (e.g. average)
+  referenceValue?: number | null;
+  referenceColor?: string;
   className?: string;
 };
 
@@ -23,6 +28,10 @@ export default function V2Sparkline({
   min,
   max,
   showLastPoint = true,
+  showLastValue = false,
+  formatLastValue,
+  referenceValue,
+  referenceColor = "rgba(255,255,255,0.18)",
   className,
 }: Props) {
   if (!values.length) {
@@ -35,6 +44,7 @@ export default function V2Sparkline({
       </span>
     );
   }
+
   const lo = min !== undefined ? min : Math.min(...values);
   const hi = max !== undefined ? max : Math.max(...values);
   const range = hi - lo || 1;
@@ -46,7 +56,9 @@ export default function V2Sparkline({
     return { x, y };
   });
 
-  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const linePath = pts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
 
   const fillPath = fillColor
     ? `M0,${height} ${pts.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} L${pts[pts.length - 1].x.toFixed(1)},${height} Z`
@@ -54,27 +66,57 @@ export default function V2Sparkline({
 
   const last = pts[pts.length - 1];
 
+  const refY =
+    referenceValue !== null && referenceValue !== undefined
+      ? height - ((referenceValue - lo) / range) * height
+      : null;
+
+  const lastVal = values[values.length - 1];
+
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={label || `Sparkline of ${values.length} values, last value ${values[values.length - 1]}`}
-      className={className}
+    <span
+      className={`inline-flex items-center gap-1 ${className || ""}`}
     >
-      {fillPath && <path d={fillPath} fill={fillColor} />}
-      <path
-        d={linePath}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {showLastPoint && (
-        <circle cx={last.x} cy={last.y} r={1.8} fill={color} />
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={
+          label ||
+          `Sparkline of ${values.length} values, last value ${lastVal}`
+        }
+      >
+        {fillPath && <path d={fillPath} fill={fillColor} />}
+        {refY !== null && (
+          <line
+            x1={0}
+            x2={width}
+            y1={refY}
+            y2={refY}
+            stroke={referenceColor}
+            strokeWidth={0.75}
+            strokeDasharray="2 2"
+          />
+        )}
+        <path
+          d={linePath}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {showLastPoint && <circle cx={last.x} cy={last.y} r={1.8} fill={color} />}
+      </svg>
+      {showLastValue && (
+        <span
+          className="text-[10px] font-medium tabular-nums text-zoca-text-soft"
+          aria-hidden
+        >
+          {formatLastValue ? formatLastValue(lastVal) : lastVal}
+        </span>
       )}
-    </svg>
+    </span>
   );
 }

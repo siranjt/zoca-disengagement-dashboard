@@ -432,6 +432,81 @@ export async function readStoplightMovement(days: number = 7): Promise<Stoplight
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3 polish — bundled multi-AM trend
+// ---------------------------------------------------------------------------
+
+export type AmBookTrendBundle = {
+  am_name: string;
+  points: AmBookTrendPoint[];
+};
+
+/**
+ * Fetch book trend for multiple AMs in a single SQL pass. Used for the
+ * "Top Movers" panel where we want a sparkline next to each AM row.
+ */
+export async function readMultipleAmBookTrends(
+  amNames: string[],
+  days: number = 14,
+): Promise<AmBookTrendBundle[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  if (!amNames.length) return [];
+
+  // Use ANY(array) so we don't have to parameterize a dynamic IN list
+  const rows = await sql`
+    SELECT
+      cust.value->>'am_name' AS am_name,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
+      COALESCE(SUM((cust.value->>'plan_amount')::numeric), 0)::numeric AS mrr,
+      COALESCE(SUM(
+        CASE WHEN cust.value->'signals_v2'->>'stoplight' = 'RED'
+             THEN (cust.value->>'plan_amount')::numeric
+             ELSE 0 END
+      ), 0)::numeric AS mrr_at_risk
+    FROM dashboard_snapshots,
+    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+      AND cust.value->>'am_name' = ANY(${amNames}::text[])
+    GROUP BY snapshot_date, cust.value->>'am_name'
+    ORDER BY am_name ASC, snapshot_date ASC
+  `;
+
+  const byAm = new Map<string, AmBookTrendPoint[]>();
+  for (const r of rows) {
+    const row = r as {
+      am_name: string;
+      date: string;
+      total: number;
+      red: number;
+      yellow: number;
+      green: number;
+      mrr: string | number;
+      mrr_at_risk: string | number;
+    };
+    const am = row.am_name;
+    if (!byAm.has(am)) byAm.set(am, []);
+    byAm.get(am)!.push({
+      date: row.date,
+      total: row.total,
+      red: row.red,
+      yellow: row.yellow,
+      green: row.green,
+      mrr: Number(row.mrr),
+      mrr_at_risk: Number(row.mrr_at_risk),
+    });
+  }
+  // Preserve input order; include empty arrays for AMs with no data
+  return amNames.map((am) => ({
+    am_name: am,
+    points: byAm.get(am) || [],
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Connection health check
 // ---------------------------------------------------------------------------
 
