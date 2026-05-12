@@ -498,26 +498,49 @@ function signalPhrase(signal: string, a: NarrativeArgs): string {
 }
 
 /** Pick the most operationally relevant action when multiple signals fire. */
-function pickMultiAction(strong: string[], _a: NarrativeArgs): string {
-  // Priority order: billing > onboarding > comms re-engagement
+function pickMultiAction(strong: string[], a: NarrativeArgs): string {
+  const dsi = a.commsMetrics.days_since_in;
+
+  // 1) Very deep client silence overrides everything — it's the strongest
+  //    churn signal we have. Tell the AM to phone TODAY.
+  if (strong.includes("clientSilent") && dsi >= 60 && dsi < 9999) {
+    return `Cold-reach by phone today — ${dsi}d silence is critical churn risk.`;
+  }
+
+  // 2) Billing — interpolate the actual invoice count.
   if (strong.includes("billing")) {
+    const n = a.billing?.unpaid_invoice_count ?? 0;
+    if (n >= 2) {
+      return `Call about the ${n} unpaid invoices first. Loop back on the other issues after.`;
+    }
     return "Call about the unpaid invoice first. Loop back on the other issues after.";
   }
+
+  // 3) No app data — onboarding + comms re-open.
   if (strong.includes("noUsageData")) {
     return "Verify they're set up on the app + re-open conversation.";
   }
+
+  // 4) App usage dropped (data exists, just low).
   if (strong.includes("usage")) {
     return "Walk through a key feature + re-engage on comms.";
   }
+
+  // 5) Both sides silent (medium severity, not 60+).
   if (strong.includes("clientSilent") && strong.includes("weSilent")) {
     return "Both sides silent — cold-reach via phone today.";
   }
+
+  // 6) Client silent only.
   if (strong.includes("clientSilent")) {
     return "Re-open the conversation. Ask how they are doing.";
   }
+
+  // 7) We silent only.
   if (strong.includes("weSilent")) {
     return "Send a check-in — email or quick call.";
   }
+
   return "Reach out and re-engage.";
 }
 
