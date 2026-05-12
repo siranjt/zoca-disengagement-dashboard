@@ -28,6 +28,7 @@ type PodSummary = {
   mrr: number;
   mrrAtRisk: number;
   topSignal: string | null;
+  redDelta: number | null; // null if no comparison
 };
 
 function formatMoney(n: number): string {
@@ -63,14 +64,31 @@ function classifyTopSignal(customers: ScoredCustomerV2[]): string | null {
 
 type Props = {
   snapshot: SnapshotV2;
+  comparison?: SnapshotV2 | null;
   selectedPod: string;
   onSelectPod: (pod: string) => void;
 };
 
-export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }: Props) {
+export default function V2PodSummaryGrid({
+  snapshot,
+  comparison,
+  selectedPod,
+  onSelectPod,
+}: Props) {
   const summaries = useMemo<PodSummary[]>(() => {
+    // Comparison RED counts by pod
+    const compareRedByPod = new Map<string, number>();
+    if (comparison) {
+      for (const c of comparison.customers) {
+        if (c.signals_v2.stoplight === "RED") {
+          const pod = POD_MAP[c.am_name] || "Floating";
+          compareRedByPod.set(pod, (compareRedByPod.get(pod) || 0) + 1);
+        }
+      }
+    }
+
     const byPod = new Map<string, ScoredCustomerV2[]>();
-    const amsByPod = new Map<string, Map<string, number>>(); // pod -> (am -> red count)
+    const amsByPod = new Map<string, Map<string, number>>();
     for (const c of snapshot.customers) {
       const pod = POD_MAP[c.am_name] || "Floating";
       if (!byPod.has(pod)) byPod.set(pod, []);
@@ -100,6 +118,7 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
         .map(([am, red]) => ({ am, red }))
         .sort((a, b) => b.red - a.red)
         .slice(0, 3);
+      const prevRed = compareRedByPod.get(pod);
       return {
         pod,
         ams,
@@ -112,9 +131,10 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
         mrr,
         mrrAtRisk,
         topSignal: classifyTopSignal(list),
+        redDelta: comparison && prevRed !== undefined ? counts.RED - prevRed : null,
       };
     });
-  }, [snapshot]);
+  }, [snapshot, comparison]);
 
   return (
     <section aria-label="Pod summary">
@@ -123,6 +143,7 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
           <h3 className="font-display text-base font-bold text-zoca-text-primary">Pods</h3>
           <p className="mt-0.5 text-[11px] text-zoca-text-soft">
             Click any pod to filter the rollup below.
+            {comparison ? " Delta badges compare to your selected comparison snapshot." : ""}
           </p>
         </div>
         {selectedPod !== "All" && (
@@ -198,8 +219,17 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
                 </div>
               </div>
 
+              {s.redDelta !== null && (
+                <div className="mt-2">
+                  <PodDeltaPill delta={s.redDelta} />
+                </div>
+              )}
+
               {s.topSignal && (
-                <div className="mt-2 truncate text-[10px] text-zoca-text-soft" title={`Most common strong signal across ${s.pod}: ${s.topSignal}`}>
+                <div
+                  className="mt-2 truncate text-[10px] text-zoca-text-soft"
+                  title={`Most common strong signal across ${s.pod}: ${s.topSignal}`}
+                >
                   Mostly:{" "}
                   <span className="font-medium text-zoca-text-muted">{s.topSignal}</span>
                 </div>
@@ -225,5 +255,27 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
         })}
       </div>
     </section>
+  );
+}
+
+function PodDeltaPill({ delta }: { delta: number }) {
+  if (delta === 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-zoca-pill bg-zoca-bg-3/40 px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-soft">
+        ± 0 RED
+      </span>
+    );
+  }
+  const worse = delta > 0;
+  const cls = worse
+    ? "bg-rose-500/15 text-rose-300"
+    : "bg-emerald-500/15 text-emerald-300";
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${cls}`}
+      title={`${worse ? "+" : ""}${delta} RED vs comparison`}
+    >
+      {worse ? "▲" : "▼"} {Math.abs(delta)} RED
+    </span>
   );
 }
