@@ -9,5 +9,19 @@
       "path": "/api/cron/prune",
       "schedule": "30 0 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/cron/refresh/route.ts": {
+      "memory": 3008,
+      "maxDuration": 90
+    },
+    "app/api/snapshot/route.ts": {
+      "memory": 3008,
+      "maxDuration": 90
+    },
+    "app/api/v2/snapshot/route.ts": {
+      "memory": 3008,
+      "maxDuration": 90
+    }
+  }
 }
