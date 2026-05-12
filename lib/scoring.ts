@@ -332,11 +332,20 @@ function buildNarrative(a: NarrativeArgs): {
   const strong: string[] = [];
   if (!a.mixpanelHasData) strong.push("noUsageData");
   else if (a.usageScore >= 65) strong.push("usage");
+  // Billing tiers: full strong if billingScore >= 40 (real crisis territory).
+  // Otherwise add a "softBilling" mention if there's ANY unpaid invoice AND
+  // at least one other concern — the unpaid is context-relevant when stacked.
   if (a.billingScore >= 40) strong.push("billing");
   if (a.commsSignals.sig_we_silent >= 70) strong.push("weSilent");
   if (a.commsSignals.sig_client_silent >= 70) strong.push("clientSilent");
   if (a.commsSignals.sig_response_drop >= 70) strong.push("responseDrop");
   if (a.commsSignals.sig_volume_collapse >= 60) strong.push("volumeCollapse");
+  // Soft billing pull-up: only when other signals are already firing.
+  const hasSoftBilling =
+    !strong.includes("billing") &&
+    strong.length > 0 &&
+    (a.billing?.unpaid_invoice_count ?? 0) >= 1;
+  if (hasSoftBilling) strong.push("billing");
 
   // ---- 0 strong signals ------------------------------------------------
   if (strong.length === 0) {
@@ -485,11 +494,24 @@ function pickMultiAction(strong: string[], _a: NarrativeArgs): string {
 // ---------------------------------------------------------------------------
 
 function narrateBilling(a: NarrativeArgs) {
-  const notes: string[] = [];
+  const n = a.billing?.unpaid_invoice_count ?? 0;
+  const d = a.billing?.days_past_oldest_unpaid ?? 0;
+  let reason: string;
+  if (n >= 2 && d >= 15) {
+    reason = `${n} unpaid invoices stacked — oldest ${d}d past due.`;
+  } else if (n >= 2) {
+    reason = `${n} unpaid invoices on file.`;
+  } else if (d >= 15) {
+    reason = `1 unpaid invoice, ${d}d past due.`;
+  } else if (n >= 1) {
+    reason = `1 unpaid invoice on file.`;
+  } else {
+    reason = "Billing issues — review account.";
+  }
   return {
-    reasonOneLine: "Billing issues stacking — unpaid invoices on file.",
+    reasonOneLine: reason,
     suggestedAction: "Call about the unpaid invoice. Confirm card on file.",
-    notes,
+    notes: [],
   };
 }
 
