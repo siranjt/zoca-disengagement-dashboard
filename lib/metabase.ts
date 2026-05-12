@@ -58,6 +58,8 @@ export async function fetchBaseSheet(): Promise<{
     churn_potential_flag: r["churn_potential_flag"] || "",
     churn_potential_status: r["churn_potential_status"] || "",
     ob_date: r["ob_date"] || "",
+    open_tickets_30d: r["open_tickets_30d"] || "0",
+    unresolved_issues_last_30_days: r["unresolved_issues_last_30_days"] || "0",
   }));
   const byCustomerId: Record<string, BaseSheetRow> = {};
   const byCustomerIdMulti: Record<string, BaseSheetRow[]> = {};

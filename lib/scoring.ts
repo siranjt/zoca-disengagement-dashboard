@@ -1,11 +1,23 @@
 import {
   SIG_WEIGHTS,
+  SIG_WEIGHTS_V2,
   TIER_CUTS,
   WE_SILENT_DAYS,
   CLIENT_SILENT_DAYS,
   ZERO_COMMS_BASELINE_SCORE,
+  WATCH_LANE_FLAG_COUNT,
+  tierToStoplight,
 } from "./config";
-import type { CommsEvent, CustomerMetrics, CustomerSignals } from "./types";
+import type {
+  CommsEvent,
+  CustomerMetrics,
+  CustomerSignals,
+  CustomerSignalsV2,
+  UsageMetrics,
+  BillingMetrics,
+  PerformanceMetrics,
+  TicketsMetrics,
+} from "./types";
 import type { Tier } from "./config";
 
 const DAY_MS = 86400 * 1000;
@@ -68,12 +80,13 @@ function tierFor(score: number, total90d: number): Tier {
 }
 
 /**
- * Score the 4 signals and produce a composite + tier, mirroring analyze.py exactly.
+ * v1 scoring — preserved for backward compat with existing dashboard.
+ * Composite of 4 comms signals at original weights (30/30/25/15).
  */
 export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
   const notes: string[] = [];
 
-  // Signal 3: We went silent (days since we last reached out)
+  // Signal 3: We went silent
   let sWeSilent = 0;
   const dso = m.days_since_out;
   if (dso >= WE_SILENT_DAYS.high) {
@@ -86,10 +99,10 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
     sWeSilent = 30;
   }
 
-  // Signal 2: Client went silent (only if historically active)
+  // Signal 2: Client went silent
   let sClientSilent = 0;
   const dsi = m.days_since_in;
-  const hadHistory = m.in_90d - m.in_30d > 0; // inbound in days 30..90
+  const hadHistory = m.in_90d - m.in_30d > 0;
   if (hadHistory) {
     if (dsi >= CLIENT_SILENT_DAYS.high) {
       sClientSilent = 100;
@@ -102,12 +115,10 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
     }
   }
 
-  // Signal 1: Response rate dropped (last 30d vs days 30..90)
+  // Signal 1: Response rate dropped
   let sResponseDrop = 0;
-  const in30 = m.in_30d;
-  const out30 = m.out_30d;
-  const inPrior = m.in_90d - m.in_30d;
-  const outPrior = m.out_90d - m.out_30d;
+  const in30 = m.in_30d, out30 = m.out_30d;
+  const inPrior = m.in_90d - m.in_30d, outPrior = m.out_90d - m.out_30d;
   const rate = (i: number, o: number) => (o > 0 ? i / Math.max(o, 1) : null);
   const rRecent = rate(in30, out30);
   const rPrior = rate(inPrior, outPrior);
@@ -126,9 +137,8 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
 
   // Signal 4: Volume collapse + channel narrowing
   let sVolumeCollapse = 0;
-  const t30 = m.total_30d;
-  const t90 = m.total_90d;
-  const baseline = (t90 - t30) / 2.0; // avg per 30d over the prior 60d
+  const t30 = m.total_30d, t90 = m.total_90d;
+  const baseline = (t90 - t30) / 2.0;
   if (baseline >= 4) {
     if (t30 <= 0.2 * baseline) {
       sVolumeCollapse = 100;
@@ -145,7 +155,6 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
     notes.push(`Channels narrowed ${m.channels_90d}→${m.channels_30d}`);
   }
 
-  // Composite
   let composite = Math.round(
     SIG_WEIGHTS.weSilent * sWeSilent +
       SIG_WEIGHTS.clientSilent * sClientSilent +
@@ -153,7 +162,6 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
       SIG_WEIGHTS.volumeCollapse * sVolumeCollapse,
   );
 
-  // Zero-comms auto-promote
   if (m.total_90d === 0) {
     composite = Math.max(composite, ZERO_COMMS_BASELINE_SCORE);
     notes.push("Zero comms in 90d");
@@ -169,3 +177,228 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
     notes: notes.join("; "),
   };
 }
+
+// ---------------------------------------------------------------------------
+// v2 — Tickets flag
+// ---------------------------------------------------------------------------
+
+export function computeTicketsFlag(
+  entityId: string,
+  openTickets30d: number,
+  unresolvedIssues30d: number,
+): TicketsMetrics {
+  return {
+    entity_id: entityId,
+    open_tickets_30d: openTickets30d,
+    unresolved_issues_last_30_days: unresolvedIssues30d,
+    flag: openTickets30d > 0 || unresolvedIssues30d > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// v2 — Hybrid composite (comms 50% / usage 30% / billing 20% + 2 flags)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compose the v2 hybrid composite. Reuses scoreCustomer() for the 4 comms
+ * sub-signals, then layers in usage + billing scores and the modifier flags.
+ *
+ * @param commsSignals  v1 scoreCustomer() output (for the 4 sub-scores)
+ * @param usageScore    Output of scoreUsage()
+ * @param billingScore  Output of scoreBilling()
+ * @param performance   Performance metrics for the entity (for flag verdict)
+ * @param tickets       Tickets metrics for the entity (for flag verdict)
+ * @param commsMetrics  Used for zero-comms-90d auto-promote
+ * @param mixpanelHasData  False if entity has no Mixpanel coverage at all
+ */
+export function composeHybridSignals(args: {
+  commsSignals: CustomerSignals;
+  usageScore: number;
+  billingScore: number;
+  performance: PerformanceMetrics | null;
+  tickets: TicketsMetrics | null;
+  commsMetrics: CustomerMetrics;
+  mixpanelHasData: boolean;
+}): CustomerSignalsV2 {
+  const { commsSignals, usageScore, billingScore, performance, tickets, commsMetrics, mixpanelHasData } = args;
+
+  const composite = Math.round(
+    SIG_WEIGHTS_V2.weSilent * commsSignals.sig_we_silent +
+      SIG_WEIGHTS_V2.clientSilent * commsSignals.sig_client_silent +
+      SIG_WEIGHTS_V2.responseDrop * commsSignals.sig_response_drop +
+      SIG_WEIGHTS_V2.volumeCollapse * commsSignals.sig_volume_collapse +
+      SIG_WEIGHTS_V2.usage * usageScore +
+      SIG_WEIGHTS_V2.billing * billingScore,
+  );
+
+  // Modifier flags
+  const flagPerformance = !!(performance && performance.flag);
+  const flagTickets = !!(tickets && tickets.flag);
+  const flagCount = (flagPerformance ? 1 : 0) + (flagTickets ? 1 : 0);
+
+  // Determine tier — same internal model as v1, with WATCH lane awareness
+  let tier: Tier;
+  // HIGH triggers: composite ≥ 65, zero comms 90d, zero mixpanel 90d
+  if (composite >= TIER_CUTS.high || commsMetrics.total_90d === 0 || !mixpanelHasData) {
+    tier = "HIGH";
+  } else if (composite >= TIER_CUTS.medium) {
+    tier = "MEDIUM";
+  } else if (composite >= TIER_CUTS.low) {
+    tier = "LOW";
+  } else {
+    tier = "HEALTHY";
+  }
+
+  // Effective tier — WATCH lane is HEALTHY/LOW with 2+ flags, displayed as Yellow.
+  // We keep the internal `tier` value but the stoplight mapping handles the WATCH lift.
+  const stoplight = tierToStoplight(tier, flagCount);
+
+  // Reason + suggested action: template-driven from dominant signal
+  const { reasonOneLine, suggestedAction, notes } = buildNarrative({
+    commsSignals,
+    usageScore,
+    billingScore,
+    performance,
+    tickets,
+    commsMetrics,
+    mixpanelHasData,
+  });
+
+  return {
+    composite,
+    tier,
+    stoplight,
+    sig_we_silent: commsSignals.sig_we_silent,
+    sig_client_silent: commsSignals.sig_client_silent,
+    sig_response_drop: commsSignals.sig_response_drop,
+    sig_volume_collapse: commsSignals.sig_volume_collapse,
+    sig_usage: usageScore,
+    sig_billing: billingScore,
+    flag_performance: flagPerformance,
+    flag_tickets: flagTickets,
+    flag_count: flagCount,
+    trajectory_7d: "unknown",          // filled by snapshot writer if prev exists
+    composite_7d_ago: null,             // filled by snapshot writer
+    reason_one_line: reasonOneLine,
+    suggested_action: suggestedAction,
+    notes: notes.join("; "),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Narrative + suggested-action templates (deterministic; Haiku-substitutable later)
+// ---------------------------------------------------------------------------
+
+type NarrativeArgs = {
+  commsSignals: CustomerSignals;
+  usageScore: number;
+  billingScore: number;
+  performance: PerformanceMetrics | null;
+  tickets: TicketsMetrics | null;
+  commsMetrics: CustomerMetrics;
+  mixpanelHasData: boolean;
+};
+
+function buildNarrative(a: NarrativeArgs): {
+  reasonOneLine: string;
+  suggestedAction: string;
+  notes: string[];
+} {
+  const notes: string[] = [];
+  // Find dominant signal
+  const subs = [
+    { name: "billing", score: a.billingScore },
+    { name: "usage", score: a.usageScore },
+    { name: "weSilent", score: a.commsSignals.sig_we_silent },
+    { name: "clientSilent", score: a.commsSignals.sig_client_silent },
+    { name: "responseDrop", score: a.commsSignals.sig_response_drop },
+    { name: "volumeCollapse", score: a.commsSignals.sig_volume_collapse },
+  ].sort((x, y) => y.score - x.score);
+  const dominant = subs[0];
+
+  // Edge cases first
+  if (!a.mixpanelHasData) {
+    return {
+      reasonOneLine: "No Zoca app activity tracked in the last 90 days.",
+      suggestedAction: "Verify they're set up on the app — onboard if needed.",
+      notes: ["Missing Mixpanel data — likely a setup gap or churned user."],
+    };
+  }
+  if (a.commsMetrics.total_90d === 0) {
+    return {
+      reasonOneLine: "Zero communication across all channels for 90 days.",
+      suggestedAction: "Cold-reach: email + phone today.",
+      notes: ["Zero comms in 90d → auto-promoted to red."],
+    };
+  }
+
+  // Template-driven by dominant signal
+  if (dominant.name === "billing" && a.billingScore >= 40) {
+    const days = a.performance ? "" : "";
+    void days;
+    return {
+      reasonOneLine: "Billing issues stacking — unpaid invoices on file.",
+      suggestedAction: "Call about the unpaid invoice. Confirm card on file.",
+      notes,
+    };
+  }
+  if (dominant.name === "usage" && a.usageScore >= 50) {
+    return {
+      reasonOneLine: "Team stopped using the Zoca app actively.",
+      suggestedAction: "Reach out — walk them through a high-value feature.",
+      notes,
+    };
+  }
+  if (dominant.name === "weSilent" && a.commsSignals.sig_we_silent >= 70) {
+    return {
+      reasonOneLine: "We haven't reached out in a while.",
+      suggestedAction: "Send a check-in — email or quick call.",
+      notes,
+    };
+  }
+  if (dominant.name === "clientSilent" && a.commsSignals.sig_client_silent >= 70) {
+    return {
+      reasonOneLine: "Client has gone quiet — was active before.",
+      suggestedAction: "Re-open the conversation. Ask how they're doing.",
+      notes,
+    };
+  }
+  if (dominant.name === "responseDrop" && a.commsSignals.sig_response_drop >= 70) {
+    return {
+      reasonOneLine: "Response rate has collapsed — we're talking, they're not.",
+      suggestedAction: "Switch channels — try a call instead of email.",
+      notes,
+    };
+  }
+  if (dominant.name === "volumeCollapse" && a.commsSignals.sig_volume_collapse >= 60) {
+    return {
+      reasonOneLine: "Overall comms volume dropped sharply.",
+      suggestedAction: "Re-engage with a strategic update or new feature.",
+      notes,
+    };
+  }
+  // Performance / tickets fallbacks
+  if (a.performance && a.performance.flag) {
+    return {
+      reasonOneLine: a.performance.flag_reasons.join("; "),
+      suggestedAction: "Walk through GBP optimizer / discuss recovery plan.",
+      notes,
+    };
+  }
+  if (a.tickets && a.tickets.flag) {
+    return {
+      reasonOneLine: `Open tickets unresolved (${a.tickets.open_tickets_30d}).`,
+      suggestedAction: "Resolve tickets first, then send a recap.",
+      notes,
+    };
+  }
+
+  // Doing fine
+  return {
+    reasonOneLine: "Active across signals — no action needed.",
+    suggestedAction: "No action needed.",
+    notes,
+  };
+}
+
+export { tierFor };
