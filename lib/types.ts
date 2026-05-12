@@ -370,9 +370,9 @@ export type Snapshot = {
 };
 
 /** v2 snapshot — superset with usage/billing/performance + pod rollups */
-export type SnapshotV2 = Snapshot & {
+export type SnapshotV2 = Omit<Snapshot, "customers"> & {
   version: "v2";
-  customers: ScoredCustomerV2[];            // override v1 type
+  customers: ScoredCustomerV2[];
   stoplightCounts: Record<Stoplight, number>;
   signalCountsV2: {
     we_silent_any: number;
