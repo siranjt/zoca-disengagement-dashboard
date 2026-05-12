@@ -23,9 +23,11 @@ export default function V2Dashboard() {
   const [selectedAm, setSelectedAm] = useState<string>("");
   const [view, setView] = useState<V2View>("am");
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
+  const [mounted, setMounted] = useState<boolean>(false);
 
-  // Initial load: read AM from query/cookie + fetch snapshot
+  // Hydration-safe: only read browser state after mount
   useEffect(() => {
+    setMounted(true);
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     const fromQuery = url.searchParams.get("am");
@@ -35,7 +37,6 @@ export default function V2Dashboard() {
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, []);
 
-  // Fetch snapshot once
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -79,7 +80,6 @@ export default function V2Dashboard() {
     }
   }, []);
 
-  // Filter to selected AM's customers
   const amCustomers = useMemo<ScoredCustomerV2[]>(() => {
     if (snapshot.status !== "ready" || !selectedAm) return [];
     return snapshot.snapshot.customers.filter((c) => c.am_name === selectedAm);
@@ -108,9 +108,6 @@ export default function V2Dashboard() {
 
   const selectedPod = selectedAm ? POD_MAP[selectedAm] || "" : "";
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-zoca-body text-zoca-text-primary">
       <V2TopBar
@@ -124,7 +121,7 @@ export default function V2Dashboard() {
       />
 
       <main className="mx-auto max-w-[920px] px-4 pb-24 pt-4 md:px-6">
-        {!welcomeDismissed && snapshot.status === "ready" && (
+        {mounted && !welcomeDismissed && snapshot.status === "ready" && (
           <V2WelcomeStrip
             amName={selectedAm}
             customers={amCustomers}
@@ -132,11 +129,17 @@ export default function V2Dashboard() {
           />
         )}
 
-        {snapshot.status === "loading" && <V2LoadingState />}
+        {snapshot.status === "loading" && <V2LoadingSkeleton />}
         {snapshot.status === "error" && (
-          <V2ErrorState message={snapshot.message} />
+          <V2ErrorState
+            message={snapshot.message}
+            onRetry={() => window.location.reload()}
+          />
         )}
-        {snapshot.status === "ready" && view === "am" && (
+
+        {snapshot.status === "ready" && !selectedAm && <V2SelectAmPrompt />}
+
+        {snapshot.status === "ready" && selectedAm && view === "am" && (
           <V2AMTriage
             amName={selectedAm}
             pod={selectedPod}
@@ -165,27 +168,42 @@ export default function V2Dashboard() {
 }
 
 // ---------------------------------------------------------------------------
-// Loading / Error states — local to this file, no need for separate files
+// Loading skeleton — 4 card-shaped placeholders pulse during fetch
 // ---------------------------------------------------------------------------
 
-function V2LoadingState() {
+function V2LoadingSkeleton() {
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="flex items-center gap-3 text-zoca-text-muted">
-        <div className="h-2 w-2 animate-pulse rounded-full bg-zoca-pink-2" />
-        <span className="text-sm">Loading your customer book…</span>
+    <section className="mt-2" aria-busy="true" aria-live="polite">
+      <div className="mb-4 h-9 w-3/4 rounded-zoca-sm bg-zoca-bg-2/40 motion-safe:animate-pulse" />
+      <div className="mb-5 flex gap-2">
+        <div className="h-8 w-44 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
+        <div className="h-8 w-28 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
+        <div className="h-8 w-60 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
       </div>
-    </div>
+      <div className="flex flex-col gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-[130px] rounded-zoca-lg border border-zoca-border bg-zoca-card motion-safe:animate-pulse"
+            style={{ opacity: 1 - i * 0.15 }}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
-function V2ErrorState({ message }: { message: string }) {
+function V2ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="mt-8 rounded-zoca border border-red-500/30 bg-red-500/10 p-6">
+    <div className="mt-8 rounded-zoca border border-red-500/30 bg-red-500/10 p-6" role="alert">
       <h2 className="font-display text-lg font-bold text-red-200">Could not load snapshot</h2>
       <p className="mt-2 text-sm text-zoca-text-muted">{message}</p>
+      <p className="mt-2 text-xs text-zoca-text-soft">
+        If this persists, the daily refresh cron may have failed. Check Vercel logs or
+        re-run /api/cron/refresh/compose.
+      </p>
       <button
-        onClick={() => window.location.reload()}
+        onClick={onRetry}
         className="mt-4 rounded-zoca-pill bg-zoca-pink-2/20 px-4 py-2 text-sm font-medium text-zoca-pink-2 transition hover:bg-zoca-pink-2/30"
       >
         Retry
@@ -194,9 +212,18 @@ function V2ErrorState({ message }: { message: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Pod + Leadership placeholders (Phase 2.D)
-// ---------------------------------------------------------------------------
+function V2SelectAmPrompt() {
+  return (
+    <div className="mt-12 rounded-zoca border border-dashed border-zoca-border-2 px-6 py-12 text-center">
+      <p className="font-display text-lg font-bold text-zoca-text-primary">
+        Select an AM to view their book.
+      </p>
+      <p className="mt-2 text-sm text-zoca-text-muted">
+        Use the dropdown in the top bar to pick yourself or another AM.
+      </p>
+    </div>
+  );
+}
 
 function V2PodPlaceholder({ pod }: { pod: string }) {
   return (

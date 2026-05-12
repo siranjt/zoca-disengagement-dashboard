@@ -12,95 +12,118 @@ type Props = {
 };
 
 type FilterKey = "act" | "improving" | "quiet";
+type SortKey = "urgency" | "plan" | "lasttouch";
 
 const ACT_TODAY_TOP_N = 10;
 
 export default function V2AMTriage({ amName, pod, customers, generatedAt }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
+  const [sort, setSort] = useState<SortKey>("urgency");
+  const [query, setQuery] = useState<string>("");
 
   // ---------------------------------------------------------------------------
   // Bucketing logic
   // ---------------------------------------------------------------------------
-  const actToday = useMemo(
-    () =>
-      customers
-        .filter((c) => c.signals_v2.stoplight === "RED" || c.signals_v2.stoplight === "YELLOW")
-        .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
-        .slice(0, ACT_TODAY_TOP_N),
-    [customers],
-  );
+  const baseBuckets = useMemo(() => {
+    const act = customers
+      .filter((c) => c.signals_v2.stoplight === "RED" || c.signals_v2.stoplight === "YELLOW")
+      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
+      .slice(0, ACT_TODAY_TOP_N);
 
-  // "Improving" — without snapshot history yet, use stoplight=GREEN as proxy.
-  // Phase 2.B will swap this for real "composite dropped 15+ points in 7d" once
-  // we have multiple snapshot rows to compare against.
-  const improving = useMemo(
-    () =>
-      customers
-        .filter((c) => c.signals_v2.stoplight === "GREEN" && c.signals_v2.composite < 20)
-        .sort((a, b) => a.signals_v2.composite - b.signals_v2.composite)
-        .slice(0, 15),
-    [customers],
-  );
+    const improving = customers
+      .filter((c) => c.signals_v2.stoplight === "GREEN" && c.signals_v2.composite < 20)
+      .sort((a, b) => a.signals_v2.composite - b.signals_v2.composite)
+      .slice(0, 15);
 
-  const quiet30 = useMemo(
-    () =>
-      customers
-        .filter(
-          (c) =>
-            c.metrics.days_since_in >= 30 ||
-            (c.metrics.last_any_iso === null && c.signals_v2.tier !== "HEALTHY"),
-        )
-        .sort((a, b) => b.metrics.days_since_in - a.metrics.days_since_in)
-        .slice(0, 20),
-    [customers],
-  );
+    const quiet30 = customers
+      .filter(
+        (c) =>
+          c.metrics.days_since_in >= 30 ||
+          (c.metrics.last_any_iso === null && c.signals_v2.tier !== "HEALTHY"),
+      )
+      .sort((a, b) => b.metrics.days_since_in - a.metrics.days_since_in)
+      .slice(0, 20);
 
-  const filtered =
-    filter === "act" ? actToday : filter === "improving" ? improving : quiet30;
+    return { act, improving, quiet: quiet30 };
+  }, [customers]);
 
   const filterCounts = {
-    act: actToday.length,
-    improving: improving.length,
-    quiet: quiet30.length,
+    act: baseBuckets.act.length,
+    improving: baseBuckets.improving.length,
+    quiet: baseBuckets.quiet.length,
   };
 
-  // Hero label — count varies by selected filter
-  const heroCount = filter === "act" ? actToday.length : filtered.length;
-  const heroLabel =
-    filter === "act"
-      ? heroCount === 0
-        ? "All clear — nobody urgent in your book today"
-        : `Today, you have ${heroCount} customer${heroCount === 1 ? "" : "s"} to act on`
-      : filter === "improving"
-        ? heroCount === 0
-          ? "No one's clearly improving this week"
-          : `${heroCount} customer${heroCount === 1 ? "" : "s"} doing well`
-        : heroCount === 0
-          ? "No one's been quiet for 30+ days"
-          : `${heroCount} customer${heroCount === 1 ? "" : "s"} you haven't heard from in 30+ days`;
+  // Apply search + sort to current filter's customers
+  const filtered = useMemo(() => {
+    let list = baseBuckets[filter];
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter((c) => (c.company || "").toLowerCase().includes(q));
+    }
+    // Sort within filter
+    const sorted = [...list];
+    switch (sort) {
+      case "plan":
+        sorted.sort((a, b) => b.plan_amount - a.plan_amount);
+        break;
+      case "lasttouch":
+        sorted.sort(
+          (a, b) => b.metrics.days_since_in - a.metrics.days_since_in,
+        );
+        break;
+      case "urgency":
+      default:
+        if (filter === "improving") {
+          sorted.sort((a, b) => a.signals_v2.composite - b.signals_v2.composite);
+        } else {
+          sorted.sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
+        }
+        break;
+    }
+    return sorted;
+  }, [baseBuckets, filter, query, sort]);
+
+  // Hero — count + label
+  const heroCount = filtered.length;
+  const heroLabelRich = (() => {
+    if (filter === "act") {
+      if (query.trim()) {
+        return `${heroCount} match${heroCount === 1 ? "" : "es"} for "${query.trim()}"`;
+      }
+      if (heroCount === 0) return "All clear — nobody urgent in your book today";
+      return null; // use rich rendering below
+    }
+    if (filter === "improving") {
+      if (heroCount === 0) return "No one's clearly improving this week";
+      return `${heroCount} customer${heroCount === 1 ? "" : "s"} doing well`;
+    }
+    if (heroCount === 0) return "No one's been quiet for 30+ days";
+    return `${heroCount} customer${heroCount === 1 ? "" : "s"} you haven't heard from in 30+ days`;
+  })();
 
   return (
     <section className="mt-2">
+      {/* Hero */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="font-display text-2xl font-extrabold tracking-zoca-tight md:text-3xl">
-          {heroLabel.includes("act on") ? (
-            <>
-              Today, you have{" "}
-              <span className="text-zoca-pink-2">{heroCount}</span>{" "}
-              customers to act on
-            </>
-          ) : (
-            heroLabel
-          )}
-        </h1>
+        {heroLabelRich !== null ? (
+          <h1 className="font-display text-2xl font-extrabold tracking-zoca-tight md:text-3xl">
+            {heroLabelRich}
+          </h1>
+        ) : (
+          <h1 className="font-display text-2xl font-extrabold tracking-zoca-tight md:text-3xl">
+            Today, you have{" "}
+            <span className="text-zoca-pink-2">{heroCount}</span>{" "}
+            customer{heroCount === 1 ? "" : "s"} to act on
+          </h1>
+        )}
         <p className="text-[12px] text-zoca-text-soft">
           {amName}
-          {pod && ` · ${pod}`} · Sorted by urgency
+          {pod && ` · ${pod}`}
         </p>
       </div>
 
-      {/* Filter chips */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      {/* Controls row: filter chips + search + sort */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <FilterChip
           label="Need to call today"
           count={filterCounts.act}
@@ -119,11 +142,44 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
           active={filter === "quiet"}
           onClick={() => setFilter("quiet")}
         />
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <label className="relative inline-flex items-center">
+            <span className="absolute left-3 text-zoca-text-soft" aria-hidden>
+              ⌕
+            </span>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search business name…"
+              aria-label="Search business name"
+              className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/40 py-1.5 pl-8 pr-3 text-[12px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-purple focus:outline-none"
+              style={{ minWidth: 200 }}
+            />
+          </label>
+
+          {/* Sort dropdown */}
+          <label className="inline-flex items-center gap-1 text-[11px] text-zoca-text-soft">
+            <span className="hidden md:inline">Sort:</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              aria-label="Sort customers"
+              className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/40 px-2.5 py-1.5 text-[12px] text-zoca-text-primary focus:border-zoca-purple focus:outline-none"
+            >
+              <option value="urgency">By urgency</option>
+              <option value="plan">By plan amount</option>
+              <option value="lasttouch">By last touch</option>
+            </select>
+          </label>
+        </div>
       </div>
 
-      {/* Cards */}
+      {/* Cards or empty state */}
       {filtered.length === 0 ? (
-        <V2EmptyState filter={filter} />
+        <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((c) => (
@@ -132,10 +188,10 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
         </div>
       )}
 
-      {/* Show full book link */}
-      {customers.length > filtered.length && (
+      {/* Footer info */}
+      {customers.length > filtered.length && filtered.length > 0 && (
         <p className="mt-8 text-center text-[12px] text-zoca-text-soft">
-          Showing top {filtered.length} of {customers.length} in your book.{" "}
+          Showing {filtered.length} of {customers.length} in your book.{" "}
           <span className="text-zoca-purple">Full book view — Phase 2.D</span>
         </p>
       )}
@@ -161,7 +217,9 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`group inline-flex items-center gap-2 rounded-zoca-pill border px-3.5 py-1.5 text-[12px] font-medium transition ${
+      aria-pressed={active}
+      aria-label={`${label} — ${count} customers`}
+      className={`group inline-flex items-center gap-2 rounded-zoca-pill border px-3.5 py-1.5 text-[12px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 ${
         active
           ? "border-zoca-purple bg-zoca-purple/20 text-zoca-text-primary"
           : "border-zoca-border-2 bg-zoca-bg-2/40 text-zoca-text-muted hover:border-zoca-border-3 hover:text-zoca-text-primary"
@@ -179,7 +237,19 @@ function FilterChip({
   );
 }
 
-function V2EmptyState({ filter }: { filter: FilterKey }) {
+function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boolean }) {
+  if (hasQuery) {
+    return (
+      <div className="rounded-zoca border border-dashed border-zoca-border-2 px-6 py-10 text-center">
+        <p className="font-display text-lg font-bold text-zoca-text-primary">
+          No customers match your search.
+        </p>
+        <p className="mt-2 text-sm text-zoca-text-muted">
+          Try a different name, or clear the search to see the full filter.
+        </p>
+      </div>
+    );
+  }
   const messages: Record<FilterKey, { title: string; body: string }> = {
     act: {
       title: "You're caught up.",

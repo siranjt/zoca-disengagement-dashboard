@@ -1,10 +1,23 @@
 "use client";
 
 import type { ScoredCustomerV2 } from "@/lib/types";
-import type { Stoplight } from "@/lib/config";
+import type { Stoplight, EngagementTier } from "@/lib/config";
 
 type Props = {
   customer: ScoredCustomerV2;
+};
+
+const STOPLIGHT_TITLE: Record<Stoplight, string> = {
+  RED: "Needs attention",
+  YELLOW: "Keep an eye on",
+  GREEN: "Doing fine",
+};
+
+const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
+  Active: "text-emerald-300",
+  Light: "text-zoca-text-muted",
+  Cold: "text-amber-300",
+  Dormant: "text-red-300",
 };
 
 export default function V2CustomerCard({ customer }: Props) {
@@ -14,9 +27,13 @@ export default function V2CustomerCard({ customer }: Props) {
   const podText = customer.pod ? ` · ${customer.pod}` : "";
 
   return (
-    <article className="rounded-zoca-lg border border-zoca-border bg-zoca-card transition hover:border-zoca-border-3">
+    <article
+      role="article"
+      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}`}
+      className="group rounded-zoca-lg border border-zoca-border bg-zoca-card transition-all duration-150 hover:border-zoca-border-3 hover:shadow-zoca-sm"
+    >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">
-        {/* Stoplight dot */}
+        {/* Stoplight dot — with hover title */}
         <StoplightDot light={s.stoplight} />
 
         {/* Body */}
@@ -28,6 +45,7 @@ export default function V2CustomerCard({ customer }: Props) {
             {trend.label && (
               <span
                 className={`rounded-zoca-sm px-1.5 py-0.5 text-[10px] font-semibold ${trend.className}`}
+                title={trend.title}
               >
                 {trend.label}
               </span>
@@ -47,10 +65,7 @@ export default function V2CustomerCard({ customer }: Props) {
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {s.flag_performance && (
                 <FlagChip
-                  label={
-                    customer.performance?.flag_reasons?.[0] ||
-                    "Performance flag"
-                  }
+                  label={customer.performance?.flag_reasons?.[0] || "Performance flag"}
                 />
               )}
               {s.flag_tickets && (
@@ -72,7 +87,8 @@ export default function V2CustomerCard({ customer }: Props) {
         <div className="flex flex-col items-end gap-2">
           <button
             type="button"
-            className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow md:max-w-[300px] md:px-4 md:text-[13px]"
+            aria-label={`Action: ${actionLabel(customer)}`}
+            className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
             onClick={() => alert("Mark contacted — Phase 2.C")}
           >
             {actionLabel(customer)}
@@ -80,14 +96,16 @@ export default function V2CustomerCard({ customer }: Props) {
           <div className="flex flex-col items-end gap-1 text-[11px] text-zoca-text-soft md:flex-row md:gap-3">
             <button
               type="button"
-              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted"
+              aria-label="Show why this customer is flagged"
+              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted focus-visible:border-zoca-pink-2 focus-visible:text-zoca-text-primary focus-visible:outline-none"
               onClick={() => alert("Why flagged drawer — Phase 2.B")}
             >
               Why flagged ▾
             </button>
             <button
               type="button"
-              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted"
+              aria-label="Open full customer profile"
+              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted focus-visible:border-zoca-pink-2 focus-visible:text-zoca-text-primary focus-visible:outline-none"
               onClick={() => alert("Full profile modal — Phase 2.B")}
             >
               Full profile →
@@ -96,50 +114,29 @@ export default function V2CustomerCard({ customer }: Props) {
         </div>
       </div>
 
-      {/* Compact metrics summary (last touch + days since) */}
+      {/* Metrics summary line — enriched with channels, app tier, billing detail */}
       <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-soft md:px-5">
-        <span>
-          Last touch:{" "}
-          {metrics.last_any_iso
-            ? `${daysSince(metrics.last_any_iso)} day${daysSince(metrics.last_any_iso) === 1 ? "" : "s"} ago`
-            : "never"}
-        </span>
-        <span className="mx-2 opacity-60">·</span>
-        <span>{metrics.total_30d} comms in last 30d</span>
-        {customer.usage && (
-          <>
-            <span className="mx-2 opacity-60">·</span>
-            <span>App usage: {customer.usage.engagement_tier}</span>
-          </>
-        )}
-        {customer.billing && customer.billing.unpaid_invoice_count > 0 && (
-          <>
-            <span className="mx-2 opacity-60">·</span>
-            <span className="text-zoca-pink-text">
-              {customer.billing.unpaid_invoice_count} unpaid invoice
-              {customer.billing.unpaid_invoice_count === 1 ? "" : "s"}
-            </span>
-          </>
-        )}
+        {renderMetricsSummary(customer)}
       </div>
     </article>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Stoplight dot
+// Stoplight dot — with hover tooltip
 // ---------------------------------------------------------------------------
 
 function StoplightDot({ light }: { light: Stoplight }) {
-  const color = light === "RED" ? "#ef4444" : light === "YELLOW" ? "#f59e0b" : "#10b981";
+  const color =
+    light === "RED" ? "#ef4444" : light === "YELLOW" ? "#f59e0b" : "#10b981";
+  const label = STOPLIGHT_TITLE[light];
   return (
     <span
-      aria-label={light === "RED" ? "Needs attention" : light === "YELLOW" ? "Keep an eye on" : "Doing fine"}
-      className="mt-1.5 inline-block h-3 w-3 flex-shrink-0 rounded-full"
-      style={{
-        backgroundColor: color,
-        boxShadow: `0 0 12px ${color}`,
-      }}
+      role="img"
+      aria-label={label}
+      title={label}
+      className="mt-1.5 inline-block h-3 w-3 flex-shrink-0 cursor-help rounded-full"
+      style={{ backgroundColor: color, boxShadow: `0 0 12px ${color}` }}
     />
   );
 }
@@ -153,30 +150,99 @@ function FlagChip({ label }: { label: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Metrics summary — render with channels used + app tier color + billing detail
+// ---------------------------------------------------------------------------
+
+function renderMetricsSummary(c: ScoredCustomerV2) {
+  const { metrics } = c;
+  const lastTouch =
+    metrics.last_any_iso === null
+      ? "Last touch: never"
+      : `Last touch: ${daysSince(metrics.last_any_iso)}d ago`;
+
+  const channelsUsed = (metrics.channels_used_30d || "").split(",").filter(Boolean);
+  const channelText =
+    metrics.total_30d === 0
+      ? "0 comms in 30d"
+      : channelsUsed.length === 0
+        ? `${metrics.total_30d} comms in 30d`
+        : `${metrics.total_30d} comms in 30d · ${channelsUsed.join("/")}`;
+
+  const usageNode =
+    c.usage != null ? (
+      <span>
+        App: <span className={ENGAGEMENT_COLOR[c.usage.engagement_tier]}>{c.usage.engagement_tier}</span>
+      </span>
+    ) : (
+      <span className="text-red-300">App: no data</span>
+    );
+
+  const billingNode = c.billing && c.billing.unpaid_invoice_count > 0 ? (
+    <span className="text-zoca-pink-text">
+      {c.billing.unpaid_invoice_count} unpaid
+      {c.billing.total_amount_due_cents > 0 &&
+        ` ($${Math.round(c.billing.total_amount_due_cents / 100)})`}
+      {c.billing.days_past_oldest_unpaid > 0 &&
+        ` · ${c.billing.days_past_oldest_unpaid}d overdue`}
+    </span>
+  ) : null;
+
+  const parts: React.ReactNode[] = [
+    <span key="lt">{lastTouch}</span>,
+    <span key="ct">{channelText}</span>,
+    <span key="us">{usageNode}</span>,
+  ];
+  if (billingNode) parts.push(<span key="bl">{billingNode}</span>);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {parts.map((node, i) => (
+        <span key={i} className="inline-flex items-center gap-3">
+          {i > 0 && <span className="opacity-60">·</span>}
+          {node}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function computeTrend(t: "improving" | "worsening" | "stable" | "unknown"): {
   label: string;
   className: string;
+  title: string;
 } {
   switch (t) {
     case "worsening":
-      return { label: "↑ Worsening", className: "bg-red-500/15 text-red-300" };
+      return {
+        label: "↑ Worsening",
+        className: "bg-red-500/15 text-red-300",
+        title: "Composite score increased vs. 7 days ago",
+      };
     case "improving":
-      return { label: "↓ Improving", className: "bg-green-500/15 text-green-300" };
+      return {
+        label: "↓ Improving",
+        className: "bg-green-500/15 text-green-300",
+        title: "Composite score decreased vs. 7 days ago",
+      };
     case "stable":
-      return { label: "— Stable", className: "bg-zoca-bg-1/60 text-zoca-text-soft" };
+      return {
+        label: "— Stable",
+        className: "bg-zoca-bg-1/60 text-zoca-text-soft",
+        title: "Composite score unchanged vs. 7 days ago",
+      };
     case "unknown":
     default:
-      return { label: "", className: "" };
+      return { label: "", className: "", title: "" };
   }
 }
 
 function actionLabel(c: ScoredCustomerV2): string {
   const action = c.signals_v2.suggested_action || "";
   if (!action || action === "No action needed.") return "Note · doing fine";
-  // Trim trailing period, keep full text — CSS handles wrapping.
   return action.replace(/\.$/, "");
 }
 
@@ -187,8 +253,5 @@ function daysSince(iso: string): number {
 }
 
 function highlightReason(text: string): string {
-  // Already-included <b> tags from the narrative templates pass through cleanly.
-  // Strip any other HTML to be safe.
-  const allowed = text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
-  return allowed;
+  return text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
 }
