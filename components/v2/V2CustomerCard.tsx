@@ -39,6 +39,42 @@ export default function V2CustomerCard({ customer, trend }: Props) {
     (s.stoplight === "YELLOW" && !!customer.performance?.flag);
   const [expanded, setExpanded] = useState<boolean>(autoExpand);
 
+  // Action-button state machine: idle -> selecting -> submitting -> done
+  type ActionState =
+    | { kind: "idle" }
+    | { kind: "selecting" }
+    | { kind: "submitting"; choice: ActionChoice }
+    | { kind: "done"; choice: ActionChoice; at: number }
+    | { kind: "error"; message: string };
+  const [actionState, setActionState] = useState<ActionState>({ kind: "idle" });
+
+  async function logAction(choice: ActionChoice) {
+    setActionState({ kind: "submitting", choice });
+    try {
+      const res = await fetch("/api/v2/actions/contacted", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          am_name: customer.am_name,
+          entity_id: customer.entity_id,
+          action_type: `contacted_${choice}`,
+          composite_at_action: customer.signals_v2.composite,
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => res.statusText);
+        setActionState({ kind: "error", message: `${res.status}: ${txt.slice(0, 120)}` });
+        return;
+      }
+      setActionState({ kind: "done", choice, at: Date.now() });
+    } catch (e) {
+      setActionState({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   return (
     <article
       role="article"
@@ -117,34 +153,86 @@ export default function V2CustomerCard({ customer, trend }: Props) {
           )}
         </div>
 
-        {/* Right side: action + secondary links */}
+        {/* Right side: action button (state machine) */}
         <div className="flex flex-col items-end gap-2">
-          <button
-            type="button"
-            aria-label={`Action: ${actionLabel(customer)}`}
-            className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
-            onClick={() => alert("Mark contacted — Phase 2.C")}
-          >
-            {actionLabel(customer)}
-          </button>
-          <div className="flex flex-col items-end gap-1 text-[11px] text-zoca-text-soft md:flex-row md:gap-3">
+          {actionState.kind === "done" ? (
+            <div
+              className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-300 md:max-w-[300px] md:px-4 md:text-[13px]"
+              aria-live="polite"
+            >
+              \u2713 Logged {actionState.choice === "connected" ? "as connected" : actionState.choice === "vm" ? "voicemail" : "no reach"}
+              <button
+                type="button"
+                onClick={() => setActionState({ kind: "idle" })}
+                className="ml-2 text-[10px] font-normal text-emerald-300/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40"
+                aria-label="Undo logged action"
+              >
+                Undo
+              </button>
+            </div>
+          ) : actionState.kind === "selecting" || actionState.kind === "submitting" ? (
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+                How did it go?
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <ActionChip
+                  label="\u2713 Connected"
+                  tone="emerald"
+                  busy={actionState.kind === "submitting" && actionState.choice === "connected"}
+                  disabled={actionState.kind === "submitting"}
+                  onClick={() => logAction("connected")}
+                />
+                <ActionChip
+                  label="\ud83d\udcde VM"
+                  tone="amber"
+                  busy={actionState.kind === "submitting" && actionState.choice === "vm"}
+                  disabled={actionState.kind === "submitting"}
+                  onClick={() => logAction("vm")}
+                />
+                <ActionChip
+                  label="\u00d7 No reach"
+                  tone="rose"
+                  busy={actionState.kind === "submitting" && actionState.choice === "noreach"}
+                  disabled={actionState.kind === "submitting"}
+                  onClick={() => logAction("noreach")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setActionState({ kind: "idle" })}
+                  className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                  aria-label="Cancel logging"
+                >
+                  cancel
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
-              aria-label="Show why this customer is flagged"
-              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted focus-visible:border-zoca-pink-2 focus-visible:text-zoca-text-primary focus-visible:outline-none"
-              onClick={() => alert("Why flagged drawer — Phase 2.B")}
+              aria-label={`Action: ${actionLabel(customer)}. Click to log how it went.`}
+              className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
+              onClick={() => setActionState({ kind: "selecting" })}
             >
-              Why flagged ▾
+              {actionLabel(customer)}
             </button>
-            <button
-              type="button"
-              aria-label="Open full customer profile"
-              className="border-b border-dashed border-transparent transition hover:border-zoca-text-soft hover:text-zoca-text-muted focus-visible:border-zoca-pink-2 focus-visible:text-zoca-text-primary focus-visible:outline-none"
-              onClick={() => alert("Full profile modal — Phase 2.B")}
+          )}
+          {actionState.kind === "error" && (
+            <div
+              role="alert"
+              className="max-w-[260px] rounded-zoca-sm border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-right text-[10px] text-rose-200 md:max-w-[300px]"
             >
-              Full profile →
-            </button>
-          </div>
+              Couldn\u2019t log: {actionState.message}
+              <button
+                type="button"
+                onClick={() => setActionState({ kind: "idle" })}
+                className="ml-1 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/40"
+                aria-label="Dismiss error and retry"
+              >
+                retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -316,6 +404,42 @@ function daysSince(iso: string): number {
 
 function highlightReason(text: string): string {
   return text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
+}
+
+type ActionChoice = "connected" | "vm" | "noreach";
+
+function ActionChip({
+  label,
+  tone,
+  busy,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  tone: "emerald" | "amber" | "rose";
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+      : tone === "amber"
+        ? "border-amber-400/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+        : "border-rose-400/40 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25";
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`rounded-zoca-pill border px-2 py-1 text-[11px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${toneClass} ${
+        disabled ? "cursor-not-allowed opacity-50" : ""
+      } ${busy ? "animate-pulse" : ""}`}
+      aria-label={`Log contact result: ${label}`}
+    >
+      {label}
+    </button>
+  );
 }
 
 function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>): string | null {

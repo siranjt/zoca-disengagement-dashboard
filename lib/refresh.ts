@@ -4,7 +4,8 @@ import { fetchBaseSheet, fetchAllComms, fetchAllCommsSequential, groupCommsByEnt
 import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
 import { fetchPerformanceMetrics } from "./performance";
 import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";
-import { writeSnapshotV2 } from "./postgres";
+import { writeSnapshotV2, readSnapshotByDate } from "./postgres";
+import { readPipelineStage } from "./pipeline-state";
 import {
   writePipelineStage,
   readAllPipelineStages,
@@ -610,6 +611,52 @@ export async function composeSnapshot(
     if (snapshot.tierCounts[t] == null) snapshot.tierCounts[t] = 0;
   }
 
+  // -------------------------------------------------------------------------
+  // 2.5  Trajectory backfill: patch each customer's trajectory_7d field
+  //      with the delta vs the snapshot from 7 days ago (fallback: yesterday).
+  // -------------------------------------------------------------------------
+  try {
+    const sevenDaysAgo = new Date(snapshotDate + "T00:00:00Z");
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+    const ymd7 = sevenDaysAgo.toISOString().slice(0, 10);
+    let prevSnap = await readSnapshotByDate(ymd7);
+    let prevWindowDays = 7;
+    if (!prevSnap) {
+      // Fall back to yesterday if 7d-ago has no snapshot yet (early life)
+      const yesterday = new Date(snapshotDate + "T00:00:00Z");
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      prevSnap = await readSnapshotByDate(yesterday.toISOString().slice(0, 10));
+      prevWindowDays = 1;
+    }
+    if (prevSnap) {
+      const prevByEntity = new Map<string, number>();
+      for (const c of prevSnap.customers || []) {
+        if (c.entity_id && typeof c.signals_v2?.composite === "number") {
+          prevByEntity.set(c.entity_id, c.signals_v2.composite);
+        }
+      }
+      const STABLE_DELTA = 5; // |delta| < 5 = stable
+      let patched = 0;
+      for (const c of snapshot.customers) {
+        const prev = prevByEntity.get(c.entity_id);
+        if (prev === undefined) continue;
+        c.signals_v2.composite_7d_ago = prev;
+        const delta = c.signals_v2.composite - prev;
+        if (Math.abs(delta) < STABLE_DELTA) c.signals_v2.trajectory_7d = "stable";
+        else if (delta > 0) c.signals_v2.trajectory_7d = "improving";
+        else c.signals_v2.trajectory_7d = "worsening";
+        patched += 1;
+      }
+      console.log(
+        `[compose] trajectory backfilled ${patched}/${snapshot.customers.length} via ${prevWindowDays}d-ago snapshot`,
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[compose] trajectory backfill failed:", msg);
+    errors.push(`trajectory backfill: ${msg}`);
+  }
+
   memSnap("compose before write");
   if (pgConfigured()) {
     try {
@@ -656,7 +703,11 @@ export async function runStageBAndStore(snapshotDate?: string): Promise<{
   rowCount: number;
 }> {
   const date = snapshotDate ?? todaySnapshotDate();
-  const { data, durationMs, errors } = await runStageB();
+  // Re-use Stage A's `todayMs` if available so all windows in this snapshot
+  // anchor to the same moment, even if Stage B runs hours later.
+  const stageA = await readPipelineStage<StageAData>("A", date);
+  const anchorToday = stageA?.data?.todayMs ?? todayMs();
+  const { data, durationMs, errors } = await runStageB(anchorToday);
   await writePipelineStage("B", date, data, {
     durationMs,
     errors,
@@ -671,7 +722,9 @@ export async function runStageCAndStore(snapshotDate?: string): Promise<{
   rowCount: number;
 }> {
   const date = snapshotDate ?? todaySnapshotDate();
-  const { data, durationMs, errors } = await runStageC();
+  const stageA = await readPipelineStage<StageAData>("A", date);
+  const anchorToday = stageA?.data?.todayMs ?? todayMs();
+  const { data, durationMs, errors } = await runStageC(anchorToday);
   await writePipelineStage("C", date, data, {
     durationMs,
     errors,

@@ -266,7 +266,7 @@ export async function readCustomerTrend(
       composite: Number(row.data?.signals_v2?.composite ?? 0),
       stoplight: (row.data?.signals_v2?.stoplight || "GREEN") as Stoplight,
       am_name: row.data?.am_name || "",
-      bizname: row.data?.bizname || "",
+      bizname: row.data?.bizname || row.data?.company || "",
     };
   });
 }
@@ -402,7 +402,7 @@ export async function readStoplightMovement(days: number = 7): Promise<Stoplight
     if (!prevSl || !curSl || prevSl === curSl) continue;
     const row: StoplightMovementRow = {
       entity_id: c.entity_id,
-      bizname: c.bizname || "",
+      bizname: (c.bizname || c.company || "") as string,
       am_name: c.am_name || "",
       pod: c.pod || undefined,
       from: prevSl,
