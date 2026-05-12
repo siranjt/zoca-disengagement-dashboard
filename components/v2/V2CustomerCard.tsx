@@ -2,9 +2,13 @@
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight, EngagementTier } from "@/lib/config";
+import V2Sparkline from "./V2Sparkline";
+
+type CompositeTrendPoint = { date: string; composite: number };
 
 type Props = {
   customer: ScoredCustomerV2;
+  trend?: CompositeTrendPoint[];
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -20,9 +24,9 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
   Dormant: "text-red-300",
 };
 
-export default function V2CustomerCard({ customer }: Props) {
+export default function V2CustomerCard({ customer, trend }: Props) {
   const { signals_v2: s, metrics } = customer;
-  const trend = computeTrend(s.trajectory_7d);
+  const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
   const podText = customer.pod ? ` · ${customer.pod}` : "";
 
@@ -42,12 +46,33 @@ export default function V2CustomerCard({ customer }: Props) {
             <h3 className="text-[15px] font-semibold text-zoca-text-primary md:text-base">
               {customer.company || customer.entity_id.slice(0, 8)}
             </h3>
-            {trend.label && (
+            {trajectoryBadge.label && (
               <span
-                className={`rounded-zoca-sm px-1.5 py-0.5 text-[10px] font-semibold ${trend.className}`}
-                title={trend.title}
+                className={`rounded-zoca-sm px-1.5 py-0.5 text-[10px] font-semibold ${trajectoryBadge.className}`}
+                title={trajectoryBadge.title}
               >
-                {trend.label}
+                {trajectoryBadge.label}
+              </span>
+            )}
+            {trend && trend.length > 1 && (
+              <span
+                className="text-zoca-text-soft"
+                title={`Composite score over last ${trend.length} days, latest ${s.composite}`}
+              >
+                <V2Sparkline
+                  values={trend.map((p) => p.composite)}
+                  width={56}
+                  height={16}
+                  color={
+                    s.stoplight === "RED"
+                      ? "rgb(251 113 133)"
+                      : s.stoplight === "YELLOW"
+                        ? "rgb(252 211 77)"
+                        : "rgb(110 231 183)"
+                  }
+                  gradient
+                  label="Composite score trend"
+                />
               </span>
             )}
           </div>

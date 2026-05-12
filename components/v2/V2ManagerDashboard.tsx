@@ -37,6 +37,14 @@ type AmTrendPoint = {
   mrr_at_risk: number;
 };
 
+type PodTrendPoint = {
+  date: string;
+  red: number;
+  yellow: number;
+  green: number;
+  total: number;
+};
+
 type SnapshotState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -165,6 +173,7 @@ export default function V2ManagerDashboard() {
   const [mounted, setMounted] = useState(false);
   const [tierTrend, setTierTrend] = useState<TierTrendRow[]>([]);
   const [amTrends, setAmTrends] = useState<Record<string, AmTrendPoint[]>>({});
+  const [podTrends, setPodTrends] = useState<Record<string, PodTrendPoint[]>>({});
 
   // Hydrate: URL params override localStorage
   useEffect(() => {
@@ -254,6 +263,24 @@ export default function V2ManagerDashboard() {
         if (!res.ok) return;
         const json = (await res.json()) as { rows: TierTrendRow[] };
         setTierTrend(json.rows || []);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  // Fetch 14-day per-pod trend for pod-card sparklines
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/v2/trends/pods?days=14", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data: { pod: string; points: PodTrendPoint[] }[];
+        };
+        const map: Record<string, PodTrendPoint[]> = {};
+        for (const b of json.data || []) map[b.pod] = b.points;
+        setPodTrends(map);
       } catch {
         /* ignore */
       }
@@ -878,6 +905,7 @@ export default function V2ManagerDashboard() {
                 comparison={compareSnapshot}
                 selectedPod={selectedPod}
                 onSelectPod={setSelectedPod}
+                trends={podTrends}
               />
             </div>
 

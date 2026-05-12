@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
+import V2Sparkline from "./V2Sparkline";
 import { POD_MAP } from "@/lib/config";
 
 const POD_ORDER = ["Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
@@ -62,11 +63,20 @@ function classifyTopSignal(customers: ScoredCustomerV2[]): string | null {
   return label[ranked[0][0]];
 }
 
+type PodTrendPoint = {
+  date: string;
+  red: number;
+  yellow: number;
+  green: number;
+  total: number;
+};
+
 type Props = {
   snapshot: SnapshotV2;
   comparison?: SnapshotV2 | null;
   selectedPod: string;
   onSelectPod: (pod: string) => void;
+  trends?: Record<string, PodTrendPoint[]>; // pod name -> daily series
 };
 
 export default function V2PodSummaryGrid({
@@ -74,6 +84,7 @@ export default function V2PodSummaryGrid({
   comparison,
   selectedPod,
   onSelectPod,
+  trends,
 }: Props) {
   const summaries = useMemo<PodSummary[]>(() => {
     // Comparison RED counts by pod
@@ -203,6 +214,18 @@ export default function V2PodSummaryGrid({
                 {y > 0 && <div className="bg-amber-400" style={{ width: `${y}%` }} />}
                 {g > 0 && <div className="bg-emerald-400" style={{ width: `${g}%` }} />}
               </div>
+              {trends && trends[s.pod] && trends[s.pod].length > 1 && (
+                <div className="mt-2 text-rose-300 print:hidden" title={`RED-count trend for ${s.pod} over the last ${trends[s.pod].length} days`}>
+                  <V2Sparkline
+                    values={trends[s.pod].map((pt) => pt.red)}
+                    width={120}
+                    height={18}
+                    color="rgb(251 113 133)"
+                    gradient
+                    label={`${s.pod} RED trend`}
+                  />
+                </div>
+              )}
 
               <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
                 <div className="text-zoca-text-soft">RED</div>

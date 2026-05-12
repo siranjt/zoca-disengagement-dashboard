@@ -507,6 +507,149 @@ export async function readMultipleAmBookTrends(
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3 deep polish — pod trend + batch customer trend
+// Append to lib/postgres.ts just before the "Connection health check" section.
+// Re-exports the AmBookTrendPoint type already defined above.
+// ---------------------------------------------------------------------------
+
+export type CustomerTrendPointLite = {
+  date: string;
+  composite: number;
+  stoplight: Stoplight;
+};
+
+export type CustomerTrendBundle = {
+  entity_id: string;
+  points: CustomerTrendPointLite[];
+};
+
+/**
+ * Batch per-customer composite-score trend in a single SQL pass.
+ * Used by V2CustomerCard to show a tiny sparkline per visible card.
+ */
+export async function readMultipleCustomerTrends(
+  entityIds: string[],
+  days: number = 14,
+): Promise<CustomerTrendBundle[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  if (!entityIds.length) return [];
+
+  const rows = await sql`
+    SELECT
+      cust.value->>'entity_id' AS entity_id,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COALESCE((cust.value->'signals_v2'->>'composite')::numeric, 0)::int AS composite,
+      COALESCE(cust.value->'signals_v2'->>'stoplight', 'GREEN') AS stoplight
+    FROM dashboard_snapshots,
+    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+      AND cust.value->>'entity_id' = ANY(${entityIds}::text[])
+    ORDER BY cust.value->>'entity_id' ASC, snapshot_date ASC
+  `;
+
+  const byEntity = new Map<string, CustomerTrendPointLite[]>();
+  for (const r of rows) {
+    const row = r as {
+      entity_id: string;
+      date: string;
+      composite: number;
+      stoplight: string;
+    };
+    if (!byEntity.has(row.entity_id)) byEntity.set(row.entity_id, []);
+    byEntity.get(row.entity_id)!.push({
+      date: row.date,
+      composite: row.composite,
+      stoplight: (row.stoplight as Stoplight) || "GREEN",
+    });
+  }
+  return entityIds.map((eid) => ({
+    entity_id: eid,
+    points: byEntity.get(eid) || [],
+  }));
+}
+
+export type PodTrendPoint = {
+  date: string;
+  red: number;
+  yellow: number;
+  green: number;
+  total: number;
+};
+
+export type PodTrendBundle = {
+  pod: string;
+  points: PodTrendPoint[];
+};
+
+/**
+ * Per-pod book trend. Groups by am_name in SQL then aggregates to pod in JS
+ * (so we can use the canonical POD_MAP in code rather than re-encoding it
+ * as a SQL CASE statement).
+ */
+export async function readPodTrend(
+  amToPod: Record<string, string>,
+  days: number = 14,
+): Promise<PodTrendBundle[]> {
+  const sql = getSql();
+  if (!sql) return [];
+
+  const rows = await sql`
+    SELECT
+      cust.value->>'am_name' AS am_name,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
+      COUNT(*)::int AS total
+    FROM dashboard_snapshots,
+    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    GROUP BY snapshot_date, cust.value->>'am_name'
+    ORDER BY date ASC
+  `;
+
+  // Aggregate per pod per date in JS
+  const byPodDate = new Map<string, Map<string, PodTrendPoint>>();
+  for (const r of rows) {
+    const row = r as {
+      am_name: string;
+      date: string;
+      red: number;
+      yellow: number;
+      green: number;
+      total: number;
+    };
+    const pod = amToPod[row.am_name] || "Floating";
+    if (!byPodDate.has(pod)) byPodDate.set(pod, new Map());
+    const dateMap = byPodDate.get(pod)!;
+    const prev = dateMap.get(row.date) || {
+      date: row.date,
+      red: 0,
+      yellow: 0,
+      green: 0,
+      total: 0,
+    };
+    dateMap.set(row.date, {
+      date: row.date,
+      red: prev.red + row.red,
+      yellow: prev.yellow + row.yellow,
+      green: prev.green + row.green,
+      total: prev.total + row.total,
+    });
+  }
+  const result: PodTrendBundle[] = [];
+  for (const [pod, dateMap] of byPodDate) {
+    result.push({
+      pod,
+      points: Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+    });
+  }
+  // Sort pods stably
+  return result.sort((a, b) => a.pod.localeCompare(b.pod));
+}
+
+// ---------------------------------------------------------------------------
 // Connection health check
 // ---------------------------------------------------------------------------
 

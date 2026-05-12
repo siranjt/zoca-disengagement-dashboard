@@ -108,10 +108,22 @@ function MovementGroup({
         </p>
       ) : (
         <ul className="divide-y divide-zoca-border text-[12px]">
-          {visible.map((r) => {
+          {visible.map((r, idx) => {
             const pod = r.pod || POD_MAP[r.am_name] || "Floating";
+            const isTop = idx === 0;
             return (
-              <li key={r.entity_id} className="flex items-center gap-2 py-1.5">
+              <li
+                key={r.entity_id}
+                className={`flex items-center gap-2 py-1.5 ${isTop ? "rounded bg-zoca-bg-3/30 px-2 -mx-2" : ""}`}
+              >
+                {isTop && (
+                  <span
+                    className="rounded-zoca-pill bg-zoca-pink-cta/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zoca-pink-cta"
+                    title="Highest-impact row in this bucket"
+                  >
+                    #1
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => onJumpToAm && onJumpToAm(r.am_name)}

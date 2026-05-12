@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import V2CustomerCard from "./V2CustomerCard";
+import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
+
+type CustomerTrendPoint = { date: string; composite: number };
 
 type Props = {
   amName: string;
@@ -20,6 +23,37 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
+  const [customerTrends, setCustomerTrends] = useState<Record<string, CustomerTrendPoint[]>>({});
+
+  useEffect(() => {
+    if (customers.length === 0) {
+      setCustomerTrends({});
+      return;
+    }
+    let cancelled = false;
+    const ids = customers.map((c) => c.entity_id).slice(0, 200);
+    (async () => {
+      try {
+        const params = new URLSearchParams({ days: "14", ids: ids.join(",") });
+        const res = await fetch(`/api/v2/trends/customers?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data: { entity_id: string; points: CustomerTrendPoint[] }[];
+        };
+        if (cancelled) return;
+        const map: Record<string, CustomerTrendPoint[]> = {};
+        for (const b of json.data || []) map[b.entity_id] = b.points;
+        setCustomerTrends(map);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customers]);
 
   // ---------------------------------------------------------------------------
   // Bucketing logic
@@ -103,6 +137,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
 
   return (
     <section className="mt-2">
+      {/* Book trend strip — last 14 days */}
+      {amName && <V2AMBookTrendStrip amName={amName} days={14} />}
       {/* Hero */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         {heroLabelRich !== null ? (
@@ -183,7 +219,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((c) => (
-            <V2CustomerCard key={c.entity_id} customer={c} />
+            <V2CustomerCard key={c.entity_id} customer={c} trend={customerTrends[c.entity_id]} />
           ))}
         </div>
       )}

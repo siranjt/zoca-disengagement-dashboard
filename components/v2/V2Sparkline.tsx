@@ -1,18 +1,21 @@
 "use client";
 
+import { useId } from "react";
+
 type Props = {
   values: number[];
   width?: number;
   height?: number;
-  color?: string; // CSS color or "currentColor"
+  color?: string;
   fillColor?: string;
+  /** Render a vertical gradient from color (top) to transparent (bottom) below the line */
+  gradient?: boolean;
   label?: string;
   min?: number;
   max?: number;
   showLastPoint?: boolean;
-  showLastValue?: boolean; // Render last value as a text badge to the right
+  showLastValue?: boolean;
   formatLastValue?: (n: number) => string;
-  // Optional reference line drawn at a given Y-value (e.g. average)
   referenceValue?: number | null;
   referenceColor?: string;
   className?: string;
@@ -24,6 +27,7 @@ export default function V2Sparkline({
   height = 24,
   color = "currentColor",
   fillColor,
+  gradient = false,
   label,
   min,
   max,
@@ -34,6 +38,8 @@ export default function V2Sparkline({
   referenceColor = "rgba(255,255,255,0.18)",
   className,
 }: Props) {
+  const gradId = useId();
+
   if (!values.length) {
     return (
       <span
@@ -60,7 +66,11 @@ export default function V2Sparkline({
     .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
     .join(" ");
 
-  const fillPath = fillColor
+  const effectiveFill = gradient
+    ? `url(#${gradId})`
+    : fillColor || null;
+
+  const fillPath = effectiveFill
     ? `M0,${height} ${pts.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} L${pts[pts.length - 1].x.toFixed(1)},${height} Z`
     : null;
 
@@ -74,9 +84,7 @@ export default function V2Sparkline({
   const lastVal = values[values.length - 1];
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 ${className || ""}`}
-    >
+    <span className={`inline-flex items-center gap-1 ${className || ""}`}>
       <svg
         width={width}
         height={height}
@@ -87,7 +95,15 @@ export default function V2Sparkline({
           `Sparkline of ${values.length} values, last value ${lastVal}`
         }
       >
-        {fillPath && <path d={fillPath} fill={fillColor} />}
+        {gradient && (
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+        )}
+        {fillPath && <path d={fillPath} fill={effectiveFill || "transparent"} />}
         {refY !== null && (
           <line
             x1={0}
