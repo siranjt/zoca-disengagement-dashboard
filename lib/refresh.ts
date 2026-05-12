@@ -52,17 +52,21 @@ export async function buildSnapshotV2(): Promise<SnapshotV2> {
   const todayIso = new Date(today).toISOString();
 
   // -------------------------------------------------------------------------
-  // Pull all sources in parallel
+  // Pull sources in 3 staged groups instead of one big Promise.all.
+  // Memory peaks during parallel CSV parsing — staging keeps peak below cap.
+  // Memory checkpoints logged after each stage for diagnostics.
   // -------------------------------------------------------------------------
-  const [
-    cbResult,
-    invoicesResult,
-    transactionsResult,
-    baseSheetResult,
-    commsResult,
-    usageResult,
-    perfResult,
-  ] = await Promise.all([
+  const memSnap = (label: string) => {
+    const m = process.memoryUsage();
+    const mb = (n: number) => Math.round(n / 1024 / 1024);
+    console.log(
+      `[mem ${label}] rss=${mb(m.rss)}MB heapUsed=${mb(m.heapUsed)}MB heapTotal=${mb(m.heapTotal)}MB external=${mb(m.external)}MB`,
+    );
+  };
+  memSnap("start");
+
+  // Stage 1: lightweight Chargebee + BaseSheet (small payloads)
+  const [cbResult, invoicesResult, transactionsResult, baseSheetResult] = await Promise.all([
     fetchAllLiveSubsWithEntityMap().catch((e: Error) => {
       errors.push(`Chargebee subs: ${e.message}`);
       return { subs: [] as ChargebeeSub[], customerToEntities: new Map<string, string[]>() };
@@ -85,18 +89,11 @@ export async function buildSnapshotV2(): Promise<SnapshotV2> {
         byBizName: {} as Record<string, BaseSheetRow>,
       };
     }),
-    fetchAllComms(today).catch((e: Error) => {
-      errors.push(`Comms: ${e.message}`);
-      return {
-        events: [] as CommsEvent[],
-        stats: {
-          rawRows: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
-          eventsKept: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
-          eventsDeduped: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
-          totalDuplicatesRemoved: 0,
-        },
-      };
-    }),
+  ]);
+  memSnap("after stage1 (chargebee+basesheet)");
+
+  // Stage 2: medium fetches (usage + performance)
+  const [usageResult, perfResult] = await Promise.all([
     fetchUsageMetrics(today).catch((e: Error) => {
       errors.push(`Mixpanel: ${e.message}`);
       return { metrics: new Map<string, UsageMetrics>(), rowCount: 0 };
@@ -109,6 +106,22 @@ export async function buildSnapshotV2(): Promise<SnapshotV2> {
       };
     }),
   ]);
+  memSnap("after stage2 (usage+perf)");
+
+  // Stage 3: comms (heaviest — 1.6M+ raw events). Run alone so prior intermediate strings can be GC'd.
+  const commsResult = await fetchAllComms(today).catch((e: Error) => {
+    errors.push(`Comms: ${e.message}`);
+    return {
+      events: [] as CommsEvent[],
+      stats: {
+        rawRows: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+        eventsKept: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+        eventsDeduped: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+        totalDuplicatesRemoved: 0,
+      },
+    };
+  });
+  memSnap("after stage3 (comms)");
 
   const { subs, customerToEntities } = cbResult;
   const baseSheet = baseSheetResult;
@@ -418,6 +431,7 @@ export async function buildSnapshotV2(): Promise<SnapshotV2> {
     if (snapshot.tierCounts[t] == null) snapshot.tierCounts[t] = 0;
   }
 
+  memSnap("before postgres write");
   // Write to Postgres if configured
   if (pgConfigured()) {
     try {
@@ -429,6 +443,7 @@ export async function buildSnapshotV2(): Promise<SnapshotV2> {
     }
   }
 
+  memSnap("end");
   console.log(
     "[buildSnapshotV2] active:", scored.length,
     "tiers:", tierCounts,
