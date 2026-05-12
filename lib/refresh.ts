@@ -420,6 +420,7 @@ export async function composeSnapshot(
       commsSignals: v1Signals,
       usageScore,
       billingScore,
+      billing,
       performance: perf,
       tickets,
       commsMetrics: cMetrics,

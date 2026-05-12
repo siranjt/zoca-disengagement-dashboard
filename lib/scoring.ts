@@ -215,6 +215,7 @@ export function composeHybridSignals(args: {
   commsSignals: CustomerSignals;
   usageScore: number;
   billingScore: number;
+  billing?: BillingMetrics | null;
   performance: PerformanceMetrics | null;
   tickets: TicketsMetrics | null;
   commsMetrics: CustomerMetrics;
@@ -258,6 +259,7 @@ export function composeHybridSignals(args: {
     commsSignals,
     usageScore,
     billingScore,
+    billing: args.billing ?? null,
     performance,
     tickets,
     commsMetrics,
@@ -293,6 +295,7 @@ type NarrativeArgs = {
   commsSignals: CustomerSignals;
   usageScore: number;
   billingScore: number;
+  billing: BillingMetrics | null;
   performance: PerformanceMetrics | null;
   tickets: TicketsMetrics | null;
   commsMetrics: CustomerMetrics;
@@ -305,74 +308,174 @@ function buildNarrative(a: NarrativeArgs): {
   notes: string[];
 } {
   const notes: string[] = [];
-  // Find dominant signal
-  const subs = [
-    { name: "billing", score: a.billingScore },
-    { name: "usage", score: a.usageScore },
-    { name: "weSilent", score: a.commsSignals.sig_we_silent },
-    { name: "clientSilent", score: a.commsSignals.sig_client_silent },
-    { name: "responseDrop", score: a.commsSignals.sig_response_drop },
-    { name: "volumeCollapse", score: a.commsSignals.sig_volume_collapse },
-  ].sort((x, y) => y.score - x.score);
-  const dominant = subs[0];
 
-  // Edge cases first
-  if (!a.mixpanelHasData) {
+  // ---- Special cases ----------------------------------------------------
+  // Both no-app-activity AND no-comms = strongest possible churn signal.
+  if (!a.mixpanelHasData && a.commsMetrics.total_90d === 0) {
     return {
-      reasonOneLine: "No Zoca app activity tracked in the last 90 days.",
-      suggestedAction: "Verify they're set up on the app — onboard if needed.",
-      notes: ["Missing Mixpanel data — likely a setup gap or churned user."],
+      reasonOneLine: "No app activity AND zero communication for 90 days.",
+      suggestedAction: "Cold-reach today — call and email. Possible churn.",
+      notes: ["Zero on every dimension."],
     };
   }
   if (a.commsMetrics.total_90d === 0) {
     return {
       reasonOneLine: "Zero communication across all channels for 90 days.",
       suggestedAction: "Cold-reach: email + phone today.",
-      notes: ["Zero comms in 90d → auto-promoted to red."],
-    };
-  }
-
-  // Template-driven by dominant signal — interpolate real data so each card reads differently.
-  if (dominant.name === "billing" && a.billingScore >= 40) {
-    return narrateBilling(a);
-  }
-  if (dominant.name === "usage" && a.usageScore >= 50) {
-    return narrateUsage(a);
-  }
-  if (dominant.name === "weSilent" && a.commsSignals.sig_we_silent >= 70) {
-    return narrateWeSilent(a);
-  }
-  if (dominant.name === "clientSilent" && a.commsSignals.sig_client_silent >= 70) {
-    return narrateClientSilent(a);
-  }
-  if (dominant.name === "responseDrop" && a.commsSignals.sig_response_drop >= 70) {
-    return narrateResponseDrop(a);
-  }
-  if (dominant.name === "volumeCollapse" && a.commsSignals.sig_volume_collapse >= 60) {
-    return narrateVolumeCollapse(a);
-  }
-  // Performance / tickets fallbacks
-  if (a.performance && a.performance.flag) {
-    return {
-      reasonOneLine: a.performance.flag_reasons.join("; "),
-      suggestedAction: "Walk through GBP optimizer / discuss recovery plan.",
-      notes,
-    };
-  }
-  if (a.tickets && a.tickets.flag) {
-    return {
-      reasonOneLine: `Open tickets unresolved (${a.tickets.open_tickets_30d}).`,
-      suggestedAction: "Resolve tickets first, then send a recap.",
       notes,
     };
   }
 
-  // Doing fine
+  // ---- Identify strong signals -----------------------------------------
+  // Same thresholds as the per-signal narrators above. "noUsageData" is
+  // a synthetic strong signal for entities with no Mixpanel coverage.
+  const strong: string[] = [];
+  if (!a.mixpanelHasData) strong.push("noUsageData");
+  else if (a.usageScore >= 65) strong.push("usage");
+  if (a.billingScore >= 40) strong.push("billing");
+  if (a.commsSignals.sig_we_silent >= 70) strong.push("weSilent");
+  if (a.commsSignals.sig_client_silent >= 70) strong.push("clientSilent");
+  if (a.commsSignals.sig_response_drop >= 70) strong.push("responseDrop");
+  if (a.commsSignals.sig_volume_collapse >= 60) strong.push("volumeCollapse");
+
+  // ---- 0 strong signals ------------------------------------------------
+  if (strong.length === 0) {
+    // Performance / tickets flags as low-priority fallback narration
+    if (a.performance && a.performance.flag) {
+      return {
+        reasonOneLine: a.performance.flag_reasons.join("; "),
+        suggestedAction: "Walk through GBP optimizer / discuss recovery plan.",
+        notes,
+      };
+    }
+    if (a.tickets && a.tickets.flag) {
+      return {
+        reasonOneLine: `Open tickets unresolved (${a.tickets.open_tickets_30d}).`,
+        suggestedAction: "Resolve tickets first, then send a recap.",
+        notes,
+      };
+    }
+    return {
+      reasonOneLine: "Active across signals — no action needed.",
+      suggestedAction: "No action needed.",
+      notes,
+    };
+  }
+
+  // ---- 1 strong signal — route to specific narrator -------------------
+  if (strong.length === 1) {
+    return narrateSingle(strong[0], a);
+  }
+
+  // ---- 2+ strong signals — combined narrative -------------------------
+  return narrateMultiple(strong, a);
+}
+
+/** Route a single strong signal to its dedicated narrator. */
+function narrateSingle(signal: string, a: NarrativeArgs) {
+  switch (signal) {
+    case "noUsageData":
+      return {
+        reasonOneLine: "No Zoca app activity tracked in the last 90 days.",
+        suggestedAction: "Verify they're set up on the app — onboard if needed.",
+        notes: ["Missing Mixpanel data — likely a setup gap or churned user."],
+      };
+    case "billing": return narrateBilling(a);
+    case "usage": return narrateUsage(a);
+    case "weSilent": return narrateWeSilent(a);
+    case "clientSilent": return narrateClientSilent(a);
+    case "responseDrop": return narrateResponseDrop(a);
+    case "volumeCollapse": return narrateVolumeCollapse(a);
+  }
   return {
-    reasonOneLine: "Active across signals — no action needed.",
-    suggestedAction: "No action needed.",
-    notes,
+    reasonOneLine: "Multiple signals firing.",
+    suggestedAction: "Review the customer profile.",
+    notes: [],
   };
+}
+
+/**
+ * Build a multi-signal reason that lists each firing signal concisely.
+ * Suggested action prioritizes the most operationally urgent (billing >
+ * usage > comms).
+ */
+function narrateMultiple(strong: string[], a: NarrativeArgs) {
+  const phrases: string[] = [];
+  for (const sig of strong) {
+    const phrase = signalPhrase(sig, a);
+    if (phrase) phrases.push(phrase);
+  }
+  if (phrases.length === 0) {
+    return {
+      reasonOneLine: "Multiple signals firing.",
+      suggestedAction: "Review the customer profile.",
+      notes: [],
+    };
+  }
+  // Capitalize first letter of first phrase.
+  phrases[0] = phrases[0][0].toUpperCase() + phrases[0].slice(1);
+  const reasonOneLine = phrases.join(" + ") + ".";
+
+  // Pick the suggested action by priority order
+  const action = pickMultiAction(strong, a);
+  return {
+    reasonOneLine,
+    suggestedAction: action,
+    notes: [`${phrases.length} signals stacked.`],
+  };
+}
+
+/** Short phrase per signal — used inside the multi-signal narrative. */
+function signalPhrase(signal: string, a: NarrativeArgs): string {
+  switch (signal) {
+    case "noUsageData":
+      return "no app activity";
+    case "usage":
+      return a.usageScore >= 90 ? "app usage Dormant" : "app usage Cold";
+    case "billing": {
+      const n = a.billing?.unpaid_invoice_count ?? 0;
+      return n > 0
+        ? `${n} unpaid invoice${n === 1 ? "" : "s"}`
+        : "billing issues";
+    }
+    case "weSilent": {
+      const d = a.commsMetrics.days_since_out;
+      return d >= 9999 ? "we never reached out" : `silent from us ${d}d`;
+    }
+    case "clientSilent": {
+      const d = a.commsMetrics.days_since_in;
+      return d >= 9999 ? "client never replied" : `client silent ${d}d`;
+    }
+    case "responseDrop":
+      return "response rate collapsed";
+    case "volumeCollapse":
+      return "comms volume crashed";
+  }
+  return "";
+}
+
+/** Pick the most operationally relevant action when multiple signals fire. */
+function pickMultiAction(strong: string[], _a: NarrativeArgs): string {
+  // Priority order: billing > onboarding > comms re-engagement
+  if (strong.includes("billing")) {
+    return "Call about the unpaid invoice first. Loop back on the other issues after.";
+  }
+  if (strong.includes("noUsageData")) {
+    return "Verify they're set up on the app + re-open conversation.";
+  }
+  if (strong.includes("usage")) {
+    return "Walk through a key feature + re-engage on comms.";
+  }
+  if (strong.includes("clientSilent") && strong.includes("weSilent")) {
+    return "Both sides silent — cold-reach via phone today.";
+  }
+  if (strong.includes("clientSilent")) {
+    return "Re-open the conversation. Ask how they are doing.";
+  }
+  if (strong.includes("weSilent")) {
+    return "Send a check-in — email or quick call.";
+  }
+  return "Reach out and re-engage.";
 }
 
 
