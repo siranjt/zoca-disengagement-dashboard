@@ -7,6 +7,7 @@ import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import V2TopBar from "./V2TopBar";
 import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
+import V2Rollup from "./V2Rollup";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -148,10 +149,24 @@ export default function V2Dashboard() {
           />
         )}
         {snapshot.status === "ready" && view === "pod" && (
-          <V2PodPlaceholder pod={selectedPod} />
+          <V2Rollup
+            snapshot={snapshot.snapshot}
+            initialPod={selectedPod || "All"}
+            onJumpToAm={(am) => {
+              handleSelectAm(am);
+              setView("am");
+            }}
+          />
         )}
         {snapshot.status === "ready" && view === "leadership" && (
-          <V2LeadershipPlaceholder snapshot={snapshot.snapshot} />
+          <V2Rollup
+            snapshot={snapshot.snapshot}
+            initialPod="All"
+            onJumpToAm={(am) => {
+              handleSelectAm(am);
+              setView("am");
+            }}
+          />
         )}
       </main>
 
@@ -225,26 +240,3 @@ function V2SelectAmPrompt() {
   );
 }
 
-function V2PodPlaceholder({ pod }: { pod: string }) {
-  return (
-    <div className="mt-12 rounded-zoca border border-dashed border-zoca-border-2 px-6 py-12 text-center">
-      <h2 className="font-display text-xl font-bold">{pod || "Pod"} view</h2>
-      <p className="mt-3 text-sm text-zoca-text-muted">
-        Tier distribution across pod AMs, weekly tier-movers, pod-level signal heatmap.
-      </p>
-      <p className="mt-4 text-xs text-zoca-text-soft">Phase 2.D — building soon.</p>
-    </div>
-  );
-}
-
-function V2LeadershipPlaceholder({ snapshot }: { snapshot: SnapshotV2 }) {
-  return (
-    <div className="mt-12 rounded-zoca border border-dashed border-zoca-border-2 px-6 py-12 text-center">
-      <h2 className="font-display text-xl font-bold">Leadership view</h2>
-      <p className="mt-3 text-sm text-zoca-text-muted">
-        All {snapshot.totalActive} active customers · MRR-weighted · 90-day trend.
-      </p>
-      <p className="mt-4 text-xs text-zoca-text-soft">Phase 2.D — building soon.</p>
-    </div>
-  );
-}
