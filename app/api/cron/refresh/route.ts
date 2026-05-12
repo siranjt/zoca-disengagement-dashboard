@@ -8,7 +8,7 @@ import { writeSnapshot } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // requires Vercel Pro; Hobby caps to 10s
+export const maxDuration = 90; // requires Vercel Pro; Hobby caps to 10s
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
