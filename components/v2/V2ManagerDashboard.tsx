@@ -174,6 +174,7 @@ export default function V2ManagerDashboard() {
   const [tierTrend, setTierTrend] = useState<TierTrendRow[]>([]);
   const [amTrends, setAmTrends] = useState<Record<string, AmTrendPoint[]>>({});
   const [podTrends, setPodTrends] = useState<Record<string, PodTrendPoint[]>>({});
+  const [moverMode, setMoverMode] = useState<"red" | "trajectory">("red");
 
   // Hydrate: URL params override localStorage
   useEffect(() => {
@@ -362,6 +363,7 @@ export default function V2ManagerDashboard() {
     let mrrAtRisk = 0;
     const actionAmsSet = new Set<string>();
     const podSet = new Set<string>();
+    let flagged = 0;
     for (const c of snapshot.snapshot.customers) {
       total += 1;
       const sl = c.signals_v2.stoplight;
@@ -375,6 +377,7 @@ export default function V2ManagerDashboard() {
       }
       const pod = POD_MAP[c.am_name] || "Floating";
       podSet.add(pod);
+      if (c.performance?.flag) flagged += 1;
     }
     return {
       total,
@@ -386,6 +389,7 @@ export default function V2ManagerDashboard() {
       pctRed: total ? (RED / total) * 100 : 0,
       amsWithAction: actionAmsSet.size,
       podsRepresented: podSet.size,
+      flagged,
     };
   }, [snapshot]);
 
@@ -434,11 +438,13 @@ export default function V2ManagerDashboard() {
     const rows = Array.from(byAm.entries()).map(([am, customers]) => {
       let red = 0;
       let mrrAtRisk = 0;
+      let flagged = 0;
       for (const c of customers) {
         if (c.signals_v2.stoplight === "RED") {
           red += 1;
           mrrAtRisk += c.plan_amount || 0;
         }
+        if (c.performance?.flag) flagged += 1;
       }
       const redPrev = compareRedByAm.get(am);
       return {
@@ -446,11 +452,21 @@ export default function V2ManagerDashboard() {
         pod: POD_MAP[am] || "Floating",
         total: customers.length,
         red,
+        flagged,
         pctRed: customers.length ? (red / customers.length) * 100 : 0,
         mrrAtRisk,
         delta: redPrev !== undefined ? red - redPrev : null,
       };
     });
+    if (moverMode === "trajectory") {
+      return rows
+        .filter((r) => r.flagged > 0)
+        .sort((a, b) => {
+          if (b.flagged !== a.flagged) return b.flagged - a.flagged;
+          return b.mrrAtRisk - a.mrrAtRisk;
+        })
+        .slice(0, 5);
+    }
     return rows
       .filter((r) => r.red > 0)
       .sort((a, b) => {
@@ -458,7 +474,7 @@ export default function V2ManagerDashboard() {
         return b.mrrAtRisk - a.mrrAtRisk;
       })
       .slice(0, 5);
-  }, [snapshot, compareRedByAm]);
+  }, [snapshot, compareRedByAm, moverMode]);
 
   // Fetch per-AM 14-day trend for the top movers (single bundled request)
   useEffect(() => {
@@ -757,7 +773,7 @@ export default function V2ManagerDashboard() {
                   label="RED"
                   value={String(kpis.RED)}
                   tone="rose"
-                  sub={`${kpis.pctRed.toFixed(0)}% of book`}
+                  sub={`${kpis.pctRed.toFixed(0)}% of book${kpis.flagged > 0 ? ` \u00B7 ${kpis.flagged} \u26D1 flagged` : ""}`}
                   delta={compareKpis ? kpis.RED - compareKpis.RED : null}
                   deltaUnit="vs prev"
                   deltaSemantic="lowerIsBetter"
@@ -824,18 +840,47 @@ export default function V2ManagerDashboard() {
                 aria-label="Top AMs by action items today"
                 className="mb-7 rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30 p-4"
               >
-                <div className="mb-3 flex items-end justify-between gap-3">
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h3 className="font-display text-base font-bold text-zoca-text-primary">
                       Where to focus today
                     </h3>
                     <p className="mt-0.5 text-[11px] text-zoca-text-soft">
-                      Top {topMovers.length} AM{topMovers.length === 1 ? "" : "s"} by RED-stoplight
-                      count, MRR-at-risk tiebreaker.
+                      Top {topMovers.length} AM{topMovers.length === 1 ? "" : "s"} by{" "}
+                      {moverMode === "trajectory"
+                        ? "performance-flagged count"
+                        : "RED-stoplight count"}
+                      , MRR-at-risk tiebreaker.
                       {compareDays > 0 && compareSnapshot
                         ? ` Delta vs ${compareDays}d ago.`
                         : ""}
                     </p>
+                  </div>
+                  <div className="flex rounded-zoca border border-zoca-border bg-zoca-bg-1/60 p-0.5" role="tablist" aria-label="Top movers sort mode">
+                    <button
+                      onClick={() => setMoverMode("red")}
+                      role="tab"
+                      aria-selected={moverMode === "red"}
+                      className={`rounded-zoca-pill px-2.5 py-1 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                        moverMode === "red"
+                          ? "bg-zoca-bg-2/80 text-zoca-text-primary"
+                          : "text-zoca-text-soft hover:text-zoca-text-primary"
+                      }`}
+                    >
+                      By RED
+                    </button>
+                    <button
+                      onClick={() => setMoverMode("trajectory")}
+                      role="tab"
+                      aria-selected={moverMode === "trajectory"}
+                      className={`rounded-zoca-pill px-2.5 py-1 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                        moverMode === "trajectory"
+                          ? "bg-zoca-bg-2/80 text-zoca-text-primary"
+                          : "text-zoca-text-soft hover:text-zoca-text-primary"
+                      }`}
+                    >
+                      By trajectory {"\u26D1"}
+                    </button>
                   </div>
                 </div>
                 <ul className="divide-y divide-zoca-border">
@@ -859,12 +904,24 @@ export default function V2ManagerDashboard() {
                         />
                         {m.pod}
                       </span>
-                      <span className="ml-auto inline-flex items-center gap-1 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300 tabular-nums">
-                        {m.red} RED
-                        <span className="font-normal text-zoca-text-soft">
-                          ({m.pctRed.toFixed(0)}%)
+                      {moverMode === "trajectory" ? (
+                        <span
+                          className="ml-auto inline-flex items-center gap-1 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300 tabular-nums"
+                          title={`${m.flagged} of ${m.total} customers have performance trajectory flagged`}
+                        >
+                          {"\u26D1"} {m.flagged} flagged
+                          <span className="font-normal text-zoca-text-soft">
+                            ({((m.flagged / Math.max(m.total, 1)) * 100).toFixed(0)}%)
+                          </span>
                         </span>
-                      </span>
+                      ) : (
+                        <span className="ml-auto inline-flex items-center gap-1 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300 tabular-nums">
+                          {m.red} RED
+                          <span className="font-normal text-zoca-text-soft">
+                            ({m.pctRed.toFixed(0)}%)
+                          </span>
+                        </span>
+                      )}
                       {m.delta !== null && (
                         <DeltaBadge delta={m.delta} unit="RED" lowerIsBetter />
                       )}

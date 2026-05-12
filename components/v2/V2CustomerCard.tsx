@@ -32,8 +32,12 @@ export default function V2CustomerCard({ customer, trend }: Props) {
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
   const podText = customer.pod ? ` · ${customer.pod}` : "";
 
-  // Auto-expand for RED stoplight so action customers show "why" by default.
-  const [expanded, setExpanded] = useState<boolean>(s.stoplight === "RED");
+  // Auto-expand for RED stoplight OR YELLOW with performance flag so the
+  // "why" is visible without an extra click on cards that need attention.
+  const autoExpand =
+    s.stoplight === "RED" ||
+    (s.stoplight === "YELLOW" && !!customer.performance?.flag);
+  const [expanded, setExpanded] = useState<boolean>(autoExpand);
 
   return (
     <article
@@ -162,8 +166,11 @@ export default function V2CustomerCard({ customer, trend }: Props) {
           <span aria-hidden>{expanded ? "▾" : "▸"}</span>
           {expanded ? "Hide" : "Why?"}
           {customer.performance?.flag && !expanded && (
-            <span className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-rose-300">
-              ⚑ trajectory
+            <span
+              className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300"
+              title={(customer.performance.flag_reasons || []).join(" · ") || "Performance trajectory flagged"}
+            >
+              ⚑ {performanceChipSummary(customer.performance) || "trajectory"}
             </span>
           )}
         </button>
@@ -309,4 +316,20 @@ function daysSince(iso: string): number {
 
 function highlightReason(text: string): string {
   return text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
+}
+
+function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>): string | null {
+  if (!p.flag) return null;
+  const parts: string[] = [];
+  if (p.gbp_clicks_drop_pct !== null && p.gbp_clicks_drop_pct >= 25) {
+    parts.push(`GBP \u25BC${Math.round(p.gbp_clicks_drop_pct)}%`);
+  }
+  if (p.weeks_with_zero_reviews !== null && p.weeks_with_zero_reviews >= 4) {
+    parts.push(`${p.weeks_with_zero_reviews}wk zero`);
+  }
+  if (p.ytd_leads_change_pct !== null && p.ytd_leads_change_pct <= -20) {
+    parts.push(`YTD \u25BC${Math.abs(Math.round(p.ytd_leads_change_pct))}%`);
+  }
+  if (!parts.length) return null;
+  return parts.slice(0, 2).join(" \u00B7 ");
 }

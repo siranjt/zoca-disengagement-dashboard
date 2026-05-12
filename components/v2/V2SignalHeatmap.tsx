@@ -15,7 +15,7 @@ const POD_COLOR_DOT: Record<string, string> = {
   Floating: "bg-slate-400",
 };
 
-type SignalKey = "we" | "client" | "drop" | "vol" | "usage" | "billing";
+type SignalKey = "we" | "client" | "drop" | "vol" | "usage" | "billing" | "perf";
 
 const SIGNALS: { key: SignalKey; label: string; help: string }[] = [
   { key: "we", label: "We silent", help: "We haven't reached out (sig_we_silent ≥ 70)" },
@@ -24,6 +24,7 @@ const SIGNALS: { key: SignalKey; label: string; help: string }[] = [
   { key: "vol", label: "Vol collapse", help: "Conversation volume tanked vs baseline (sig_volume_collapse ≥ 70)" },
   { key: "usage", label: "Usage low", help: "Zoca app usage tanked or non-existent (sig_usage ≥ 70)" },
   { key: "billing", label: "Billing", help: "Stacked unpaid invoices (sig_billing ≥ 70)" },
+  { key: "perf", label: "Perf flag", help: "Performance trajectory flagged (GBP drop, zero-review weeks, or YTD lead decline)" },
 ];
 
 type Props = {
@@ -42,9 +43,10 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
       vol: 0,
       usage: 0,
       billing: 0,
+      perf: 0,
     };
     for (const pod of POD_ORDER) {
-      matrix[pod] = { we: 0, client: 0, drop: 0, vol: 0, usage: 0, billing: 0 };
+      matrix[pod] = { we: 0, client: 0, drop: 0, vol: 0, usage: 0, billing: 0, perf: 0 };
       totalsByPod[pod] = 0;
     }
     for (const c of snapshot.customers) {
@@ -75,6 +77,10 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
       if (s.sig_billing >= 70) {
         matrix[pod].billing += 1;
         totalsBySignal.billing += 1;
+      }
+      if (c.performance?.flag) {
+        matrix[pod].perf += 1;
+        totalsBySignal.perf += 1;
       }
     }
     let max = 0;

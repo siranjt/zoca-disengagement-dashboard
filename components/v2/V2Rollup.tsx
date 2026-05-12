@@ -22,6 +22,7 @@ type SortKey =
   | "pctRed"
   | "mrr"
   | "mrrAtRisk"
+  | "flagged"
   | "avg";
 type SortDir = "asc" | "desc";
 
@@ -38,6 +39,7 @@ type AmRow = {
   mrrAtRisk: number; // sum of plan_amount for RED customers
   avgComposite: number;
   topSignal: string;
+  flagged: number;          // performance.flag === true count
 };
 
 const POD_OPTIONS = ["All", "Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
@@ -98,6 +100,7 @@ function exportCsv(rows: AmRow[], filename: string) {
     "Avg_Composite",
     "MRR",
     "MRR_at_Risk",
+    "Trajectory_Flagged",
     "Top_Signal",
   ];
   const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
@@ -116,6 +119,7 @@ function exportCsv(rows: AmRow[], filename: string) {
         String(r.avgComposite),
         String(Math.round(r.mrr)),
         String(Math.round(r.mrrAtRisk)),
+        String(r.flagged),
         escape(r.topSignal),
       ].join(","),
     );
@@ -206,6 +210,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
       let mrr = 0;
       let mrrAtRisk = 0;
       let scoreSum = 0;
+      let flagged = 0;
       for (const c of list) {
         const sl = c.signals_v2.stoplight;
         counts[sl] += 1;
@@ -213,6 +218,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         mrr += plan;
         if (sl === "RED") mrrAtRisk += plan;
         scoreSum += c.signals_v2.composite || 0;
+        if (c.performance?.flag) flagged += 1;
       }
       result.push({
         am,
@@ -227,6 +233,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         mrrAtRisk,
         avgComposite: list.length ? Math.round(scoreSum / list.length) : 0,
         topSignal: classifyTopSignal(list),
+        flagged,
       });
     }
     return result;
@@ -291,6 +298,10 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         case "avg":
           av = a.avgComposite;
           bv = b.avgComposite;
+          break;
+        case "flagged":
+          av = a.flagged;
+          bv = b.flagged;
           break;
       }
       if (typeof av === "string" && typeof bv === "string") {
@@ -563,6 +574,15 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 align="right"
                 tooltip="Sum of plan_amount for RED-stoplight customers in this book."
               />
+              <Th
+                label={"\u26D1"}
+                col="flagged"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+                align="right"
+                tooltip="Customers with performance trajectory flag (GBP drop, zero-review weeks, or YTD lead decline)."
+              />
               <th
                 className="px-3 py-2 text-left font-semibold"
                 scope="col"
@@ -584,7 +604,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             {sorted.length === 0 && (
               <tr>
                 <td
-                  colSpan={13}
+                  colSpan={14}
                   className="px-4 py-10 text-center text-sm text-zoca-text-soft"
                 >
                   {search.trim()
@@ -664,6 +684,15 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 <td className="px-3 py-2.5 text-right tabular-nums text-rose-300">
                   {r.mrrAtRisk ? (
                     formatMoney(r.mrrAtRisk)
+                  ) : (
+                    <span className="text-zoca-text-soft">·</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums" title={r.flagged ? `${r.flagged} of ${r.total} flagged (${((r.flagged / Math.max(r.total, 1)) * 100).toFixed(0)}%)` : "No performance flags"}>
+                  {r.flagged > 0 ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-300">
+                      {"\u26D1"} {r.flagged}
+                    </span>
                   ) : (
                     <span className="text-zoca-text-soft">·</span>
                   )}

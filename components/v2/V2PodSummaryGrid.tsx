@@ -29,7 +29,8 @@ type PodSummary = {
   mrr: number;
   mrrAtRisk: number;
   topSignal: string | null;
-  redDelta: number | null; // null if no comparison
+  redDelta: number | null;
+  flagged: number;
 };
 
 function formatMoney(n: number): string {
@@ -116,12 +117,14 @@ export default function V2PodSummaryGrid({
       const counts: Record<Stoplight, number> = { RED: 0, YELLOW: 0, GREEN: 0 };
       let mrr = 0;
       let mrrAtRisk = 0;
+      let flagged = 0;
       for (const c of list) {
         const sl = c.signals_v2.stoplight;
         counts[sl] += 1;
         const plan = c.plan_amount || 0;
         mrr += plan;
         if (sl === "RED") mrrAtRisk += plan;
+        if (c.performance?.flag) flagged += 1;
       }
       const amMap = amsByPod.get(pod) || new Map();
       const ams = Array.from(amMap.keys()).sort();
@@ -143,6 +146,7 @@ export default function V2PodSummaryGrid({
         mrrAtRisk,
         topSignal: classifyTopSignal(list),
         redDelta: comparison && prevRed !== undefined ? counts.RED - prevRed : null,
+        flagged,
       };
     });
   }, [snapshot, comparison]);
@@ -239,6 +243,10 @@ export default function V2PodSummaryGrid({
                 <div className="text-zoca-text-soft">@ risk</div>
                 <div className="text-right text-rose-300 tabular-nums">
                   {formatMoney(s.mrrAtRisk)}
+                </div>
+                <div className="text-zoca-text-soft" title="Performance-flagged customers in this pod">{"\u26D1"} Flagged</div>
+                <div className="text-right tabular-nums" title={s.flagged ? `${s.flagged} of ${s.total} (${((s.flagged / Math.max(s.total, 1)) * 100).toFixed(0)}%)` : "None flagged"}>
+                  {s.flagged > 0 ? <span className="text-rose-300">{s.flagged}</span> : <span className="text-zoca-text-soft">·</span>}
                 </div>
               </div>
 
