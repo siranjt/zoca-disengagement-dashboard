@@ -19,6 +19,7 @@ const POD_COLOR_DOT: Record<string, string> = {
 type PodSummary = {
   pod: string;
   ams: string[];
+  topAms: { am: string; red: number }[];
   total: number;
   RED: number;
   YELLOW: number;
@@ -26,6 +27,7 @@ type PodSummary = {
   pctRed: number;
   mrr: number;
   mrrAtRisk: number;
+  topSignal: string | null;
 };
 
 function formatMoney(n: number): string {
@@ -33,6 +35,30 @@ function formatMoney(n: number): string {
   if (n >= 10_000) return `$${Math.round(n / 1_000)}K`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
   return n > 0 ? `$${Math.round(n).toLocaleString()}` : "$0";
+}
+
+function classifyTopSignal(customers: ScoredCustomerV2[]): string | null {
+  const tally = { we: 0, client: 0, drop: 0, vol: 0, usage: 0, billing: 0 };
+  for (const c of customers) {
+    const s = c.signals_v2;
+    if (s.sig_we_silent >= 70) tally.we += 1;
+    if (s.sig_client_silent >= 70) tally.client += 1;
+    if (s.sig_response_drop >= 70) tally.drop += 1;
+    if (s.sig_volume_collapse >= 70) tally.vol += 1;
+    if (s.sig_usage >= 70) tally.usage += 1;
+    if (s.sig_billing >= 70) tally.billing += 1;
+  }
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  if (!ranked[0] || ranked[0][1] === 0) return null;
+  const label: Record<string, string> = {
+    we: "We silent",
+    client: "Client silent",
+    drop: "Resp drop",
+    vol: "Vol collapse",
+    usage: "Usage low",
+    billing: "Billing",
+  };
+  return label[ranked[0][0]];
 }
 
 type Props = {
@@ -44,13 +70,17 @@ type Props = {
 export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }: Props) {
   const summaries = useMemo<PodSummary[]>(() => {
     const byPod = new Map<string, ScoredCustomerV2[]>();
-    const amsByPod = new Map<string, Set<string>>();
+    const amsByPod = new Map<string, Map<string, number>>(); // pod -> (am -> red count)
     for (const c of snapshot.customers) {
       const pod = POD_MAP[c.am_name] || "Floating";
       if (!byPod.has(pod)) byPod.set(pod, []);
-      if (!amsByPod.has(pod)) amsByPod.set(pod, new Set());
+      if (!amsByPod.has(pod)) amsByPod.set(pod, new Map());
       byPod.get(pod)!.push(c);
-      if (c.am_name) amsByPod.get(pod)!.add(c.am_name);
+      if (c.am_name) {
+        const amMap = amsByPod.get(pod)!;
+        const prev = amMap.get(c.am_name) || 0;
+        amMap.set(c.am_name, prev + (c.signals_v2.stoplight === "RED" ? 1 : 0));
+      }
     }
     return POD_ORDER.map<PodSummary>((pod) => {
       const list = byPod.get(pod) || [];
@@ -64,9 +94,16 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
         mrr += plan;
         if (sl === "RED") mrrAtRisk += plan;
       }
+      const amMap = amsByPod.get(pod) || new Map();
+      const ams = Array.from(amMap.keys()).sort();
+      const topAms = Array.from(amMap.entries())
+        .map(([am, red]) => ({ am, red }))
+        .sort((a, b) => b.red - a.red)
+        .slice(0, 3);
       return {
         pod,
-        ams: Array.from(amsByPod.get(pod) || []).sort(),
+        ams,
+        topAms,
         total: list.length,
         RED: counts.RED,
         YELLOW: counts.YELLOW,
@@ -74,6 +111,7 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
         pctRed: list.length ? (counts.RED / list.length) * 100 : 0,
         mrr,
         mrrAtRisk,
+        topSignal: classifyTopSignal(list),
       };
     });
   }, [snapshot]);
@@ -107,13 +145,13 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
           return (
             <button
               key={s.pod}
-              onClick={() => onSelectPod(s.pod)}
+              onClick={() => onSelectPod(active ? "All" : s.pod)}
               aria-pressed={active}
-              aria-label={`${s.pod}: ${s.total} customers, ${s.RED} red, ${formatMoney(s.mrrAtRisk)} MRR at risk. Click to filter.`}
-              className={`group flex flex-col rounded-zoca border px-3 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+              aria-label={`${s.pod}: ${s.total} customers, ${s.RED} red, ${formatMoney(s.mrrAtRisk)} MRR at risk. Click to ${active ? "clear" : "filter"}.`}
+              className={`group flex flex-col rounded-zoca border px-3 py-3 text-left transition-all duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
                 active
-                  ? "border-zoca-pink-cta bg-zoca-pink-cta/10"
-                  : "border-zoca-border-2 bg-zoca-bg-2/40 hover:border-zoca-border-3 hover:bg-zoca-bg-3/30"
+                  ? "-translate-y-0.5 border-zoca-pink-cta bg-zoca-pink-cta/10 shadow-zoca-md"
+                  : "border-zoca-border-2 bg-zoca-bg-2/40 hover:-translate-y-0.5 hover:border-zoca-border-3 hover:bg-zoca-bg-3/30 hover:shadow-zoca-md"
               }`}
             >
               <div className="flex items-center gap-1.5">
@@ -159,6 +197,29 @@ export default function V2PodSummaryGrid({ snapshot, selectedPod, onSelectPod }:
                   {formatMoney(s.mrrAtRisk)}
                 </div>
               </div>
+
+              {s.topSignal && (
+                <div className="mt-2 truncate text-[10px] text-zoca-text-soft" title={`Most common strong signal across ${s.pod}: ${s.topSignal}`}>
+                  Mostly:{" "}
+                  <span className="font-medium text-zoca-text-muted">{s.topSignal}</span>
+                </div>
+              )}
+
+              {s.topAms.length > 0 && s.topAms[0].red > 0 && (
+                <div
+                  className="mt-1 truncate text-[10px] text-zoca-text-soft"
+                  title={`Top AMs by RED: ${s.topAms.map((a) => `${a.am} (${a.red})`).join(", ")}`}
+                >
+                  Hotspot:{" "}
+                  <span className="font-medium text-zoca-text-muted">
+                    {s.topAms
+                      .filter((a) => a.red > 0)
+                      .slice(0, 2)
+                      .map((a) => `${a.am.split(" ")[0]} (${a.red})`)
+                      .join(" · ")}
+                  </span>
+                </div>
+              )}
             </button>
           );
         })}
