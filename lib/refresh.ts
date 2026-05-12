@@ -1,6 +1,6 @@
 import { fetchAllLiveSubsWithEntityMap } from "./chargebee";
 import { fetchUnpaidInvoices, fetchRecentTransactions, buildBillingMetrics, scoreBilling } from "./billing";
-import { fetchBaseSheet, fetchAllComms, groupCommsByEntity } from "./metabase";
+import { fetchBaseSheet, fetchAllComms, fetchAllCommsSequential, groupCommsByEntity } from "./metabase";
 import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
 import { fetchPerformanceMetrics } from "./performance";
 import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";
@@ -246,7 +246,7 @@ export async function runStageB(today: number = todayMs()): Promise<{
   const errors: string[] = [];
   memSnap("B start");
 
-  const commsResult = await fetchAllComms(today).catch((e: Error) => {
+  const commsResult = await fetchAllCommsSequential(today).catch((e: Error) => {
     errors.push(`Comms: ${e.message}`);
     return {
       events: [] as CommsEvent[],

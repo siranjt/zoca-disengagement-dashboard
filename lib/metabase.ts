@@ -228,3 +228,137 @@ export function groupCommsByEntity(events: CommsEvent[]): Map<string, CommsEvent
   }
   return m;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2.1 — sequential per-channel comms processor.
+//
+// fetchAllComms() does Promise.all of 5 CSV fetches + buffered papaparse on
+// all 5 → peak memory ~250MB+. On Hobby tier that's enough to OOM during
+// cold-start variance. This variant processes one channel at a time inside
+// scoped blocks so the per-channel CSV+rows go out of scope and become
+// GC-eligible before the next channel starts.
+//
+// Same return shape as fetchAllComms. Used by Stage B (lib/refresh.ts).
+// ---------------------------------------------------------------------------
+export async function fetchAllCommsSequential(
+  todayMs: number,
+): Promise<{ events: CommsEvent[]; stats: CommsParseStats }> {
+  const cutoff = todayMs - COMMS_RETAIN_DAYS * 86400 * 1000;
+
+  const stats: CommsParseStats = {
+    rawRows: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    eventsKept: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    eventsDeduped: { chat: 0, email: 0, phone: 0, video: 0, sms: 0 },
+    totalDuplicatesRemoved: 0,
+  };
+
+  const seen: Record<CommsEvent["channel"], Set<string>> = {
+    chat: new Set(), email: new Set(), phone: new Set(), video: new Set(), sms: new Set(),
+  };
+  const out: CommsEvent[] = [];
+  const push = (
+    eid: string,
+    ts: number | null,
+    channel: CommsEvent["channel"],
+    direction: CommsEvent["direction"],
+  ) => {
+    if (!eid || ts === null || ts < cutoff) return;
+    stats.eventsKept[channel]++;
+    const key = `${eid}|${ts}|${direction}`;
+    if (seen[channel].has(key)) {
+      stats.totalDuplicatesRemoved++;
+      return;
+    }
+    seen[channel].add(key);
+    stats.eventsDeduped[channel]++;
+    out.push({ entityId: eid, ts, channel, direction });
+  };
+
+  function memMark(label: string): void {
+    const m = process.memoryUsage();
+    const mb = (n: number) => Math.round(n / 1024 / 1024);
+    console.log(
+      `[mem comms ${label}] rss=${mb(m.rss)}MB heapUsed=${mb(m.heapUsed)}MB out=${out.length}`,
+    );
+  }
+
+  // ----- Chat -----
+  {
+    const csv = await fetchCsvText(METABASE_ENDPOINTS.chat);
+    const rows = parseRows<Record<string, string>>(csv);
+    stats.rawRows.chat = rows.length;
+    for (const r of rows) {
+      const eid = (r["Entity ID"] || "").trim();
+      const ts = parseTs(r["Created At"]);
+      const mt = r["Member Type"];
+      if (mt === "Team Member") push(eid, ts, "chat", "out");
+      else if (mt === "User") push(eid, ts, "chat", "in");
+    }
+  }
+  memMark("after chat");
+
+  // ----- Email -----
+  {
+    const csv = await fetchCsvText(METABASE_ENDPOINTS.email);
+    const rows = parseRows<Record<string, string>>(csv);
+    stats.rawRows.email = rows.length;
+    for (const r of rows) {
+      const eid = (r["Entity ID"] || "").trim();
+      const ts = parseTs(r["Created At"]);
+      const s = r["Sender"];
+      if (s === "Received_By_Client") push(eid, ts, "email", "out");
+      else if (s === "Sent_By_Client") push(eid, ts, "email", "in");
+    }
+  }
+  memMark("after email");
+
+  // ----- Phone -----
+  {
+    const csv = await fetchCsvText(METABASE_ENDPOINTS.phone);
+    const rows = parseRows<Record<string, string>>(csv);
+    stats.rawRows.phone = rows.length;
+    for (const r of rows) {
+      const eid = (r["Entity ID"] || "").trim();
+      const ts = parseTs(r["Created At"]);
+      const s = r["Sender"];
+      if (s === "Initiated_By_Us") push(eid, ts, "phone", "out");
+      else if (s === "Initiated_By_Client") push(eid, ts, "phone", "in");
+    }
+  }
+  memMark("after phone");
+
+  // ----- Video (mutual — each row counts as both in + out) -----
+  {
+    const csv = await fetchCsvText(METABASE_ENDPOINTS.video);
+    const rows = parseRows<Record<string, string>>(csv);
+    stats.rawRows.video = rows.length;
+    for (const r of rows) {
+      const eid = (r["Entity ID"] || "").trim();
+      const ts = parseTs(r["Created At"]);
+      push(eid, ts, "video", "in");
+      push(eid, ts, "video", "out");
+    }
+  }
+  memMark("after video");
+
+  // ----- SMS -----
+  {
+    const csv = await fetchCsvText(METABASE_ENDPOINTS.sms);
+    const rows = parseRows<Record<string, string>>(csv);
+    stats.rawRows.sms = rows.length;
+    for (const r of rows) {
+      const eid = (r["Entity ID"] || "").trim();
+      const ts = parseTs(r["Created At"]);
+      const s = r["Sender"];
+      if (s === "Received_By_Client") push(eid, ts, "sms", "out");
+      else if (s === "Sent_By_Client") push(eid, ts, "sms", "in");
+    }
+  }
+  memMark("after sms");
+
+  console.log("[fetchAllCommsSequential] raw rows:", stats.rawRows);
+  console.log("[fetchAllCommsSequential] events kept:", stats.eventsDeduped);
+  console.log("[fetchAllCommsSequential] duplicates removed:", stats.totalDuplicatesRemoved);
+
+  return { events: out, stats };
+}
