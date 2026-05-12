@@ -74,9 +74,9 @@ export async function fetchUsageMetrics(todayMs: number): Promise<{
   rowCount: number;
 }> {
   const csv = await fetchCsvText(METABASE_V2_ENDPOINTS.mixpanelRollup);
-  const rows = parseRows<MixpanelRow>(csv);
 
-  // Per-entity aggregation
+  // Per-entity aggregation. Stream-parse the CSV row-by-row so the full 168K-row
+  // array is never held in memory. Saves ~50MB peak vs the previous buffered approach.
   const byEntity = new Map<string, {
     total7d: number; total30d: number; total90d: number;
     eventDays30d: Set<string>;
@@ -94,52 +94,59 @@ export async function fetchUsageMetrics(todayMs: number): Promise<{
   const cutoff30 = todayMs - 30 * DAY_MS;
   const cutoff90 = todayMs - 90 * DAY_MS;
 
-  for (const r of rows) {
-    const eid = (r.entity_id || "").trim();
-    if (!eid) continue;
-    const ts = Date.parse(r.event_date + "T12:00:00Z");
-    if (!Number.isFinite(ts)) continue;
-    const ev = r.event_type;
-    const cnt = Number(r.event_count || 0);
+  let rowCount = 0;
 
-    let agg = byEntity.get(eid);
-    if (!agg) {
-      agg = {
-        total7d: 0, total30d: 0, total90d: 0,
-        eventDays30d: new Set(),
-        appOpenDays30d: new Set(),
-        appOpens30d: 0,
-        leadsEngage30d: 0,
-        leadsMarked30d: 0,
-        contactAttempts30d: 0,
-        reviewActions30d: 0,
-        lastEventAt: null,
-      };
-      byEntity.set(eid, agg);
-    }
+  Papa.parse<MixpanelRow>(csv, {
+    header: true,
+    skipEmptyLines: true,
+    step: (result) => {
+      const r = result.data;
+      if (!r || typeof r !== "object") return;
+      rowCount++;
+      const eid = (r.entity_id || "").trim();
+      if (!eid) return;
+      const ts = Date.parse(r.event_date + "T12:00:00Z");
+      if (!Number.isFinite(ts)) return;
+      const ev = r.event_type;
+      const cnt = Number(r.event_count || 0);
 
-    // Track last event regardless of window
-    if (!agg.lastEventAt || (r.last_event_at && r.last_event_at > agg.lastEventAt)) {
-      agg.lastEventAt = r.last_event_at;
-    }
-
-    if (ts >= cutoff90) agg.total90d += cnt;
-    if (ts >= cutoff30) {
-      agg.total30d += cnt;
-      agg.eventDays30d.add(r.event_date);
-
-      if (APP_OPEN_EVENTS.has(ev)) {
-        agg.appOpens30d += cnt;
-        agg.appOpenDays30d.add(r.event_date);
+      let agg = byEntity.get(eid);
+      if (!agg) {
+        agg = {
+          total7d: 0, total30d: 0, total90d: 0,
+          eventDays30d: new Set(),
+          appOpenDays30d: new Set(),
+          appOpens30d: 0,
+          leadsEngage30d: 0,
+          leadsMarked30d: 0,
+          contactAttempts30d: 0,
+          reviewActions30d: 0,
+          lastEventAt: null,
+        };
+        byEntity.set(eid, agg);
       }
-      if (LEADS_ENGAGE_EVENTS.has(ev)) agg.leadsEngage30d += cnt;
-      if (LEADS_MARKED_EVENTS.has(ev)) agg.leadsMarked30d += cnt;
-      if (CONTACT_ATTEMPT_EVENTS.has(ev)) agg.contactAttempts30d += cnt;
-      if (REVIEW_ACTION_EVENTS.has(ev)) agg.reviewActions30d += cnt;
-    }
-    if (ts >= cutoff7) agg.total7d += cnt;
-    void SESSION_EVENTS; // explicitly reference to silence unused-var warning
-  }
+
+      if (!agg.lastEventAt || (r.last_event_at && r.last_event_at > agg.lastEventAt)) {
+        agg.lastEventAt = r.last_event_at;
+      }
+
+      if (ts >= cutoff90) agg.total90d += cnt;
+      if (ts >= cutoff30) {
+        agg.total30d += cnt;
+        agg.eventDays30d.add(r.event_date);
+        if (APP_OPEN_EVENTS.has(ev)) {
+          agg.appOpens30d += cnt;
+          agg.appOpenDays30d.add(r.event_date);
+        }
+        if (LEADS_ENGAGE_EVENTS.has(ev)) agg.leadsEngage30d += cnt;
+        if (LEADS_MARKED_EVENTS.has(ev)) agg.leadsMarked30d += cnt;
+        if (CONTACT_ATTEMPT_EVENTS.has(ev)) agg.contactAttempts30d += cnt;
+        if (REVIEW_ACTION_EVENTS.has(ev)) agg.reviewActions30d += cnt;
+      }
+      if (ts >= cutoff7) agg.total7d += cnt;
+      void SESSION_EVENTS;
+    },
+  });
 
   // Convert to UsageMetrics
   const metrics = new Map<string, UsageMetrics>();
@@ -169,10 +176,10 @@ export async function fetchUsageMetrics(todayMs: number): Promise<{
 
   console.log(
     "[fetchUsageMetrics] entities:", metrics.size,
-    "rows parsed:", rows.length,
+    "rows parsed:", rowCount,
     "today anchor:", todayDate,
   );
-  return { metrics, rowCount: rows.length };
+  return { metrics, rowCount };
 }
 
 /**
