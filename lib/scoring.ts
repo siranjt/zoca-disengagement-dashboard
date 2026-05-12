@@ -383,12 +383,46 @@ function buildNarrative(a: NarrativeArgs): {
 /** Route a single strong signal to its dedicated narrator. */
 function narrateSingle(signal: string, a: NarrativeArgs) {
   switch (signal) {
-    case "noUsageData":
+    case "noUsageData": {
+      // Try to enrich with sub-threshold comms context so identical "no app"
+      // cards don't all read the same. Sudha's top of book had 3 such cards.
+      const dsi = a.commsMetrics.days_since_in;
+      const dso = a.commsMetrics.days_since_out;
+      const t30 = a.commsMetrics.total_30d;
+      if (dsi <= 14 && t30 >= 3) {
+        return {
+          reasonOneLine: "No app activity — but actively talking to us.",
+          suggestedAction: "Show them how the app accelerates what they're already doing.",
+          notes: ["App setup gap; comms relationship is healthy."],
+        };
+      }
+      if (dso >= 30 && dso < 9999) {
+        return {
+          reasonOneLine: `No app activity + we haven't reached out in ${dso}d.`,
+          suggestedAction: "Check-in call: confirm app setup + re-engage.",
+          notes: [],
+        };
+      }
+      if (dsi >= 30 && dsi < 9999) {
+        return {
+          reasonOneLine: `No app activity + client silent ${dsi}d (sub-threshold).`,
+          suggestedAction: "Re-engage on comms + confirm app onboarding.",
+          notes: [],
+        };
+      }
+      if (t30 === 0) {
+        return {
+          reasonOneLine: "No app activity AND no comms in last 30 days.",
+          suggestedAction: "Cold check-in — high churn risk.",
+          notes: [],
+        };
+      }
       return {
         reasonOneLine: "No Zoca app activity tracked in the last 90 days.",
         suggestedAction: "Verify they're set up on the app — onboard if needed.",
         notes: ["Missing Mixpanel data — likely a setup gap or churned user."],
       };
+    }
     case "billing": return narrateBilling(a);
     case "usage": return narrateUsage(a);
     case "weSilent": return narrateWeSilent(a);
