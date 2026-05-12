@@ -8,6 +8,7 @@ import V2PodSummaryGrid from "./V2PodSummaryGrid";
 import V2SignalHeatmap from "./V2SignalHeatmap";
 import V2Rollup from "./V2Rollup";
 import V2ManagerToolbar, { type SavedView, nearestAvailable } from "./V2ManagerToolbar";
+import V2StoplightMovement from "./V2StoplightMovement";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -767,6 +768,11 @@ export default function V2ManagerDashboard() {
                 </ul>
               </section>
             )}
+
+            <V2StoplightMovement
+              days={Math.max(7, compareDays || 7)}
+              onJumpToAm={handleJumpToAm}
+            />
 
             <div className="mb-7">
               <V2PodSummaryGrid

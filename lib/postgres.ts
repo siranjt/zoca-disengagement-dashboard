@@ -6,6 +6,7 @@ import type {
   SignalFeedbackRow,
   SnapshotV2,
 } from "./types";
+import type { Stoplight } from "./config";
 
 /**
  * Thin Neon Postgres client wrapper. Returns null when POSTGRES_URL is unset
@@ -221,6 +222,213 @@ export async function readFeedbackForEntity(entityId: string): Promise<SignalFee
     ORDER BY created_at DESC
   `;
   return rows as SignalFeedbackRow[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — trend & movement queries
+// Add these to lib/postgres.ts just before "Connection health check".
+// ---------------------------------------------------------------------------
+
+
+export type CustomerTrendPoint = {
+  date: string;          // YYYY-MM-DD
+  composite: number;
+  stoplight: Stoplight;
+  am_name: string;
+  bizname: string;
+};
+
+/**
+ * Per-customer composite-score trend over the last `days` days.
+ * Uses LATERAL jsonb_array_elements on customer_data.customers so we don't
+ * have to load the entire snapshot per day.
+ */
+export async function readCustomerTrend(
+  entityId: string,
+  days: number = 84,
+): Promise<CustomerTrendPoint[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      cust.value AS data
+    FROM dashboard_snapshots,
+    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+      AND cust.value->>'entity_id' = ${entityId}
+    ORDER BY snapshot_date ASC
+  `;
+  return rows.map((r) => {
+    const row = r as { date: string; data: any };
+    return {
+      date: row.date,
+      composite: Number(row.data?.signals_v2?.composite ?? 0),
+      stoplight: (row.data?.signals_v2?.stoplight || "GREEN") as Stoplight,
+      am_name: row.data?.am_name || "",
+      bizname: row.data?.bizname || "",
+    };
+  });
+}
+
+export type AmBookTrendPoint = {
+  date: string;
+  total: number;
+  red: number;
+  yellow: number;
+  green: number;
+  mrr: number;
+  mrr_at_risk: number;
+};
+
+/**
+ * Per-AM book trend over the last `days` days. Aggregates customer
+ * stoplights per snapshot day for one AM's book.
+ */
+export async function readAmBookTrend(
+  amName: string,
+  days: number = 84,
+): Promise<AmBookTrendPoint[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
+      COALESCE(SUM((cust.value->>'plan_amount')::numeric), 0)::numeric AS mrr,
+      COALESCE(SUM(
+        CASE WHEN cust.value->'signals_v2'->>'stoplight' = 'RED'
+             THEN (cust.value->>'plan_amount')::numeric
+             ELSE 0 END
+      ), 0)::numeric AS mrr_at_risk
+    FROM dashboard_snapshots,
+    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+      AND cust.value->>'am_name' = ${amName}
+    GROUP BY snapshot_date
+    ORDER BY snapshot_date ASC
+  `;
+  return rows.map((r) => {
+    const row = r as {
+      date: string;
+      total: number;
+      red: number;
+      yellow: number;
+      green: number;
+      mrr: string | number;
+      mrr_at_risk: string | number;
+    };
+    return {
+      date: row.date,
+      total: row.total,
+      red: row.red,
+      yellow: row.yellow,
+      green: row.green,
+      mrr: Number(row.mrr),
+      mrr_at_risk: Number(row.mrr_at_risk),
+    };
+  });
+}
+
+export type StoplightMovementRow = {
+  entity_id: string;
+  bizname: string;
+  am_name: string;
+  pod?: string;
+  from: Stoplight;
+  to: Stoplight;
+  composite_from: number;
+  composite_to: number;
+  plan_amount: number;
+};
+
+export type StoplightMovementResult = {
+  days: number;
+  comparedAt: string;
+  currentAt: string;
+  flippedToRed: StoplightMovementRow[];
+  recoveries: StoplightMovementRow[];     // anything → GREEN
+  degraded: StoplightMovementRow[];        // GREEN → YELLOW
+};
+
+/**
+ * Compute stoplight movement between latest snapshot and N days ago.
+ * Three buckets: flippedToRed, recoveries (→GREEN), degraded (GREEN→YELLOW).
+ */
+export async function readStoplightMovement(days: number = 7): Promise<StoplightMovementResult | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  // Fetch latest + N-days-ago in one round-trip via two queries:
+  const latestRows = await sql`
+    SELECT to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+           customer_data
+    FROM dashboard_snapshots
+    ORDER BY snapshot_date DESC
+    LIMIT 1
+  `;
+  if (!latestRows.length) return null;
+  const latest = latestRows[0] as { date: string; customer_data: any };
+  const currentAt = latest.date;
+
+  const compareRows = await sql`
+    SELECT to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+           customer_data
+    FROM dashboard_snapshots
+    WHERE snapshot_date <= ((${currentAt})::date - (${days}::int * INTERVAL '1 day'))
+    ORDER BY snapshot_date DESC
+    LIMIT 1
+  `;
+  if (!compareRows.length) return null;
+  const compare = compareRows[0] as { date: string; customer_data: any };
+
+  const prevByEntity = new Map<string, any>();
+  for (const c of compare.customer_data?.customers || []) {
+    if (c?.entity_id) prevByEntity.set(c.entity_id, c);
+  }
+
+  const flippedToRed: StoplightMovementRow[] = [];
+  const recoveries: StoplightMovementRow[] = [];
+  const degraded: StoplightMovementRow[] = [];
+
+  for (const c of latest.customer_data?.customers || []) {
+    if (!c?.entity_id) continue;
+    const prev = prevByEntity.get(c.entity_id);
+    if (!prev) continue;
+    const prevSl = prev.signals_v2?.stoplight as Stoplight;
+    const curSl = c.signals_v2?.stoplight as Stoplight;
+    if (!prevSl || !curSl || prevSl === curSl) continue;
+    const row: StoplightMovementRow = {
+      entity_id: c.entity_id,
+      bizname: c.bizname || "",
+      am_name: c.am_name || "",
+      pod: c.pod || undefined,
+      from: prevSl,
+      to: curSl,
+      composite_from: Number(prev.signals_v2?.composite || 0),
+      composite_to: Number(c.signals_v2?.composite || 0),
+      plan_amount: Number(c.plan_amount || 0),
+    };
+    if (curSl === "RED" && prevSl !== "RED") flippedToRed.push(row);
+    if (curSl === "GREEN" && prevSl !== "GREEN") recoveries.push(row);
+    if (prevSl === "GREEN" && curSl === "YELLOW") degraded.push(row);
+  }
+
+  // Sort by impact: flippedToRed by plan_amount desc, recoveries by composite jump desc
+  flippedToRed.sort((a, b) => b.plan_amount - a.plan_amount);
+  recoveries.sort((a, b) => (b.composite_to - b.composite_from) - (a.composite_to - a.composite_from));
+  degraded.sort((a, b) => b.plan_amount - a.plan_amount);
+
+  return {
+    days,
+    comparedAt: compare.date,
+    currentAt,
+    flippedToRed,
+    recoveries,
+    degraded,
+  };
 }
 
 // ---------------------------------------------------------------------------
