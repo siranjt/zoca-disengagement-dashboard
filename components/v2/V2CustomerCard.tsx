@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
+import V2PerformancePanel from "./V2PerformancePanel";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -29,6 +31,9 @@ export default function V2CustomerCard({ customer, trend }: Props) {
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
   const podText = customer.pod ? ` · ${customer.pod}` : "";
+
+  // Auto-expand for RED stoplight so action customers show "why" by default.
+  const [expanded, setExpanded] = useState<boolean>(s.stoplight === "RED");
 
   return (
     <article
@@ -142,6 +147,31 @@ export default function V2CustomerCard({ customer, trend }: Props) {
       {/* Metrics summary line — enriched with channels, app tier, billing detail */}
       <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-soft md:px-5">
         {renderMetricsSummary(customer)}
+      </div>
+
+      {/* Performance signals (expand-on-demand; auto-expanded for RED) */}
+      <div className="border-t border-zoca-border px-4 py-2 md:px-5">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          aria-expanded={expanded}
+          aria-controls={`perf-${customer.entity_id}`}
+          title={expanded ? "Hide performance signals" : "Show performance signals (why this customer is on this stoplight)"}
+        >
+          <span aria-hidden>{expanded ? "▾" : "▸"}</span>
+          {expanded ? "Hide" : "Why?"}
+          {customer.performance?.flag && !expanded && (
+            <span className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-rose-300">
+              ⚑ trajectory
+            </span>
+          )}
+        </button>
+        {expanded && (
+          <div id={`perf-${customer.entity_id}`}>
+            <V2PerformancePanel performance={customer.performance} />
+          </div>
+        )}
       </div>
     </article>
   );
