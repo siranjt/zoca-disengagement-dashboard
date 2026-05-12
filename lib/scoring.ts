@@ -251,7 +251,7 @@ export function composeHybridSignals(args: {
 
   // Effective tier — WATCH lane is HEALTHY/LOW with 2+ flags, displayed as Yellow.
   // We keep the internal `tier` value but the stoplight mapping handles the WATCH lift.
-  const stoplight = tierToStoplight(tier, flagCount);
+  const stoplight = tierToStoplight(tier, flagCount, billingScore);
 
   // Reason + suggested action: template-driven from dominant signal
   const { reasonOneLine, suggestedAction, notes } = buildNarrative({

@@ -75,10 +75,17 @@ export const STOPLIGHT_LABELS: Record<Stoplight, string> = {
   GREEN:  "Doing fine",
 };
 
-/** Map internal 5-tier (+ WATCH lane) to AM-facing 3-color stoplight */
-export function tierToStoplight(tier: Tier, flagCount: number): Stoplight {
+/** Map internal 5-tier (+ WATCH lane + billing override) to AM-facing 3-color stoplight */
+export function tierToStoplight(
+  tier: Tier,
+  flagCount: number,
+  billingScore: number = 0,
+): Stoplight {
   if (tier === "HIGH") return "RED";
   if (tier === "MEDIUM") return "YELLOW";
+  // Billing crisis override: stacked unpaid invoices always surface, even with
+  // otherwise-active comms/usage. Phase 1.2 finding from cohort validation.
+  if (billingScore >= BILLING_YELLOW_OVERRIDE) return "YELLOW";
   // WATCH lane: HEALTHY/LOW with 2+ modifier flags surfaces as Yellow
   if ((tier === "LOW" || tier === "HEALTHY") && flagCount >= 2) return "YELLOW";
   return "GREEN";
@@ -163,6 +170,11 @@ export const PERFORMANCE_FLAG_THRESHOLDS = {
 // v2 — WATCH lane: HEALTHY/LOW with 2+ modifier flags → AM-facing Yellow
 // ---------------------------------------------------------------------------
 export const WATCH_LANE_FLAG_COUNT = 2;
+
+// v2 — Billing crisis override: any customer with billing_score >= this threshold
+// surfaces at least YELLOW in the stoplight regardless of composite/tier.
+// Catches the 'fresh comms + active app + stacked unpaid invoices' edge case.
+export const BILLING_YELLOW_OVERRIDE = 40;
 
 // ---------------------------------------------------------------------------
 // v2 — Pods (per AM Transition Toolkit, hardcoded May 2026)
