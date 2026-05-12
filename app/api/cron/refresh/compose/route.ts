@@ -6,20 +6,17 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
 /**
- * Phase 2.0 — this route is now an alias for /api/cron/refresh/compose.
+ * Compose — reads stages A, B, C for today's snapshot_date from
+ * pipeline_state, scores active entities, writes final snapshot to
+ * dashboard_snapshots.
  *
- * Earlier versions ran the entire pipeline (fetches + score + write) in one
- * function. That exceeded Vercel Hobby's 60s timeout and OOM ceiling on
- * variable cold starts. Phase 2.0 split fetching into 3 independent cron
- * functions (stage-a, stage-b, stage-c) that write pipeline_state to
- * Postgres. This route now just runs `compose`, which reads those states.
+ * Lightweight: ~5-15s (no fetching, just Postgres reads + score loop + write).
  *
- * For automatic daily refresh, vercel.json schedules:
- *   - stage-a, stage-b, stage-c at 22:00 UTC (parallel)
- *   - this route (compose) at 22:05 UTC (5 min buffer)
+ * Scheduled in vercel.json: '5 22 * * *' (5 min after stages start).
+ * Manual trigger: curl -H "Authorization: Bearer $CRON_SECRET" .../api/cron/refresh/compose
  *
- * Manual trigger: hit /api/cron/refresh/{stage-a,stage-b,stage-c} first,
- * then this route. Or this route alone if stages already ran today.
+ * Fails loudly if any stage's pipeline_state row is missing for today.
+ * Caller should hit the missing stage's endpoint, then retry compose.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -35,15 +32,17 @@ export async function GET(req: NextRequest) {
     const snap = await composeSnapshot();
     return NextResponse.json({
       ok: true,
+      stage: "compose",
       generatedAt: snap.generatedAt,
       totalActive: snap.totalActive,
       tierCounts: snap.tierCounts,
+      stoplightCounts: snap.stoplightCounts,
       durationMs: snap.health.refreshDurationMs,
       errors: snap.errors || [],
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, stage: "compose", error: msg }, { status: 500 });
   }
 }
 

@@ -2,8 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/refresh",
+      "path": "/api/cron/refresh/stage-a",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/stage-b",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/stage-c",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/compose",
+      "schedule": "5 22 * * *"
     },
     {
       "path": "/api/cron/prune",
@@ -11,17 +23,33 @@
     }
   ],
   "functions": {
+    "app/api/cron/refresh/stage-a/route.ts": {
+      "memory": 2048,
+      "maxDuration": 60
+    },
+    "app/api/cron/refresh/stage-b/route.ts": {
+      "memory": 2048,
+      "maxDuration": 60
+    },
+    "app/api/cron/refresh/stage-c/route.ts": {
+      "memory": 2048,
+      "maxDuration": 60
+    },
+    "app/api/cron/refresh/compose/route.ts": {
+      "memory": 2048,
+      "maxDuration": 60
+    },
     "app/api/cron/refresh/route.ts": {
       "memory": 2048,
-      "maxDuration": 90
+      "maxDuration": 60
     },
     "app/api/snapshot/route.ts": {
-      "memory": 2048,
-      "maxDuration": 90
+      "memory": 1024,
+      "maxDuration": 30
     },
     "app/api/v2/snapshot/route.ts": {
-      "memory": 2048,
-      "maxDuration": 90
+      "memory": 1024,
+      "maxDuration": 30
     }
   }
 }
