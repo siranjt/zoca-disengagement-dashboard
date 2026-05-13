@@ -4,7 +4,7 @@ import { fetchBaseSheet, fetchAllComms, fetchAllCommsSequential, groupCommsByEnt
 import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
 import { fetchPerformanceMetrics } from "./performance";
 import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";
-import { writeSnapshotV2, readSnapshotByDate } from "./postgres";
+import { writeSnapshotV2, readSnapshotByDate, writeCustomerTrendRows } from "./postgres";
 import { readPipelineStage } from "./pipeline-state";
 import {
   writePipelineStage,
@@ -359,6 +359,7 @@ export async function runStageC(today: number = todayMs()): Promise<{
  */
 export async function composeSnapshot(
   snapshotDate: string = todaySnapshotDate(),
+  options: { autoRunMissingStages?: boolean } = { autoRunMissingStages: true },
 ): Promise<SnapshotV2> {
   const started = Date.now();
   const errors: string[] = [];
@@ -367,7 +368,29 @@ export async function composeSnapshot(
   // -------------------------------------------------------------------------
   // 1. Load all 3 stage states
   // -------------------------------------------------------------------------
-  const { a, b, c, missing, staleStages } = await readAllPipelineStages(snapshotDate);
+  let { a, b, c, missing, staleStages } = await readAllPipelineStages(snapshotDate);
+
+  // Self-heal: if a stage is missing and autoRunMissingStages is on, run
+  // them in order (A -> B -> C) and re-load. Compose has maxDuration=90s on
+  // Vercel; Stage A is heaviest at ~10-15s, Stage B at ~20-30s, Stage C at
+  // ~5-10s — so a full self-heal can land within budget when only one or two
+  // are missing.
+  if (missing.length && options.autoRunMissingStages !== false) {
+    console.log(`[compose] auto-running missing stages: ${missing.join(", ")}`);
+    for (const stage of missing) {
+      try {
+        if (stage === "A") await runStageAAndStore(snapshotDate);
+        if (stage === "B") await runStageBAndStore(snapshotDate);
+        if (stage === "C") await runStageCAndStore(snapshotDate);
+        errors.push(`auto-ran stage ${stage}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(`auto-run stage ${stage} failed: ${msg}`);
+      }
+    }
+    ({ a, b, c, missing, staleStages } = await readAllPipelineStages(snapshotDate));
+  }
+
   if (missing.length) {
     throw new Error(
       `[compose] missing stage(s): ${missing.join(", ")} for ${snapshotDate}. ` +
@@ -546,7 +569,7 @@ export async function composeSnapshot(
 
   const matchBreakdown = {
     byCustomerId: scored.filter((c) => c.match_source === "customer_id").length,
-    byBizName: 0,
+    byBizName: scored.filter((c) => c.match_source === "bizname").length,
     unmatched: scored.filter((c) => c.match_source === "unmatched").length,
     notInChrone: scored.filter((c) => !c.in_chrone).length,
   };
@@ -665,6 +688,23 @@ export async function composeSnapshot(
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[compose] Postgres write failed:", msg);
       errors.push(`Postgres write: ${msg}`);
+    }
+    try {
+      const trendRows = snapshot.customers.map((c) => ({
+        entity_id: c.entity_id,
+        am_name: c.am_name || "",
+        pod: c.pod || "",
+        composite: c.signals_v2.composite,
+        stoplight: c.signals_v2.stoplight,
+        plan_amount: c.plan_amount || 0,
+        perf_flagged: !!c.performance?.flag,
+      }));
+      const written = await writeCustomerTrendRows(snapshotDate, trendRows);
+      console.log(`[compose] customer_trends rows written: ${written}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[compose] customer_trends write failed:", msg);
+      errors.push(`customer_trends write: ${msg}`);
     }
   }
   memSnap("compose end");

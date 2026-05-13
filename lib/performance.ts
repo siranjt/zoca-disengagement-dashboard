@@ -217,7 +217,13 @@ export async function fetchPerformanceMetrics(): Promise<{
     if (ytdChangePct !== null && ytdChangePct <= -PERFORMANCE_FLAG_THRESHOLDS.ytdLeadsDropPctMin) {
       flagReasons.push(`YTD leads ${Math.round(ytdChangePct)}% vs last year`);
     }
-    // No ranking degradation flag yet — needs rank-when-joined baseline (deferred to v2)
+    if (
+      rev &&
+      rev.weeks_with_zero_reviews !== null &&
+      rev.weeks_with_zero_reviews >= PERFORMANCE_FLAG_THRESHOLDS.weeksWithZeroReviewsMin
+    ) {
+      flagReasons.push(`${rev.weeks_with_zero_reviews}/12 weeks with zero reviews`);
+    }
 
     metrics.set(eid, {
       entity_id: eid,

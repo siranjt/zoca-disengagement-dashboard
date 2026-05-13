@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { composeSnapshot } from "@/lib/refresh";
 
 export const runtime = "nodejs";
@@ -19,14 +20,8 @@ export const maxDuration = 90;
  * Caller should hit the missing stage's endpoint, then retry compose.
  */
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization") || "";
-  const ok =
-    (secret && auth === `Bearer ${secret}`) ||
-    (!secret && !!req.headers.get("x-vercel-cron"));
-  if (!ok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   try {
     const snap = await composeSnapshot();

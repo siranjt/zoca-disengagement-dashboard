@@ -163,7 +163,10 @@ export const BILLING_THRESHOLDS = {
 export const PERFORMANCE_FLAG_THRESHOLDS = {
   gbpClicksDropPctMin: 25,    // GBP clicks down ≥25% on complete-month basis
   ytdLeadsDropPctMin:  20,    // YTD leads trailing same period last year ≥20%
-  rankingsTop10DropMin: 25,   // Rankings in top-10 dropped ≥25% from joined-baseline
+  // Note: rankings-degradation flag requires a rank-when-joined baseline which
+  // the current Metabase card doesn't carry. Removed to avoid implying a
+  // signal that doesn't fire. Re-add when the baseline lands.
+  weeksWithZeroReviewsMin: 4, // 4+ weeks with zero reviews in last 12 weeks
 } as const;
 
 // ---------------------------------------------------------------------------

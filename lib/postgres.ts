@@ -247,28 +247,8 @@ export async function readCustomerTrend(
   entityId: string,
   days: number = 84,
 ): Promise<CustomerTrendPoint[]> {
-  const sql = getSql();
-  if (!sql) return [];
-  const rows = await sql`
-    SELECT
-      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
-      cust.value AS data
-    FROM dashboard_snapshots,
-    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
-    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
-      AND cust.value->>'entity_id' = ${entityId}
-    ORDER BY snapshot_date ASC
-  `;
-  return rows.map((r) => {
-    const row = r as { date: string; data: any };
-    return {
-      date: row.date,
-      composite: Number(row.data?.signals_v2?.composite ?? 0),
-      stoplight: (row.data?.signals_v2?.stoplight || "GREEN") as Stoplight,
-      am_name: row.data?.am_name || "",
-      bizname: row.data?.bizname || row.data?.company || "",
-    };
-  });
+  // Delegated to flat customer_trends table — Phase 7.C.
+  return readCustomerTrendFlat(entityId, days);
 }
 
 export type AmBookTrendPoint = {
@@ -289,48 +269,8 @@ export async function readAmBookTrend(
   amName: string,
   days: number = 84,
 ): Promise<AmBookTrendPoint[]> {
-  const sql = getSql();
-  if (!sql) return [];
-  const rows = await sql`
-    SELECT
-      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
-      COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
-      COALESCE(SUM((cust.value->>'plan_amount')::numeric), 0)::numeric AS mrr,
-      COALESCE(SUM(
-        CASE WHEN cust.value->'signals_v2'->>'stoplight' = 'RED'
-             THEN (cust.value->>'plan_amount')::numeric
-             ELSE 0 END
-      ), 0)::numeric AS mrr_at_risk
-    FROM dashboard_snapshots,
-    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
-    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
-      AND cust.value->>'am_name' = ${amName}
-    GROUP BY snapshot_date
-    ORDER BY snapshot_date ASC
-  `;
-  return rows.map((r) => {
-    const row = r as {
-      date: string;
-      total: number;
-      red: number;
-      yellow: number;
-      green: number;
-      mrr: string | number;
-      mrr_at_risk: string | number;
-    };
-    return {
-      date: row.date,
-      total: row.total,
-      red: row.red,
-      yellow: row.yellow,
-      green: row.green,
-      mrr: Number(row.mrr),
-      mrr_at_risk: Number(row.mrr_at_risk),
-    };
-  });
+  // Delegated to flat customer_trends table — Phase 7.C.
+  return readAmBookTrendFlat(amName, days);
 }
 
 export type StoplightMovementRow = {
@@ -448,62 +388,8 @@ export async function readMultipleAmBookTrends(
   amNames: string[],
   days: number = 14,
 ): Promise<AmBookTrendBundle[]> {
-  const sql = getSql();
-  if (!sql) return [];
-  if (!amNames.length) return [];
-
-  // Use ANY(array) so we don't have to parameterize a dynamic IN list
-  const rows = await sql`
-    SELECT
-      cust.value->>'am_name' AS am_name,
-      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
-      COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
-      COALESCE(SUM((cust.value->>'plan_amount')::numeric), 0)::numeric AS mrr,
-      COALESCE(SUM(
-        CASE WHEN cust.value->'signals_v2'->>'stoplight' = 'RED'
-             THEN (cust.value->>'plan_amount')::numeric
-             ELSE 0 END
-      ), 0)::numeric AS mrr_at_risk
-    FROM dashboard_snapshots,
-    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
-    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
-      AND cust.value->>'am_name' = ANY(${amNames}::text[])
-    GROUP BY snapshot_date, cust.value->>'am_name'
-    ORDER BY am_name ASC, snapshot_date ASC
-  `;
-
-  const byAm = new Map<string, AmBookTrendPoint[]>();
-  for (const r of rows) {
-    const row = r as {
-      am_name: string;
-      date: string;
-      total: number;
-      red: number;
-      yellow: number;
-      green: number;
-      mrr: string | number;
-      mrr_at_risk: string | number;
-    };
-    const am = row.am_name;
-    if (!byAm.has(am)) byAm.set(am, []);
-    byAm.get(am)!.push({
-      date: row.date,
-      total: row.total,
-      red: row.red,
-      yellow: row.yellow,
-      green: row.green,
-      mrr: Number(row.mrr),
-      mrr_at_risk: Number(row.mrr_at_risk),
-    });
-  }
-  // Preserve input order; include empty arrays for AMs with no data
-  return amNames.map((am) => ({
-    am_name: am,
-    points: byAm.get(am) || [],
-  }));
+  // Delegated to flat customer_trends table — Phase 7.C.
+  return readMultipleAmBookTrendsFlat(amNames, days);
 }
 
 // ---------------------------------------------------------------------------
@@ -531,42 +417,8 @@ export async function readMultipleCustomerTrends(
   entityIds: string[],
   days: number = 14,
 ): Promise<CustomerTrendBundle[]> {
-  const sql = getSql();
-  if (!sql) return [];
-  if (!entityIds.length) return [];
-
-  const rows = await sql`
-    SELECT
-      cust.value->>'entity_id' AS entity_id,
-      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
-      COALESCE((cust.value->'signals_v2'->>'composite')::numeric, 0)::int AS composite,
-      COALESCE(cust.value->'signals_v2'->>'stoplight', 'GREEN') AS stoplight
-    FROM dashboard_snapshots,
-    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
-    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
-      AND cust.value->>'entity_id' = ANY(${entityIds}::text[])
-    ORDER BY cust.value->>'entity_id' ASC, snapshot_date ASC
-  `;
-
-  const byEntity = new Map<string, CustomerTrendPointLite[]>();
-  for (const r of rows) {
-    const row = r as {
-      entity_id: string;
-      date: string;
-      composite: number;
-      stoplight: string;
-    };
-    if (!byEntity.has(row.entity_id)) byEntity.set(row.entity_id, []);
-    byEntity.get(row.entity_id)!.push({
-      date: row.date,
-      composite: row.composite,
-      stoplight: (row.stoplight as Stoplight) || "GREEN",
-    });
-  }
-  return entityIds.map((eid) => ({
-    entity_id: eid,
-    points: byEntity.get(eid) || [],
-  }));
+  // Delegated to flat customer_trends table — Phase 7.C.
+  return readMultipleCustomerTrendsFlat(entityIds, days);
 }
 
 export type PodTrendPoint = {
@@ -591,63 +443,302 @@ export async function readPodTrend(
   amToPod: Record<string, string>,
   days: number = 14,
 ): Promise<PodTrendBundle[]> {
-  const sql = getSql();
-  if (!sql) return [];
+  // Delegated to flat customer_trends table — Phase 7.C.
+  // amToPod argument is kept for backward compat but ignored — pod is denormalized.
+  void amToPod;
+  return readPodTrendFlat(days);
+}
 
-  const rows = await sql`
+let _customerTrendsReady = false;
+
+/** Idempotently ensure the customer_trends table + indexes exist. */
+export async function ensureCustomerTrendsTable(): Promise<void> {
+  if (_customerTrendsReady) return;
+  const sql = getSql();
+  if (!sql) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS customer_trends (
+      snapshot_date DATE NOT NULL,
+      entity_id TEXT NOT NULL,
+      am_name TEXT NOT NULL DEFAULT '',
+      pod TEXT NOT NULL DEFAULT '',
+      composite INT NOT NULL DEFAULT 0,
+      stoplight TEXT NOT NULL DEFAULT 'GREEN',
+      plan_amount NUMERIC NOT NULL DEFAULT 0,
+      perf_flagged BOOLEAN NOT NULL DEFAULT FALSE,
+      PRIMARY KEY (entity_id, snapshot_date)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_customer_trends_am_date ON customer_trends (am_name, snapshot_date DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_customer_trends_pod_date ON customer_trends (pod, snapshot_date DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_customer_trends_date ON customer_trends (snapshot_date DESC)`;
+  _customerTrendsReady = true;
+}
+
+/** Bulk-write per-customer rows for a snapshot. One HTTP round-trip via unnest. */
+export async function writeCustomerTrendRows(
+  snapshotDate: string,
+  rows: Array<{
+    entity_id: string;
+    am_name: string;
+    pod: string;
+    composite: number;
+    stoplight: string;
+    plan_amount: number;
+    perf_flagged: boolean;
+  }>,
+): Promise<number> {
+  const sql = getSql();
+  if (!sql || !rows.length) return 0;
+  await ensureCustomerTrendsTable();
+
+  const entityIds = rows.map((r) => r.entity_id);
+  const amNames = rows.map((r) => r.am_name || "");
+  const pods = rows.map((r) => r.pod || "");
+  const composites = rows.map((r) => Math.round(r.composite || 0));
+  const stoplights = rows.map((r) => r.stoplight || "GREEN");
+  const planAmounts = rows.map((r) => Number(r.plan_amount || 0));
+  const flagged = rows.map((r) => !!r.perf_flagged);
+
+  await sql`
+    INSERT INTO customer_trends
+      (snapshot_date, entity_id, am_name, pod, composite, stoplight, plan_amount, perf_flagged)
     SELECT
-      cust.value->>'am_name' AS am_name,
-      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'RED')::int AS red,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'YELLOW')::int AS yellow,
-      COUNT(*) FILTER (WHERE cust.value->'signals_v2'->>'stoplight' = 'GREEN')::int AS green,
-      COUNT(*)::int AS total
-    FROM dashboard_snapshots,
-    LATERAL jsonb_array_elements(customer_data->'customers') AS cust(value)
-    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
-    GROUP BY snapshot_date, cust.value->>'am_name'
-    ORDER BY date ASC
+      ${snapshotDate}::date,
+      e.entity_id,
+      e.am_name,
+      e.pod,
+      e.composite,
+      e.stoplight,
+      e.plan_amount,
+      e.perf_flagged
+    FROM unnest(
+      ${entityIds}::text[],
+      ${amNames}::text[],
+      ${pods}::text[],
+      ${composites}::int[],
+      ${stoplights}::text[],
+      ${planAmounts}::numeric[],
+      ${flagged}::boolean[]
+    ) AS e(entity_id, am_name, pod, composite, stoplight, plan_amount, perf_flagged)
+    ON CONFLICT (entity_id, snapshot_date) DO UPDATE SET
+      am_name = EXCLUDED.am_name,
+      pod = EXCLUDED.pod,
+      composite = EXCLUDED.composite,
+      stoplight = EXCLUDED.stoplight,
+      plan_amount = EXCLUDED.plan_amount,
+      perf_flagged = EXCLUDED.perf_flagged
   `;
 
-  // Aggregate per pod per date in JS
-  const byPodDate = new Map<string, Map<string, PodTrendPoint>>();
+  return rows.length;
+}
+
+// ---------------------------------------------------------------------------
+// Replaces the LATERAL-based versions below: same signatures, flat-table SQL.
+// ---------------------------------------------------------------------------
+
+export async function readCustomerTrendFlat(
+  entityId: string,
+  days: number = 84,
+): Promise<CustomerTrendPoint[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      composite,
+      stoplight,
+      am_name
+    FROM customer_trends
+    WHERE entity_id = ${entityId}
+      AND snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    ORDER BY snapshot_date ASC
+  `;
+  return rows.map((r) => {
+    const row = r as { date: string; composite: number; stoplight: string; am_name: string };
+    return {
+      date: row.date,
+      composite: row.composite,
+      stoplight: (row.stoplight as Stoplight) || "GREEN",
+      am_name: row.am_name || "",
+      bizname: "",                          // not stored in the flat table
+    };
+  });
+}
+
+export async function readMultipleCustomerTrendsFlat(
+  entityIds: string[],
+  days: number = 14,
+): Promise<CustomerTrendBundle[]> {
+  const sql = getSql();
+  if (!sql || !entityIds.length) return [];
+  const rows = await sql`
+    SELECT
+      entity_id,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      composite,
+      stoplight
+    FROM customer_trends
+    WHERE entity_id = ANY(${entityIds}::text[])
+      AND snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    ORDER BY entity_id ASC, snapshot_date ASC
+  `;
+  const byEntity = new Map<string, CustomerTrendPointLite[]>();
+  for (const r of rows) {
+    const row = r as {
+      entity_id: string;
+      date: string;
+      composite: number;
+      stoplight: string;
+    };
+    if (!byEntity.has(row.entity_id)) byEntity.set(row.entity_id, []);
+    byEntity.get(row.entity_id)!.push({
+      date: row.date,
+      composite: row.composite,
+      stoplight: (row.stoplight as Stoplight) || "GREEN",
+    });
+  }
+  return entityIds.map((eid) => ({
+    entity_id: eid,
+    points: byEntity.get(eid) || [],
+  }));
+}
+
+export async function readAmBookTrendFlat(
+  amName: string,
+  days: number = 84,
+): Promise<AmBookTrendPoint[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE stoplight = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE stoplight = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE stoplight = 'GREEN')::int AS green,
+      COALESCE(SUM(plan_amount), 0)::numeric AS mrr,
+      COALESCE(SUM(CASE WHEN stoplight = 'RED' THEN plan_amount ELSE 0 END), 0)::numeric AS mrr_at_risk
+    FROM customer_trends
+    WHERE am_name = ${amName}
+      AND snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    GROUP BY snapshot_date
+    ORDER BY snapshot_date ASC
+  `;
+  return rows.map((r) => {
+    const row = r as {
+      date: string;
+      total: number;
+      red: number;
+      yellow: number;
+      green: number;
+      mrr: string | number;
+      mrr_at_risk: string | number;
+    };
+    return {
+      date: row.date,
+      total: row.total,
+      red: row.red,
+      yellow: row.yellow,
+      green: row.green,
+      mrr: Number(row.mrr),
+      mrr_at_risk: Number(row.mrr_at_risk),
+    };
+  });
+}
+
+export async function readMultipleAmBookTrendsFlat(
+  amNames: string[],
+  days: number = 14,
+): Promise<AmBookTrendBundle[]> {
+  const sql = getSql();
+  if (!sql || !amNames.length) return [];
+  const rows = await sql`
+    SELECT
+      am_name,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE stoplight = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE stoplight = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE stoplight = 'GREEN')::int AS green,
+      COALESCE(SUM(plan_amount), 0)::numeric AS mrr,
+      COALESCE(SUM(CASE WHEN stoplight = 'RED' THEN plan_amount ELSE 0 END), 0)::numeric AS mrr_at_risk
+    FROM customer_trends
+    WHERE am_name = ANY(${amNames}::text[])
+      AND snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    GROUP BY am_name, snapshot_date
+    ORDER BY am_name ASC, snapshot_date ASC
+  `;
+  const byAm = new Map<string, AmBookTrendPoint[]>();
   for (const r of rows) {
     const row = r as {
       am_name: string;
       date: string;
+      total: number;
       red: number;
       yellow: number;
       green: number;
-      total: number;
+      mrr: string | number;
+      mrr_at_risk: string | number;
     };
-    const pod = amToPod[row.am_name] || "Floating";
-    if (!byPodDate.has(pod)) byPodDate.set(pod, new Map());
-    const dateMap = byPodDate.get(pod)!;
-    const prev = dateMap.get(row.date) || {
+    if (!byAm.has(row.am_name)) byAm.set(row.am_name, []);
+    byAm.get(row.am_name)!.push({
       date: row.date,
-      red: 0,
-      yellow: 0,
-      green: 0,
-      total: 0,
-    };
-    dateMap.set(row.date, {
-      date: row.date,
-      red: prev.red + row.red,
-      yellow: prev.yellow + row.yellow,
-      green: prev.green + row.green,
-      total: prev.total + row.total,
+      total: row.total,
+      red: row.red,
+      yellow: row.yellow,
+      green: row.green,
+      mrr: Number(row.mrr),
+      mrr_at_risk: Number(row.mrr_at_risk),
     });
   }
-  const result: PodTrendBundle[] = [];
-  for (const [pod, dateMap] of byPodDate) {
-    result.push({
-      pod,
-      points: Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
-    });
-  }
-  // Sort pods stably
-  return result.sort((a, b) => a.pod.localeCompare(b.pod));
+  return amNames.map((am) => ({
+    am_name: am,
+    points: byAm.get(am) || [],
+  }));
 }
+
+export async function readPodTrendFlat(days: number = 14): Promise<PodTrendBundle[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT
+      pod,
+      to_char(snapshot_date, 'YYYY-MM-DD') AS date,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE stoplight = 'RED')::int AS red,
+      COUNT(*) FILTER (WHERE stoplight = 'YELLOW')::int AS yellow,
+      COUNT(*) FILTER (WHERE stoplight = 'GREEN')::int AS green
+    FROM customer_trends
+    WHERE snapshot_date >= (CURRENT_DATE - (${days}::int * INTERVAL '1 day'))
+    GROUP BY pod, snapshot_date
+    ORDER BY pod ASC, snapshot_date ASC
+  `;
+  const byPod = new Map<string, PodTrendPoint[]>();
+  for (const r of rows) {
+    const row = r as {
+      pod: string;
+      date: string;
+      total: number;
+      red: number;
+      yellow: number;
+      green: number;
+    };
+    const pod = row.pod || "Floating";
+    if (!byPod.has(pod)) byPod.set(pod, []);
+    byPod.get(pod)!.push({
+      date: row.date,
+      total: row.total,
+      red: row.red,
+      yellow: row.yellow,
+      green: row.green,
+    });
+  }
+  return Array.from(byPod.entries())
+    .map(([pod, points]) => ({ pod, points }))
+    .sort((a, b) => a.pod.localeCompare(b.pod));
+}
+
 
 // ---------------------------------------------------------------------------
 // Connection health check

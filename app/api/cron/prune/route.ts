@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { pruneOldSnapshots } from "@/lib/postgres";
 import { prunePipelineStateOlderThan } from "@/lib/pipeline-state";
 
@@ -12,14 +13,8 @@ export const dynamic = "force-dynamic";
  *     Scheduled in vercel.json at 00:30 UTC daily.
  */
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization") || "";
-  const ok =
-    (secret && auth === `Bearer ${secret}`) ||
-    (!secret && !!req.headers.get("x-vercel-cron"));
-  if (!ok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   try {
     const [snapshotsDeleted, pipelineStateDeleted] = await Promise.all([

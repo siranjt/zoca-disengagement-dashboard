@@ -13,9 +13,12 @@ export function middleware(req: NextRequest) {
   const user = process.env.DASHBOARD_USER;
   const pass = process.env.DASHBOARD_PASSWORD;
   if (!user || !pass) {
-    const res = NextResponse.next();
-    res.headers.set("x-dashboard-auth", "not-configured");
-    return res;
+    // Fail closed: refuse to serve if Basic Auth isn't configured.
+    // The /api/health and /api/cron paths are already skipped by the matcher.
+    return new NextResponse(
+      "Dashboard unavailable: DASHBOARD_USER / DASHBOARD_PASSWORD env vars not set.",
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const auth = req.headers.get("authorization");
   if (auth) {

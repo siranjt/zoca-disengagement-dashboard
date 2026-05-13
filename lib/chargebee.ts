@@ -35,8 +35,9 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
   const seen = new Set<string>();
   const customerToEntities = new Map<string, Set<string>>();
 
-  // v2 — include "future" in addition to v1's active/non_renewing/in_trial
-  for (const status of ["active", "non_renewing", "in_trial", "future"] as const) {
+  // v2 — exclude "future" (yet-to-start contracts inflate AM book counts
+  // without representing live customers). Keep active / non_renewing / in_trial.
+  for (const status of ["active", "non_renewing", "in_trial"] as const) {
     let offset: string | undefined;
     let page = 0;
     do {

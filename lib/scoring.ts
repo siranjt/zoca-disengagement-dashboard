@@ -239,8 +239,13 @@ export function composeHybridSignals(args: {
 
   // Determine tier — same internal model as v1, with WATCH lane awareness
   let tier: Tier;
-  // HIGH triggers: composite ≥ 65, zero comms 90d, zero mixpanel 90d
-  if (composite >= TIER_CUTS.high || commsMetrics.total_90d === 0 || !mixpanelHasData) {
+  // HIGH triggers: composite >= 65, OR (zero comms 90d AND no Mixpanel data)
+  //  — "no Mixpanel data" alone is a coverage gap, not a churn signal.
+  //  The WATCH lane (via flag_count) still surfaces these as YELLOW.
+  if (
+    composite >= TIER_CUTS.high ||
+    (commsMetrics.total_90d === 0 && !mixpanelHasData)
+  ) {
     tier = "HIGH";
   } else if (composite >= TIER_CUTS.medium) {
     tier = "MEDIUM";
