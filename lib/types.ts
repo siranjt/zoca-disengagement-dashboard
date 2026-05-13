@@ -283,8 +283,6 @@ export type HubspotJoinFields = {
   open_deal_count?: number;
   open_deal_stages?: string[];
   total_open_amount?: number;
-  last_lost_reason?: string | null;
-  last_lost_at?: string | null;
   last_call?: {
     note_id: string;
     date: string;
@@ -416,6 +414,14 @@ export type SnapshotV2 = Omit<Snapshot, "customers"> & {
   mixpanelCoverage: {
     activeWithMixpanel: number;
     activeWithoutMixpanel: number;
+  };
+  /** Phase 13.1: data-scope metadata for UI scope strip and pipeline guard. */
+  scope?: {
+    universe: "chargebee_active_sub";
+    statuses: readonly string[];
+    customer_count: number;
+    customer_id_count: number;
+    multi_location_count: number;
   };
 };
 

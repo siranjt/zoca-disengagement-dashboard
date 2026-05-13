@@ -3,7 +3,6 @@
  *
  * Returns per-company aggregates:
  *   - open_deal_count + open_deal_stages + total_open_amount
- *   - last_lost_reason + last_lost_at (for post-mortem analytics)
  *
  * Pulls last 180 days of deals to bound the query. Active customers
  * typically have <5 deals each.
@@ -15,8 +14,6 @@ export type DealsForCompany = {
   open_deal_count: number;
   open_deal_stages: string[];
   total_open_amount: number;
-  last_lost_reason: string | null;
-  last_lost_at: string | null;
   last_won_at: string | null;
 };
 
@@ -35,7 +32,6 @@ const DEAL_PROPS = [
   "hs_is_closed",
   "hs_is_closed_won",
   "hs_is_closed_lost",
-  "closed_lost_reason",
   "hs_lastmodifieddate",
 ];
 
@@ -94,9 +90,6 @@ export async function fetchDealsForCompanies(
     let openCount = 0;
     const openStages = new Set<string>();
     let totalOpenAmount = 0;
-    let lastLostReason: string | null = null;
-    let lastLostAt: string | null = null;
-    let lastLostMs = 0;
     let lastWonAt: string | null = null;
     let lastWonMs = 0;
 
@@ -106,7 +99,6 @@ export async function fetchDealsForCompanies(
       const p = d.properties || {};
       const isClosed = (p.hs_is_closed || "").toLowerCase() === "true";
       const isWon = (p.hs_is_closed_won || "").toLowerCase() === "true";
-      const isLost = (p.hs_is_closed_lost || "").toLowerCase() === "true";
       const amount = Number(p.amount || 0);
       const closeDateMs = p.closedate ? Date.parse(p.closedate) : 0;
 
@@ -114,12 +106,6 @@ export async function fetchDealsForCompanies(
         openCount += 1;
         if (p.dealstage) openStages.add(p.dealstage);
         if (Number.isFinite(amount)) totalOpenAmount += amount;
-      } else if (isLost && closeDateMs >= cutoffMs) {
-        if (closeDateMs > lastLostMs) {
-          lastLostMs = closeDateMs;
-          lastLostAt = p.closedate || null;
-          lastLostReason = p.closed_lost_reason || null;
-        }
       } else if (isWon && closeDateMs >= cutoffMs) {
         if (closeDateMs > lastWonMs) {
           lastWonMs = closeDateMs;
@@ -128,13 +114,11 @@ export async function fetchDealsForCompanies(
       }
     }
 
-    if (openCount > 0 || lastLostAt || lastWonAt) {
+    if (openCount > 0 || lastWonAt) {
       out.set(companyId, {
         open_deal_count: openCount,
         open_deal_stages: Array.from(openStages),
         total_open_amount: Math.round(totalOpenAmount),
-        last_lost_reason: lastLostReason,
-        last_lost_at: lastLostAt,
         last_won_at: lastWonAt,
       });
     }

@@ -8,6 +8,7 @@ import V2TopBar from "./V2TopBar";
 import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
 import V2Rollup from "./V2Rollup";
+import ScopeStrip from "./ScopeStrip";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -122,6 +123,8 @@ export default function V2Dashboard() {
         onSelectAm={handleSelectAm}
         onSetView={setView}
       />
+
+      {snapshot.status === "ready" && <ScopeStrip scope={snapshot.snapshot.scope} />}
 
       <main className="mx-auto max-w-[920px] px-4 pb-24 pt-4 md:px-6">
         {mounted && !welcomeDismissed && snapshot.status === "ready" && (

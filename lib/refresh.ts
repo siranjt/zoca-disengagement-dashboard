@@ -659,8 +659,6 @@ export async function composeSnapshot(
             open_deal_count: deals?.open_deal_count ?? 0,
             open_deal_stages: deals?.open_deal_stages ?? [],
             total_open_amount: deals?.total_open_amount ?? 0,
-            last_lost_reason: deals?.last_lost_reason ?? null,
-            last_lost_at: deals?.last_lost_at ?? null,
             last_call: note
               ? {
                   note_id: note.note_id,
@@ -918,6 +916,42 @@ export async function composeSnapshot(
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[compose] trajectory backfill failed:", msg);
     errors.push(`trajectory backfill: ${msg}`);
+  }
+
+  // -------------------------------------------------------------------------
+  // 2.6  Phase 13.1: scope meta + status-guard assertion.
+  //      The snapshot universe is "Chargebee subscribers in one of four
+  //      active-paying statuses". Anything else is a pipeline drift bug and
+  //      we refuse to write the snapshot rather than silently drift the UI.
+  // -------------------------------------------------------------------------
+  {
+    const allowedStatuses = new Set(["active", "non_renewing", "in_trial", "future"]);
+    const invalid = scored.filter((c) => !allowedStatuses.has(c.cb_status));
+    if (invalid.length > 0) {
+      const examples = invalid
+        .slice(0, 3)
+        .map((c) => `${c.company}=${c.cb_status}`)
+        .join(", ");
+      throw new Error(
+        `Phase 13.1 scope guard: ${invalid.length} customers in snapshot have subscription_status outside ` +
+          `the active-sub universe. Examples: ${examples}. Refusing to write snapshot to prevent dashboard drift.`,
+      );
+    }
+    const byCid = new Map<string, number>();
+    for (const c of scored) {
+      const cid = c.customer_id;
+      if (!cid) continue;
+      byCid.set(cid, (byCid.get(cid) ?? 0) + 1);
+    }
+    let multiLocCount = 0;
+    for (const n of byCid.values()) if (n > 1) multiLocCount += 1;
+    snapshot.scope = {
+      universe: "chargebee_active_sub",
+      statuses: ["active", "non_renewing", "in_trial", "future"],
+      customer_count: scored.length,
+      customer_id_count: byCid.size,
+      multi_location_count: multiLocCount,
+    };
   }
 
   memSnap("compose before write");

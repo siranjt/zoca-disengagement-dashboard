@@ -10,6 +10,7 @@ import V2Rollup from "./V2Rollup";
 import V2ManagerToolbar, { type SavedView, nearestAvailable } from "./V2ManagerToolbar";
 import V2StoplightMovement from "./V2StoplightMovement";
 import V2Sparkline from "./V2Sparkline";
+import ScopeStrip from "./ScopeStrip";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -675,6 +676,8 @@ export default function V2ManagerDashboard() {
           </div>
         </div>
       </nav>
+
+      {snapshot.status === "ready" && <ScopeStrip scope={snapshot.snapshot.scope} />}
 
       <main id="manager-content" className="mx-auto max-w-[1400px] px-4 pb-24 pt-6 md:px-6">
         <header className="mb-5">

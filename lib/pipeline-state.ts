@@ -24,6 +24,26 @@ function getSql(): NeonQueryFunction<false, false> | null {
   return _sql;
 }
 
+
+/**
+ * Phase 13.1 — expand stage CHECK constraint to allow 'D' for HubSpot stage.
+ * Idempotent: DROP IF EXISTS no-ops if not present, ADD re-asserts the rule.
+ * Cached so we run the two ALTERs once per cold start, not on every write.
+ */
+let _stageDConstraintReady = false;
+async function ensureStageDConstraint(): Promise<void> {
+  if (_stageDConstraintReady) return;
+  const sql = getSql();
+  if (!sql) return;
+  try {
+    await sql`ALTER TABLE pipeline_state DROP CONSTRAINT IF EXISTS pipeline_state_stage_check`;
+    await sql`ALTER TABLE pipeline_state ADD CONSTRAINT pipeline_state_stage_check CHECK (stage IN ('A', 'B', 'C', 'D'))`;
+    _stageDConstraintReady = true;
+  } catch (e) {
+    console.warn("[pipeline-state] could not expand stage CHECK constraint:", e);
+  }
+}
+
 export type StageWriteOptions = {
   durationMs: number;
   errors?: string[];
@@ -42,6 +62,8 @@ export async function writePipelineStage(
 ): Promise<void> {
   const sql = getSql();
   if (!sql) throw new Error("[pipeline-state] POSTGRES_URL not set");
+
+  await ensureStageDConstraint();
 
   const errors = opts.errors ?? [];
   const rowCount = opts.rowCount ?? null;
