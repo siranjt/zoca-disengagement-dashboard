@@ -13,6 +13,8 @@ type Props = {
   customer: ScoredCustomerV2;
   trend?: CompositeTrendPoint[];
   recentlyContacted?: boolean;
+  isPinned?: boolean;
+  onTogglePinned?: () => void;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -29,7 +31,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned }: Props) {
   const { signals_v2: s, metrics } = customer;
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
@@ -232,6 +234,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
               label="Composite score trend"
             />
           )}
+          {onTogglePinned && (
+            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+          )}
         </span>
       </article>
     );
@@ -289,6 +294,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {onTogglePinned && (
+              <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+            )}
             <button
               type="button"
               className="zoca-btn zoca-btn-ghost"
@@ -513,6 +521,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
 
         {/* Right side: action button (state machine) */}
         <div className="flex flex-col items-end gap-2">
+          {onTogglePinned && (
+            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+          )}
           {actionState.kind === "done" ? (
             <div
               className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]"
@@ -887,6 +898,45 @@ function FlagChip({ label }: { label: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 18.A — Pin button. Lives top-right on every tier variant. Pink when
+// pinned (glow + filled), muted when not. Parent owns the toggled state.
+// ---------------------------------------------------------------------------
+
+function PinButton({
+  isPinned,
+  onToggle,
+}: {
+  isPinned: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      className="inline-flex items-center justify-center transition cursor-pointer"
+      style={{
+        width: "28px",
+        height: "28px",
+        borderRadius: "8px",
+        background: "transparent",
+        border: "1px solid var(--zoca-border)",
+        color: isPinned ? "var(--zoca-pink)" : "var(--zoca-text-2)",
+        boxShadow: isPinned ? "0 0 12px rgba(255, 168, 205, 0.4)" : "none",
+        flexShrink: 0,
+      }}
+      title={isPinned ? "Unpin" : "Pin"}
+      aria-label={isPinned ? "Unpin customer" : "Pin customer"}
+      aria-pressed={isPinned}
+    >
+      <i className="ti ti-pin" style={{ fontSize: "15px" }} />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Metrics summary — render with channels used + app tier color + billing detail
 // ---------------------------------------------------------------------------
 
@@ -1133,7 +1183,9 @@ const V2CustomerCard = memo(V2CustomerCardInner, (prev, next) => {
     prev.customer.signals_v2.stoplight === next.customer.signals_v2.stoplight &&
     prev.customer.performance?.flag === next.customer.performance?.flag &&
     prev.trend === next.trend &&
-    prev.recentlyContacted === next.recentlyContacted
+    prev.recentlyContacted === next.recentlyContacted &&
+    prev.isPinned === next.isPinned &&
+    prev.onTogglePinned === next.onTogglePinned
   );
 });
 

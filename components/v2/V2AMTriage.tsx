@@ -12,14 +12,19 @@ type Props = {
   pod: string;
   customers: ScoredCustomerV2[];
   generatedAt: string;
+  pinnedSet?: Set<string>;
+  onTogglePinned?: (
+    entityId: string,
+    meta: { customer_id: string | null; bizname: string | null },
+  ) => void;
 };
 
-type FilterKey = "act" | "improving" | "quiet" | "all";
+type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all";
 type SortKey = "urgency" | "plan" | "lasttouch";
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt }: Props) {
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
@@ -119,15 +124,30 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       (a, b) => b.signals_v2.composite - a.signals_v2.composite,
     );
 
-    return { act, improving, quiet: quiet30, all };
-  }, [customers]);
+    const pinned = pinnedSet
+      ? customers
+          .filter((c) => pinnedSet.has(c.entity_id))
+          .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
+      : [];
+
+    return { pinned, act, improving, quiet: quiet30, all };
+  }, [customers, pinnedSet]);
 
   const filterCounts = {
+    pinned: baseBuckets.pinned.length,
     act: baseBuckets.act.length,
     improving: baseBuckets.improving.length,
     quiet: baseBuckets.quiet.length,
     all: baseBuckets.all.length,
   };
+
+  // If the user is on the "pinned" filter and their pinned count drops to
+  // 0 (e.g. they just unpinned everything), fall back to the default lane.
+  useEffect(() => {
+    if (filter === "pinned" && filterCounts.pinned === 0) {
+      setFilter("act");
+    }
+  }, [filter, filterCounts.pinned]);
 
   // Apply search + sort to current filter's customers
   const filtered = useMemo(() => {
@@ -162,6 +182,15 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
   // Hero — count + label
   const heroCount = filtered.length;
   const heroLabelRich = (() => {
+    if (filter === "pinned") {
+      if (query.trim()) {
+        return `${heroCount} match${heroCount === 1 ? "" : "es"} in pinned`;
+      }
+      if (heroCount === 0) {
+        return "Nothing pinned yet. Click the pin icon on any customer card to add it here.";
+      }
+      return `You have ${heroCount} pinned customer${heroCount === 1 ? "" : "s"}`;
+    }
     if (filter === "act") {
       if (query.trim()) {
         return `${heroCount} match${heroCount === 1 ? "" : "es"} for "${query.trim()}"`;
@@ -229,6 +258,14 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
 
       {/* Controls row: filter chips + search + sort */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
+        {filterCounts.pinned > 0 && (
+          <FilterChip
+            label="📌 Pinned"
+            count={filterCounts.pinned}
+            active={filter === "pinned"}
+            onClick={() => setFilter("pinned")}
+          />
+        )}
         <FilterChip
           label="Need to call today"
           count={filterCounts.act}
@@ -309,6 +346,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
               customer={c}
               trend={customerTrends[c.entity_id]}
               recentlyContacted={contactedRecently.has(c.entity_id)}
+              isPinned={pinnedSet?.has(c.entity_id) ?? false}
+              onTogglePinned={
+                onTogglePinned
+                  ? () =>
+                      onTogglePinned(c.entity_id, {
+                        customer_id: c.customer_id ?? null,
+                        bizname: c.company ?? null,
+                      })
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -396,6 +443,10 @@ function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boole
     );
   }
   const messages: Record<FilterKey, { title: string; body: string }> = {
+    pinned: {
+      title: "Nothing pinned yet.",
+      body: "Click the pin icon on any customer card to add it here.",
+    },
     act: {
       title: "You're caught up.",
       body: "No customers in your book need urgent attention right now. Nice work.",

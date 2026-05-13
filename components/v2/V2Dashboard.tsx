@@ -91,6 +91,94 @@ export default function V2Dashboard() {
     }
   }, []);
 
+  // Phase 18.A: per-AM pinned customer set. Persisted in Postgres via
+  // /api/v2/pinned. Toggling is optimistic — flip immediately, revert on
+  // error so the UI stays responsive even on a flaky network.
+  const [pinnedSet, setPinnedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!selectedAm) {
+      setPinnedSet(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/v2/pinned?am=${encodeURIComponent(selectedAm)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          ok: boolean;
+          pinned?: { entity_id: string }[];
+        };
+        if (cancelled || !json.ok) return;
+        setPinnedSet(new Set((json.pinned || []).map((p) => p.entity_id)));
+      } catch {
+        /* ignore — pin set defaults to empty */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAm]);
+
+  const handleTogglePinned = useCallback(
+    (entityId: string, meta: { customer_id: string | null; bizname: string | null }) => {
+      const am = selectedAm;
+      if (!am) return;
+      // Optimistic update
+      const wasPinned = pinnedSet.has(entityId);
+      setPinnedSet((prev) => {
+        const next = new Set(prev);
+        if (wasPinned) next.delete(entityId);
+        else next.add(entityId);
+        return next;
+      });
+      (async () => {
+        try {
+          const res = await fetch("/api/v2/pinned", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              am,
+              entity_id: entityId,
+              customer_id: meta.customer_id,
+              bizname: meta.bizname,
+            }),
+          });
+          if (!res.ok) {
+            const txt = await res.text().catch(() => res.statusText);
+            // Revert on error
+            setPinnedSet((prev) => {
+              const next = new Set(prev);
+              if (wasPinned) next.add(entityId);
+              else next.delete(entityId);
+              return next;
+            });
+            if (typeof window !== "undefined") {
+              window.alert(`Couldn't update pin: ${res.status} ${txt.slice(0, 200)}`);
+            }
+          }
+        } catch (e) {
+          // Revert on network error
+          setPinnedSet((prev) => {
+            const next = new Set(prev);
+            if (wasPinned) next.add(entityId);
+            else next.delete(entityId);
+            return next;
+          });
+          if (typeof window !== "undefined") {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.alert(`Couldn't update pin: ${msg}`);
+          }
+        }
+      })();
+    },
+    [selectedAm, pinnedSet],
+  );
+
   const amCustomers = useMemo<ScoredCustomerV2[]>(() => {
     if (snapshot.status !== "ready" || !selectedAm) return [];
     return snapshot.snapshot.customers.filter((c) => c.am_name === selectedAm);
@@ -224,6 +312,8 @@ export default function V2Dashboard() {
             pod={selectedPod}
             customers={amCustomers}
             generatedAt={snapshot.snapshot.generatedAt}
+            pinnedSet={pinnedSet}
+            onTogglePinned={handleTogglePinned}
           />
         )}
         {snapshot.status === "ready" && view === "pod" && (

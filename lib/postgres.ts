@@ -13,7 +13,7 @@ import type { Stoplight } from "./config";
  * so local development without Neon still works (falls back to in-memory).
  */
 let _sql: NeonQueryFunction<false, false> | null = null;
-function getSql(): NeonQueryFunction<false, false> | null {
+export function getSql(): NeonQueryFunction<false, false> | null {
   if (!pgConfigured()) return null;
   if (!_sql) _sql = neon(process.env.POSTGRES_URL!);
   return _sql;
