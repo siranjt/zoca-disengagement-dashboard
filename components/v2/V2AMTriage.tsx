@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import V2CustomerCard from "./V2CustomerCard";
 import { AnimatedNumber } from "./AnimatedNumber";
@@ -266,6 +266,43 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     }
     return out;
   }, [filtered, signal, podFilter]);
+
+  // Phase 22.C — FLIP transitions: when finalList re-orders (filter/sort/pin/snooze),
+  // each card animates from its previous DOM position to its new one via inverse
+  // transform + transition-back. Cards are identified across renders by their
+  // [data-entity-id] attribute on the outermost element of V2CustomerCard.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const prevPositions = useRef<Map<string, DOMRect>>(new Map());
+
+  useLayoutEffect(() => {
+    if (!listRef.current) return;
+    const els = listRef.current.querySelectorAll<HTMLElement>("[data-entity-id]");
+    els.forEach((el) => {
+      const id = el.dataset.entityId;
+      if (!id) return;
+      const prev = prevPositions.current.get(id);
+      if (prev) {
+        const next = el.getBoundingClientRect();
+        const dy = prev.top - next.top;
+        const dx = prev.left - next.left;
+        if (dy !== 0 || dx !== 0) {
+          el.style.transform = `translate(${dx}px, ${dy}px)`;
+          el.style.transition = "none";
+          requestAnimationFrame(() => {
+            el.style.transform = "";
+            el.style.transition = "transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)";
+          });
+        }
+      }
+    });
+    // Save current positions for the next render.
+    prevPositions.current.clear();
+    els.forEach((el) => {
+      const id = el.dataset.entityId;
+      if (!id) return;
+      prevPositions.current.set(id, el.getBoundingClientRect());
+    });
+  });
 
   // Hero — count + label
   const heroCount = finalList.length;
@@ -543,7 +580,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       {finalList.length === 0 ? (
         <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div ref={listRef} className="flex flex-col gap-3">
           {finalList.map((c, i) => (
             <V2CustomerCard
               key={c.entity_id}

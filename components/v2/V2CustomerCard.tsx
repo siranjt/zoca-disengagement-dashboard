@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
@@ -57,6 +57,39 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
   const podText = customer.pod ? ` · ${customer.pod}` : "";
+
+  // ---------------------------------------------------------------------------
+  // Phase 22.C — card-level animation state.
+  // `snoozing`: applied for 500ms when the snooze action fires, before the
+  //   parent unmounts the card via snoozedSet. Routes the snooze through
+  //   handleSnoozeWithAnimation so the API call fires at the animation peak.
+  // `popping`: short-lived flag on the pin transition (false → true) to
+  //   trigger the spring pop. Read by PinButton's icon className.
+  // ---------------------------------------------------------------------------
+  const [snoozing, setSnoozing] = useState(false);
+  const [popping, setPopping] = useState(false);
+  const prevPinnedRef = useRef<boolean>(!!isPinned);
+
+  useEffect(() => {
+    if (isPinned && !prevPinnedRef.current) {
+      setPopping(true);
+      const t = setTimeout(() => setPopping(false), 500);
+      prevPinnedRef.current = !!isPinned;
+      return () => clearTimeout(t);
+    }
+    prevPinnedRef.current = !!isPinned;
+  }, [isPinned]);
+
+  async function handleSnoozeWithAnimation(days: number) {
+    if (!onSnooze) return;
+    setSnoozing(true);
+    // Fire the API call at the animation peak (~250ms in). The parent will
+    // move this customer into snoozedSet, which (for full red cards) flips
+    // the card to its snoozed shape OR (for triage views that filter
+    // snoozed out) unmounts it. The remaining ~250ms runs either way.
+    await new Promise((r) => setTimeout(r, 250));
+    onSnooze(days);
+  }
 
   // Feedback flow ("this signal is wrong" report)
   type FeedbackState =
@@ -194,7 +227,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
       <article
         role="article"
         aria-label={`${customer.company} — Doing fine`}
-        className="zoca-fade-in"
+        data-entity-id={customer.entity_id}
+        className={`zoca-fade-in${snoozing ? " v2-card-snoozing" : ""}`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -261,7 +295,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             />
           )}
           {onTogglePinned && (
-            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
           )}
         </span>
       </article>
@@ -273,7 +307,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
       <article
         role="article"
         aria-label={`${customer.company} — Keep an eye on${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
-        className="zoca-fade-in"
+        data-entity-id={customer.entity_id}
+        className={`zoca-fade-in${snoozing ? " v2-card-snoozing" : ""}`}
         style={{
           background: isSnoozed ? "rgba(254, 243, 199, 0.55)" : "#ffffff",
           border: isSnoozed
@@ -329,7 +364,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {onTogglePinned && (
-              <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+              <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
             )}
             {isSnoozed && snoozedUntil && onUnsnooze ? (
               <SnoozedBanner
@@ -348,7 +383,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                   Schedule check-in
                 </button>
                 {onSnooze ? (
-                  <SnoozeMenu size="xs" onPick={(days) => onSnooze(days)} />
+                  <SnoozeMenu size="xs" onPick={(days) => handleSnoozeWithAnimation(days)} />
                 ) : null}
               </>
             )}
@@ -418,7 +453,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
     <article
       role="article"
       aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
-      className="zoca-card group v2-card-enter"
+      data-entity-id={customer.entity_id}
+      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}`}
       style={{
         borderColor: isSnoozed
           ? "rgba(245, 158, 11, 0.35)"
@@ -612,7 +648,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         {/* Right side: action button (state machine) */}
         <div className="flex flex-col items-end gap-2">
           {onTogglePinned && (
-            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
+            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
           )}
           {isSnoozed && snoozedUntil && onUnsnooze ? (
             <SnoozedBanner
@@ -829,7 +865,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                 </button>
               )}
               {onSnooze && (
-                <SnoozeMenu onPick={(days) => onSnooze(days)} />
+                <SnoozeMenu onPick={(days) => handleSnoozeWithAnimation(days)} />
               )}
             </div>
           )}
@@ -1115,9 +1151,12 @@ function SignalChipRow({
 function PinButton({
   isPinned,
   onToggle,
+  popping = false,
 }: {
   isPinned: boolean;
   onToggle: () => void;
+  /** Phase 22.C — when true, the icon plays the v2-pin-pop keyframe (spring + rotation). */
+  popping?: boolean;
 }) {
   return (
     <button
@@ -1141,7 +1180,10 @@ function PinButton({
       aria-label={isPinned ? "Unpin customer" : "Pin customer"}
       aria-pressed={isPinned}
     >
-      <i className="ti ti-pin" style={{ fontSize: "15px" }} />
+      <i
+        className={`ti ti-pin${popping ? " v2-pin-popping" : ""}`}
+        style={{ fontSize: "15px", display: "inline-block" }}
+      />
     </button>
   );
 }
