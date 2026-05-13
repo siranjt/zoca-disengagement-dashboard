@@ -42,6 +42,10 @@ type Props = {
   /** Phase 22.B.3 — pod filter (?pod=) from heatmap drill-in. Optional. */
   podFilter?: string | null;
   onPodFilterChange?: (pod: string | null) => void;
+  /** Phase 24 — controlled filter from URL (?filter=) / KPI-tile clicks. */
+  filterFromUrl?: FilterKey | null;
+  /** Phase 24 — controlled sort from URL (?sort=) — used by MRR @ risk drill. */
+  sortFromUrl?: SortKey | null;
 };
 
 type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
@@ -58,7 +62,7 @@ function isSortKey(v: string): v is SortKey {
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick, podFilter, onPodFilterChange }: Props) {
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick, podFilter, onPodFilterChange, filterFromUrl, sortFromUrl }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
@@ -91,6 +95,20 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       cancelled = true;
     };
   }, [amName]);
+
+  // Phase 24 — when V2Dashboard pushes a new ?filter= (e.g. KPI tile click),
+  // mirror it into our local state. Runs on mount + whenever the URL
+  // value changes.
+  useEffect(() => {
+    if (filterFromUrl && isFilterKey(filterFromUrl)) {
+      setFilter(filterFromUrl);
+    }
+  }, [filterFromUrl]);
+  useEffect(() => {
+    if (sortFromUrl && isSortKey(sortFromUrl)) {
+      setSort(sortFromUrl);
+    }
+  }, [sortFromUrl]);
 
   useEffect(() => {
     if (customers.length === 0) {

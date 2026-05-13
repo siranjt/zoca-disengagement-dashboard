@@ -10,6 +10,10 @@ type Tile = {
   color: "midnight" | "pink" | "amber" | "green";
   href?: string;
   selected?: boolean;
+  // Phase 24 — optional onClick for tiles that drive in-page state instead
+  // of (or in addition to) navigation. When supplied, the click is
+  // intercepted (e.preventDefault) and the handler runs.
+  onClick?: () => void;
 };
 
 type Props = {
@@ -41,10 +45,17 @@ function KpiTile({ tile, index }: { tile: Tile; index: number }) {
   // Phase 22.E — 3D tilt on all tiles. Replaces useMagnetic; the two
   // effects fought on the selected tile (both setting el.style.transform).
   const tiltRef = useTilt<HTMLAnchorElement>();
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (tile.onClick) {
+      e.preventDefault();
+      tile.onClick();
+    }
+  };
   return (
     <a
       ref={tiltRef}
       href={tile.href || "#"}
+      onClick={handleClick}
       className="block bg-white rounded-2xl px-4 py-4 no-underline transition cursor-pointer"
       style={{
         border: isSelected

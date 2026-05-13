@@ -17,7 +17,8 @@ import FreshnessBanner from "./FreshnessBanner";
 import V2AmActivityRollup from "./V2AmActivityRollup";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { AmLink } from "./AmLink";
-import { ToastProvider } from "./Toast";
+import { ToastProvider, useToast } from "./Toast";
+import { useRouter } from "next/navigation";
 import { AmStoplightStack, type AmStoplightRow } from "./charts/AmStoplightStack";
 import { OutcomeBreakdownDonut } from "./charts/OutcomeBreakdownDonut";
 import { TopSignalsBar } from "./charts/TopSignalsBar";
@@ -170,6 +171,31 @@ function isValidDate(s: string): boolean {
 }
 
 function V2ManagerDashboardInner() {
+  // Phase 24 — router for KPI-tile + row navigation; toast for click confirmation.
+  const router = useRouter();
+  const { showToast } = useToast();
+
+  // Phase 24 — KPI tile click handlers. Customers/RED/YELLOW/GREEN/MRR
+  // navigate to the AM view with the matching filter. AMs w/ action smooth-
+  // scrolls to the AM-activity rollup on the same page.
+  const navigateToFilter = useCallback(
+    (filter: "all" | "act" | "improving" | "quiet", label: string, sort?: string) => {
+      const qs = new URLSearchParams();
+      qs.set("filter", filter);
+      if (sort) qs.set("sort", sort);
+      router.push(`/v2?${qs.toString()}`);
+      showToast(`Opening ${label}`, { type: "info", icon: "filter" });
+    },
+    [router, showToast],
+  );
+  const scrollToAmActivity = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("am-activity-rollup");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      showToast("AMs with recent action", { type: "info", icon: "filter" });
+    }
+  }, [showToast]);
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
   const [compareSnapshot, setCompareSnapshot] = useState<SnapshotV2 | null>(null);
   const [compareError, setCompareError] = useState<string | null>(null);
@@ -856,6 +882,8 @@ function V2ManagerDashboardInner() {
                   sub={kpis.preLaunch > 0 ? `${kpis.preLaunch} \ud83d\ude80 pre-launch` : undefined}
                   sparkValues={tierTrend.map((r) => r.total_customers)}
                   sparkColor="var(--zoca-text-3)"
+                  onClick={() => navigateToFilter("all", "full book")}
+                  ariaLabel="Customers — open full book in AM view"
                 />
                 <Kpi
                   label="RED"
@@ -867,6 +895,8 @@ function V2ManagerDashboardInner() {
                   deltaSemantic="lowerIsBetter"
                   sparkValues={tierTrend.map((r) => r.total_high_risk)}
                   sparkColor="var(--zoca-pink)"
+                  onClick={() => navigateToFilter("act", "RED — need to call")}
+                  ariaLabel="RED — open Need-to-call lane in AM view"
                 />
                 <Kpi
                   label="YELLOW"
@@ -877,6 +907,8 @@ function V2ManagerDashboardInner() {
                   deltaSemantic="neutral"
                   sparkValues={tierTrend.map((r) => r.total_watch)}
                   sparkColor="var(--zoca-amber)"
+                  onClick={() => navigateToFilter("improving", "YELLOW — Watch lane")}
+                  ariaLabel="YELLOW — open Watch lane in AM view"
                 />
                 <Kpi
                   label="GREEN"
@@ -887,6 +919,8 @@ function V2ManagerDashboardInner() {
                   deltaSemantic="higherIsBetter"
                   sparkValues={tierTrend.map((r) => r.total_healthy)}
                   sparkColor="var(--zoca-green)"
+                  onClick={() => navigateToFilter("quiet", "GREEN — Healthy lane")}
+                  ariaLabel="GREEN — open Healthy lane in AM view"
                 />
                 <Kpi
                   label="MRR @ risk"
@@ -897,6 +931,8 @@ function V2ManagerDashboardInner() {
                   }
                   deltaUnit="$"
                   deltaSemantic="lowerIsBetter"
+                  onClick={() => navigateToFilter("act", "RED sorted by MRR", "plan")}
+                  ariaLabel="MRR at risk — open RED lane sorted by plan amount"
                 />
                 <Kpi
                   label="AMs w/ action"
@@ -905,6 +941,8 @@ function V2ManagerDashboardInner() {
                   delta={compareKpis ? kpis.amsWithAction - compareKpis.amsWithAction : null}
                   deltaUnit="vs prev"
                   deltaSemantic="lowerIsBetter"
+                  onClick={scrollToAmActivity}
+                  ariaLabel="AMs with action — scroll to AM activity table"
                 />
               </div>
               {compareSummary && (
@@ -1012,13 +1050,37 @@ function V2ManagerDashboardInner() {
                   {topMovers.map((m, i) => (
                     <li
                       key={m.am}
-                      className="flex items-center gap-3 py-2 text-[13px] -mx-2 px-2 rounded-md transition"
+                      className="flex items-center gap-3 py-2 text-[13px] -mx-2 px-2 rounded-md transition cursor-pointer"
+                      role="link"
+                      tabIndex={0}
                       style={{ borderColor: "var(--zoca-border)" }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = "rgba(20,110,245,0.04)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";
+                      }}
+                      onClick={(e) => {
+                        // Phase 24 — whole row clickable. Skip when the inner
+                        // "$X at risk" pill (or its child) was the actual click
+                        // target so the pill can navigate to the sorted view.
+                        const targetEl = e.target as HTMLElement | null;
+                        if (targetEl && targetEl.closest("[data-row-stop]")) return;
+                        const qs = new URLSearchParams();
+                        qs.set("am", m.am);
+                        qs.set("filter", "act");
+                        router.push(`/v2?${qs.toString()}`);
+                        showToast(`Opening ${m.am}`, { type: "info", icon: "filter" });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          const qs = new URLSearchParams();
+                          qs.set("am", m.am);
+                          qs.set("filter", "act");
+                          router.push(`/v2?${qs.toString()}`);
+                          showToast(`Opening ${m.am}`, { type: "info", icon: "filter" });
+                        }
                       }}
                     >
                       <span className="w-5 text-center text-[11px] font-bold text-zoca-text-2 tabular-nums">
@@ -1079,13 +1141,32 @@ function V2ManagerDashboardInner() {
                           />
                         </span>
                       )}
-                      <span
-                        className="hidden text-[11px] tabular-nums sm:inline font-semibold"
-                        style={{ color: "var(--zoca-pink)" }}
-                        title="MRR at risk in this AM's book"
+                      <button
+                        type="button"
+                        data-row-stop
+                        className="hidden text-[11px] tabular-nums sm:inline-flex font-semibold rounded-full px-2 py-0.5 transition"
+                        style={{
+                          color: "var(--zoca-pink)",
+                          cursor: "pointer",
+                          background: "rgba(255,134,225,0.08)",
+                          border: "1px solid rgba(255,86,187,0.18)",
+                        }}
+                        title={`Open ${m.am} — RED sorted by MRR at risk`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const qs = new URLSearchParams();
+                          qs.set("am", m.am);
+                          qs.set("filter", "act");
+                          qs.set("sort", "plan");
+                          router.push(`/v2?${qs.toString()}`);
+                          showToast(
+                            `Opening ${m.am} — RED sorted by MRR`,
+                            { type: "info", icon: "filter" },
+                          );
+                        }}
                       >
                         {formatMoney(m.mrrAtRisk)} @ risk
-                      </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -1113,7 +1194,9 @@ function V2ManagerDashboardInner() {
               />
             </div>
 
-            <V2AmActivityRollup daysBack={7} />
+            <div id="am-activity-rollup">
+              <V2AmActivityRollup daysBack={7} />
+            </div>
 
             <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -1188,6 +1271,8 @@ function Kpi({
   deltaSemantic,
   sparkValues,
   sparkColor,
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   value: string;
@@ -1198,6 +1283,9 @@ function Kpi({
   deltaSemantic?: "higherIsBetter" | "lowerIsBetter" | "neutral";
   sparkValues?: number[];
   sparkColor?: string;
+  // Phase 24 — when supplied, the entire tile becomes a clickable button.
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
   const valueColor =
     tone === "rose"
@@ -1207,8 +1295,83 @@ function Kpi({
         : tone === "emerald"
           ? "var(--zoca-green)"
           : "var(--zoca-text)";
+  // Phase 24 — render as a <button> when interactive so cursor:pointer
+  // and focus-ring are first-class. Otherwise stay as a plain div so
+  // we don't accidentally register a button in the a11y tree.
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel || label}
+        className="zoca-card print:border-zinc-300 print:bg-white text-left transition-all duration-150 ease-out focus:outline-none"
+        style={{ cursor: "pointer", display: "block", width: "100%" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow =
+            "0 12px 28px -8px rgba(11,5,29,0.1), 0 0 0 1px rgba(20,110,245,0.18), 0 0 32px rgba(255,168,205,0.32)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "";
+          e.currentTarget.style.boxShadow = "";
+        }}
+      >
+        <KpiBody
+          label={label}
+          value={value}
+          valueColor={valueColor}
+          sub={sub}
+          delta={delta}
+          deltaUnit={deltaUnit}
+          deltaSemantic={deltaSemantic}
+          sparkValues={sparkValues}
+          sparkColor={sparkColor}
+        />
+      </button>
+    );
+  }
   return (
     <div className="zoca-card print:border-zinc-300 print:bg-white">
+      <KpiBody
+        label={label}
+        value={value}
+        valueColor={valueColor}
+        sub={sub}
+        delta={delta}
+        deltaUnit={deltaUnit}
+        deltaSemantic={deltaSemantic}
+        sparkValues={sparkValues}
+        sparkColor={sparkColor}
+      />
+    </div>
+  );
+}
+
+// Phase 24 — extracted body so the clickable + non-clickable Kpi tile share
+// rendering. No behavior change vs the prior inline body.
+function KpiBody({
+  label,
+  value,
+  valueColor,
+  sub,
+  delta,
+  deltaUnit,
+  deltaSemantic,
+  sparkValues,
+  sparkColor,
+}: {
+  label: string;
+  value: string;
+  valueColor: string;
+  sub?: string;
+  delta?: number | null;
+  deltaUnit?: string;
+  deltaSemantic?: "higherIsBetter" | "lowerIsBetter" | "neutral";
+  sparkValues?: number[];
+  sparkColor?: string;
+}) {
+  return (
+    <>
       <div className="zoca-micro-label print:text-zinc-600">{label}</div>
       <div
         className="mt-1 font-extrabold tabular-nums"
@@ -1245,7 +1408,7 @@ function Kpi({
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
 

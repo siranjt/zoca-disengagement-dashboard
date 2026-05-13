@@ -60,6 +60,10 @@ function V2DashboardInner() {
   // the V2ManagerDashboard signal-heatmap cell-click flow that navigates
   // here as /v2?pod=Pod+4&signal=we_silent.
   const [podFilter, setPodFilter] = useState<string | null>(null);
+  // Phase 24 — URL-bound filter (?filter=) so KPI-tile clicks + manager-side
+  // deep links flip the active V2AMTriage lane on mount.
+  const [filterFromUrl, setFilterFromUrl] = useState<string | null>(null);
+  const [sortFromUrl, setSortFromUrl] = useState<string | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -76,6 +80,10 @@ function V2DashboardInner() {
     if (isSignalKey(sigFromQuery)) setSignal(sigFromQuery);
     const podFromQuery = url.searchParams.get("pod");
     if (podFromQuery) setPodFilter(podFromQuery);
+    const filterQ = url.searchParams.get("filter");
+    if (filterQ) setFilterFromUrl(filterQ);
+    const sortQ = url.searchParams.get("sort");
+    if (sortQ) setSortFromUrl(sortQ);
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, []);
 
@@ -163,7 +171,23 @@ function V2DashboardInner() {
     [showToast],
   );
 
-  const handleDismissWelcome = useCallback(() => {
+  // Phase 24 — KPI tile click handler. Sets the active filter, syncs URL,
+  // and fires a confirmation toast. Used by the four AM-view KPI tiles
+  // (Total / Need to call / Watch / Healthy).
+  const handleKpiTileClick = useCallback(
+    (filter: "all" | "act" | "improving" | "quiet", label: string) => {
+      setFilterFromUrl(filter);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("filter", filter);
+        window.history.replaceState({}, "", url.toString());
+      }
+      showToast(`Showing: ${label}`, { type: "info", icon: "filter" });
+    },
+    [showToast],
+  );
+
+    const handleDismissWelcome = useCallback(() => {
     setWelcomeDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_WELCOME_DISMISSED, "1");
@@ -493,25 +517,34 @@ function V2DashboardInner() {
             value: scopeCustomerCount,
             subtitle: "in your book",
             color: "midnight",
+            selected: filterFromUrl === "all",
+            onClick: () => handleKpiTileClick("all", "full book"),
           },
           {
             label: "Need to call",
             value: redCountForAm,
             subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
             color: "pink",
-            selected: true,
+            // Phase 24 — "Need to call" is the canonical default lane. Keep
+            // the pink border whenever the URL has no ?filter= or filter=act.
+            selected: filterFromUrl === "act" || filterFromUrl === null,
+            onClick: () => handleKpiTileClick("act", "need to call"),
           },
           {
             label: "Watch",
             value: yellowCountForAm,
             subtitle: "likely save calls",
             color: "amber",
+            selected: filterFromUrl === "improving",
+            onClick: () => handleKpiTileClick("improving", "watch lane"),
           },
           {
             label: "Healthy",
             value: greenCountForAm,
             subtitle: "in your book",
             color: "green",
+            selected: filterFromUrl === "quiet",
+            onClick: () => handleKpiTileClick("quiet", "healthy lane"),
           },
         ]}
       />
@@ -577,6 +610,8 @@ function V2DashboardInner() {
             onSignalChipClick={handleSignalChipClick}
             podFilter={podFilter}
             onPodFilterChange={setPodFilter}
+            filterFromUrl={filterFromUrl as ("pinned" | "act" | "improving" | "quiet" | "all" | "snoozed" | null)}
+            sortFromUrl={sortFromUrl as ("urgency" | "plan" | "lasttouch" | null)}
           />
           </>
         )}

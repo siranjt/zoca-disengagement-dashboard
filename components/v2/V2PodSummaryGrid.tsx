@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
 import { POD_MAP } from "@/lib/config";
+import { useToast } from "./Toast";
 
 const POD_ORDER = ["Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
 
@@ -28,7 +30,7 @@ type PodSummary = {
   pctRed: number;
   mrr: number;
   mrrAtRisk: number;
-  topSignal: string | null;
+  topSignal: TopSignal | null;
   redDelta: number | null;
   flagged: number;
 };
@@ -40,7 +42,14 @@ function formatMoney(n: number): string {
   return n > 0 ? `$${Math.round(n).toLocaleString()}` : "$0";
 }
 
-function classifyTopSignal(customers: ScoredCustomerV2[]): string | null {
+type TopSignal = {
+  // user-facing label
+  label: string;
+  // signal-taxonomy key (matches lib/signal-taxonomy.ts SignalKey union)
+  key: "we_silent" | "client_silent" | "resp_drop" | "vol_collapse" | "usage_low" | "billing";
+};
+
+function classifyTopSignal(customers: ScoredCustomerV2[]): TopSignal | null {
   const tally = { we: 0, client: 0, drop: 0, vol: 0, usage: 0, billing: 0 };
   for (const c of customers) {
     const s = c.signals_v2;
@@ -53,15 +62,15 @@ function classifyTopSignal(customers: ScoredCustomerV2[]): string | null {
   }
   const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
   if (!ranked[0] || ranked[0][1] === 0) return null;
-  const label: Record<string, string> = {
-    we: "We silent",
-    client: "Client silent",
-    drop: "Resp drop",
-    vol: "Vol collapse",
-    usage: "Usage low",
-    billing: "Billing",
+  const meta: Record<string, TopSignal> = {
+    we: { label: "We silent", key: "we_silent" },
+    client: { label: "Client silent", key: "client_silent" },
+    drop: { label: "Resp drop", key: "resp_drop" },
+    vol: { label: "Vol collapse", key: "vol_collapse" },
+    usage: { label: "Usage low", key: "usage_low" },
+    billing: { label: "Billing", key: "billing" },
   };
-  return label[ranked[0][0]];
+  return meta[ranked[0][0]] || null;
 }
 
 type PodTrendPoint = {
@@ -87,6 +96,8 @@ export default function V2PodSummaryGrid({
   onSelectPod,
   trends,
 }: Props) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const summaries = useMemo<PodSummary[]>(() => {
     // Comparison RED counts by pod
     const compareRedByPod = new Map<string, number>();
@@ -304,10 +315,38 @@ export default function V2PodSummaryGrid({
               {s.topSignal && (
                 <div
                   className="mt-2 truncate text-[10px] text-zoca-text-2"
-                  title={`Most common strong signal across ${s.pod}: ${s.topSignal}`}
+                  title={`Most common strong signal across ${s.pod}: ${s.topSignal.label}. Click to drill into ${s.pod} \u00D7 ${s.topSignal.label}.`}
                 >
                   Mostly:{" "}
-                  <span className="font-medium text-zoca-text">{s.topSignal}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Phase 24 — drill into /v2 with both pod + signal pre-applied.
+                      const sigKey = s.topSignal!.key;
+                      const podLabel = s.pod;
+                      const qs = new URLSearchParams();
+                      qs.set("pod", podLabel);
+                      qs.set("signal", sigKey);
+                      router.push(`/v2?${qs.toString()}`);
+                      showToast(
+                        `Filtered to ${podLabel} \u00D7 ${s.topSignal!.label}`,
+                        { type: "info", icon: "filter" },
+                      );
+                    }}
+                    className="font-medium text-zoca-text rounded px-1 -mx-1 transition cursor-pointer focus:outline-none"
+                    style={{ background: "transparent", border: 0 }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--zoca-blue)";
+                      e.currentTarget.style.textDecoration = "underline";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "";
+                      e.currentTarget.style.textDecoration = "";
+                    }}
+                  >
+                    {s.topSignal.label}
+                  </button>
                 </div>
               )}
 
