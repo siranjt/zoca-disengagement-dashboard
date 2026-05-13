@@ -8,7 +8,6 @@ import { writeSnapshotV2, readSnapshotByDate, writeCustomerTrendRows } from "./p
 import { enrichRedNarratives } from "./narrative-enrich";
 import {
   fetchActiveHubspotCompanies,
-  fetchHubspotOwners,
   type HubspotCompanyRow,
 } from "./hubspot-companies";
 import { fetchDealsForCompanies, type DealsForCompany } from "./hubspot-deals";
@@ -113,9 +112,6 @@ export type HubspotCompanyByPlaceId = {
   place_id: string;
   hubspot_company_id: string;
   name: string;
-  hubspot_owner_id: string | null;
-  hubspot_owner_name: string | null;
-  hubspot_owner_email: string | null;
   icp_tier: "Tier 1" | "Tier 2" | "Tier 3" | null;
   lifecycle_stage: string;
   business_category: string | null;
@@ -397,50 +393,25 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   memSnap("D start");
 
   // 1. Active customer companies from HubSpot
-  const [companiesMap, ownersMap] = await Promise.all([
-    fetchActiveHubspotCompanies().catch((e: Error) => {
-      errors.push(`HubSpot companies: ${e.message}`);
-      return new Map<string, HubspotCompanyRow>();
-    }),
-    fetchHubspotOwners().catch((e: Error) => {
-      errors.push(`HubSpot owners: ${e.message}`);
-      return new Map<string, { email: string; name: string }>();
-    }),
-  ]);
+  const companiesMap = await fetchActiveHubspotCompanies().catch((e: Error) => {
+    errors.push(`HubSpot companies: ${e.message}`);
+    return new Map<string, HubspotCompanyRow>();
+  });
   memSnap("D after companies");
 
   // Build canonical map keyed by place_id
   const companiesByPlaceId: Record<string, HubspotCompanyByPlaceId> = {};
   const hubspotCompanyIds: string[] = [];
-  // Phase 13.3 — diagnostic for AM-drift bug. If a company has an owner_id
-  // but the ownersMap doesn't have a corresponding entry, log it. Helps
-  // identify whether ownersMap is missing pages or the owner_id points to
-  // a deactivated user.
-  let unresolvedOwnerCount = 0;
   for (const [placeId, c] of companiesMap) {
-    const ownerInfo = c.hubspot_owner_id ? ownersMap.get(c.hubspot_owner_id) : undefined;
-    if (c.hubspot_owner_id && !ownerInfo) {
-      unresolvedOwnerCount += 1;
-    }
     companiesByPlaceId[placeId] = {
       place_id: placeId,
       hubspot_company_id: c.id,
       name: c.name,
-      hubspot_owner_id: c.hubspot_owner_id,
-      hubspot_owner_name: ownerInfo?.name || null,
-      hubspot_owner_email: ownerInfo?.email || null,
       icp_tier: c.icp_tier,
       lifecycle_stage: c.lifecycle_stage,
       business_category: c.business_category,
     };
     hubspotCompanyIds.push(c.id);
-  }
-  if (unresolvedOwnerCount > 0) {
-    console.warn(
-      `[stageD] ${unresolvedOwnerCount} companies have hubspot_owner_id ` +
-      `that doesn't resolve in ownersMap (size=${ownersMap.size}). ` +
-      `This breaks AM drift detection — check fetchHubspotOwners pagination.`
-    );
   }
 
   // 2. Deals per company
@@ -659,17 +630,11 @@ export async function composeSnapshot(
         if (hsCo) {
           const deals = stageD.dealsByHubspotCompanyId[hsCo.hubspot_company_id];
           const note = stageD.notesByHubspotCompanyId[hsCo.hubspot_company_id];
-          const hubspotOwnerName = hsCo.hubspot_owner_name || "";
-          const ownerMismatch =
-            !!amName && !!hubspotOwnerName && hubspotOwnerName.trim().toLowerCase() !== amName.trim().toLowerCase()
-              ? { hubspot_owner: hubspotOwnerName, basesheet_am: amName }
-              : null;
           const lifecycleDrift =
             !!hsCo.lifecycle_stage && hsCo.lifecycle_stage.toLowerCase() !== "customer";
           hubspotJoin = {
             hubspot_company_id: hsCo.hubspot_company_id,
             icp_tier: hsCo.icp_tier,
-            am_owner_mismatch: ownerMismatch,
             lifecycle_drift: lifecycleDrift,
             open_deal_count: deals?.open_deal_count ?? 0,
             open_deal_stages: deals?.open_deal_stages ?? [],

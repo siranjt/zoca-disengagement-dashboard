@@ -6,8 +6,8 @@
  * between the dashboard's entity_id (via Metabase's place_id column) and
  * the HubSpot company record.
  *
- * Used by Stage D to surface ICP tier, AM-owner mismatch, lifecycle drift,
- * business category, deal associations, and note associations.
+ * Used by Stage D to surface ICP tier, lifecycle drift, business category,
+ * deal associations, and note associations.
  */
 
 import { hubspotSearchAll, hubspotConfigured } from "./hubspot";
@@ -16,8 +16,6 @@ export type HubspotCompanyRow = {
   id: string;                       // HubSpot company ID
   place_id: string;                 // Google Place ID = join key to BaseSheet
   name: string;
-  hubspot_owner_id: string | null;
-  hubspot_owner_email?: string | null;
   icp_tier: "Tier 1" | "Tier 2" | "Tier 3" | null;
   lifecycle_stage: string;
   business_category: string | null;
@@ -34,7 +32,6 @@ type HubspotApiCompany = {
 
 const PROPS = [
   "name",
-  "hubspot_owner_id",
   "hs_ideal_customer_profile",
   "lifecyclestage",
   "business_category",
@@ -88,7 +85,6 @@ export async function fetchActiveHubspotCompanies(): Promise<Map<string, Hubspot
       id: row.id,
       place_id: placeId,
       name: p.name || "",
-      hubspot_owner_id: p.hubspot_owner_id || null,
       icp_tier: parseIcp(p.hs_ideal_customer_profile),
       lifecycle_stage: p.lifecyclestage || "",
       business_category: p.business_category || null,
@@ -108,36 +104,3 @@ export async function fetchActiveHubspotCompanies(): Promise<Map<string, Hubspot
   return out;
 }
 
-/**
- * Lookup map from HubSpot owner_id → owner email/name.
- * Used for AM-owner mismatch detection (compares to BaseSheet am_name).
- */
-export async function fetchHubspotOwners(): Promise<Map<string, { email: string; name: string }>> {
-  const map = new Map<string, { email: string; name: string }>();
-  if (!hubspotConfigured()) return map;
-  // Use the owners endpoint (not search)
-  const { hubspotFetch } = await import("./hubspot");
-  type OwnersResp = {
-    results: Array<{
-      id: string;
-      email: string;
-      firstName?: string;
-      lastName?: string;
-    }>;
-    paging?: { next?: { after: string } };
-  };
-  let after: string | undefined;
-  // Phase 13.3 — raised cap from 20 → 100 pages (handles teams up to 10K owners).
-  for (let page = 0; page < 100; page += 1) {
-    const path = `/crm/v3/owners${after ? `?after=${after}&limit=100` : "?limit=100"}`;
-    const resp = await hubspotFetch<OwnersResp>(path, { timeoutMs: 8_000 });
-    if (!resp?.results) break;
-    for (const o of resp.results) {
-      const name = `${o.firstName || ""} ${o.lastName || ""}`.trim();
-      map.set(o.id, { email: o.email || "", name });
-    }
-    if (!resp.paging?.next?.after) break;
-    after = resp.paging.next.after;
-  }
-  return map;
-}

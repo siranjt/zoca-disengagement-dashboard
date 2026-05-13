@@ -211,14 +211,6 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                   💼 {customer.hubspot.open_deal_count} deal{customer.hubspot.open_deal_count === 1 ? "" : "s"}
                 </span>
               )}
-            {customer.hubspot?.am_owner_mismatch && (
-              <span
-                className="rounded-zoca-pill bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300"
-                title={`AM drift: HubSpot says ${customer.hubspot.am_owner_mismatch.hubspot_owner}, BaseSheet says ${customer.hubspot.am_owner_mismatch.basesheet_am}. One of these is stale.`}
-              >
-                ⚠ AM drift
-              </span>
-            )}
             {recentlyContacted && (
               <span
                 className="rounded-zoca-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"

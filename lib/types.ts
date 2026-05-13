@@ -278,7 +278,6 @@ export type ScoredCustomer = {
 export type HubspotJoinFields = {
   hubspot_company_id?: string;
   icp_tier?: "Tier 1" | "Tier 2" | "Tier 3" | null;
-  am_owner_mismatch?: { hubspot_owner: string; basesheet_am: string } | null;
   lifecycle_drift?: boolean;                // HubSpot lifecycle ≠ "customer" but Chargebee says active
   open_deal_count?: number;
   open_deal_stages?: string[];
