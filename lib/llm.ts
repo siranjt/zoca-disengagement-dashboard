@@ -20,7 +20,7 @@ import { createHash } from "crypto";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
 /** Bump when system prompts change so cached results invalidate. */
-export const NARRATIVE_PROMPT_VERSION = "v2";
+export const NARRATIVE_PROMPT_VERSION = "v3";
 
 type CallOpts = {
   system?: string;

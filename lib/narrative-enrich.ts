@@ -78,8 +78,14 @@ async function enrichOne(c: ScoredCustomerV2): Promise<void> {
       usage: s.sig_usage,
       billing: s.sig_billing,
     },
-    days_since_we_touched_them: m?.days_since_out ?? null,
-    days_since_they_responded: m?.days_since_in === 9999 ? "never replied" : m?.days_since_in ?? null,
+    days_since_we_touched_them:
+      m?.days_since_out == null || m.days_since_out >= 9999
+        ? "no prior outreach on record"
+        : m.days_since_out,
+    days_since_they_responded:
+      m?.days_since_in == null || m.days_since_in >= 9999
+        ? "never replied"
+        : m.days_since_in,
     flags: {
       performance: s.flag_performance,
       tickets: s.flag_tickets,
