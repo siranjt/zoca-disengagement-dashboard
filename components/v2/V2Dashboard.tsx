@@ -7,7 +7,10 @@ import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
 import V2Rollup from "./V2Rollup";
-import ScopeStrip from "./ScopeStrip";
+// ScopeStrip render removed from V2Dashboard in Phase 17.B.2 — V2RefreshBar
+// already shows the same scope info ("SHOWING N/M · LAST REFRESH · AM · pod").
+// ScopeStrip.tsx still lives in the codebase and is rendered by
+// V2ManagerDashboard (pending Phase 17.D restyle).
 import FreshnessBanner from "./FreshnessBanner";
 import { V2Header } from "./V2Header";
 import { V2Hero } from "./V2Hero";
@@ -195,8 +198,6 @@ export default function V2Dashboard() {
           },
         ]}
       />
-
-      {ready && <ScopeStrip scope={ready.scope} />}
 
       <main className="mx-auto max-w-[920px] px-4 pb-24 pt-4 md:px-6">
         {mounted && !welcomeDismissed && snapshot.status === "ready" && (

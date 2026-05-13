@@ -87,16 +87,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
   // Bucketing logic
   // ---------------------------------------------------------------------------
   const baseBuckets = useMemo(() => {
+    // Phase 17.B.2: align "Need to call today" lane with the "Need to call"
+    // KPI tile (which counts strictly RED). Previously this bucket included
+    // YELLOW capped at top-N, which caused a visible mismatch ("10 to act on"
+    // vs KPI "3"). Now both are RED-only — pre-launch RED still excluded.
     const act = customers
-      // Exclude pre-launch customers: they're flagged as YELLOW by the WATCH
-      // lane sometimes but don't need outreach action — they haven't started.
       .filter(
         (c) =>
-          !c.signals_v2.pre_launch &&
-          (c.signals_v2.stoplight === "RED" || c.signals_v2.stoplight === "YELLOW"),
+          !c.signals_v2.pre_launch && c.signals_v2.stoplight === "RED",
       )
-      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
-      .slice(0, ACT_TODAY_TOP_N);
+      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
 
     const improving = customers
       .filter((c) => c.signals_v2.stoplight === "GREEN" && c.signals_v2.composite < 20)

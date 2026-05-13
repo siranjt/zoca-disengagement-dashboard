@@ -22,12 +22,12 @@ const STOPLIGHT_TITLE: Record<Stoplight, string> = {
 };
 
 const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
-  Active: "text-emerald-300",
-  Light: "text-zoca-text-muted",
-  Cold: "text-amber-300",
-  Dormant: "text-red-300",
+  Active: "text-emerald-700",
+  Light: "text-zoca-text-2",
+  Cold: "text-amber-700",
+  Dormant: "text-rose-700",
 };
-const ENGAGEMENT_FALLBACK = "text-zoca-text-soft";
+const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
 function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
   const { signals_v2: s, metrics } = customer;
@@ -388,12 +388,12 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
         {/* Body */}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-zoca-text-primary md:text-base">
+            <h3 className="text-[15px] font-semibold text-zoca-text md:text-base">
               {customer.company || customer.entity_id.slice(0, 8)}
             </h3>
             {s.pre_launch && (
               <span
-                className="rounded-zoca-pill bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300"
+                className="rounded-zoca-pill bg-sky-500/18 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700"
                 title={
                   customer.activated_at
                     ? `Pre-launch — contract signed, activation scheduled ${new Date(customer.activated_at).toLocaleDateString()}.`
@@ -407,10 +407,10 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
               <span
                 className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                   customer.hubspot.icp_tier === "Tier 1"
-                    ? "bg-emerald-500/15 text-emerald-300"
+                    ? "bg-emerald-500/18 text-emerald-700"
                     : customer.hubspot.icp_tier === "Tier 2"
-                      ? "bg-amber-500/15 text-amber-300"
-                      : "bg-rose-500/15 text-rose-300"
+                      ? "bg-amber-500/18 text-amber-700"
+                      : "bg-rose-500/18 text-rose-700"
                 }`}
                 title={`HubSpot ICP rating: ${customer.hubspot.icp_tier}. Tier 1 = strong fit · Tier 2 = workable · Tier 3 = low priority.`}
               >
@@ -420,7 +420,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             {customer.hubspot?.open_deal_count !== undefined &&
               customer.hubspot.open_deal_count > 0 && (
                 <span
-                  className="rounded-zoca-pill bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-300"
+                  className="rounded-zoca-pill bg-violet-500/18 px-2 py-0.5 text-[10px] font-medium text-violet-700"
                   title={`${customer.hubspot.open_deal_count} open deal${customer.hubspot.open_deal_count === 1 ? "" : "s"}: ${customer.hubspot.open_deal_stages?.join(", ")}. Total $${customer.hubspot.total_open_amount?.toLocaleString()}`}
                 >
                   💼 {customer.hubspot.open_deal_count} deal{customer.hubspot.open_deal_count === 1 ? "" : "s"}
@@ -431,8 +431,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
               <span
                 className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-medium ${
                   customer.hubspot.comms_drift.delta > 0
-                    ? "bg-amber-500/15 text-amber-300"
-                    : "bg-sky-500/15 text-sky-300"
+                    ? "bg-amber-500/18 text-amber-700"
+                    : "bg-sky-500/18 text-sky-700"
                 }`}
                 title={`HubSpot logged ${customer.hubspot.comms_drift.hubspot_calls_30d} calls in 30d; Metabase phone CSV shows ${customer.hubspot.comms_drift.metabase_calls_30d}. Data hygiene flag.`}
               >
@@ -443,7 +443,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             )}
             {recentlyContacted && (
               <span
-                className="rounded-zoca-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"
+                className="rounded-zoca-pill bg-emerald-500/18 px-2 py-0.5 text-[10px] font-medium text-emerald-700"
                 title="You've already logged a contact attempt against this customer in the last 7 days — avoid double-calling."
               >
                 ✓ Contacted recently
@@ -459,7 +459,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             )}
             {trend && trend.length > 1 && (
               <span
-                className="text-zoca-text-soft"
+                className="text-zoca-text-2"
                 title={`Composite score over last ${trend.length} days, latest ${s.composite}`}
               >
                 <V2Sparkline
@@ -479,12 +479,12 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
               </span>
             )}
           </div>
-          <div className="mt-1 text-[11px] text-zoca-text-soft">
+          <div className="mt-1 text-[11px] text-zoca-text-2">
             {planText}
             {podText}
             {customer.am_name && ` · ${customer.am_name}`}
           </div>
-          <p className="mt-2 text-[13px] leading-relaxed text-zoca-text-primary/95 md:text-sm">
+          <p className="mt-2 text-[13px] leading-relaxed text-zoca-text md:text-sm">
             {renderReason(s.reason_one_line)}
             <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
           </p>
@@ -515,14 +515,14 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
         <div className="flex flex-col items-end gap-2">
           {actionState.kind === "done" ? (
             <div
-              className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-300 md:max-w-[300px] md:px-4 md:text-[13px]"
+              className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]"
               aria-live="polite"
             >
               \u2713 Logged {actionState.choice === "connected" ? "as connected" : actionState.choice === "vm" ? "voicemail" : "no reach"}
               <button
                 type="button"
                 onClick={() => setActionState({ kind: "idle" })}
-                className="ml-2 text-[10px] font-normal text-emerald-300/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40"
+                className="ml-2 text-[10px] font-normal text-emerald-700/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40"
                 aria-label="Undo logged action"
               >
                 Undo
@@ -530,7 +530,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             </div>
           ) : actionState.kind === "selecting" ? (
             <div className="flex flex-col items-end gap-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+              <div className="text-[10px] uppercase tracking-wider text-zoca-text-2">
                 How did it go?
               </div>
               <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -558,7 +558,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 <button
                   type="button"
                   onClick={() => setActionState({ kind: "idle" })}
-                  className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                  className="text-[10px] text-zoca-text-2 underline-offset-2 hover:text-zoca-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
                   aria-label="Cancel logging"
                 >
                   cancel
@@ -567,13 +567,13 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             </div>
           ) : actionState.kind === "tagging" || actionState.kind === "submitting" ? (
             <div className="flex max-w-[300px] flex-col items-end gap-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+              <div className="text-[10px] uppercase tracking-wider text-zoca-text-2">
                 {actionState.kind === "submitting" ? "Saving…" : "Tag the call"}
               </div>
-              <div className="rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/40 p-2 text-[11px]">
+              <div className="rounded-zoca border border-zoca-border bg-zoca-bg-tint p-2 text-[11px]">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-zoca-text-soft">Channel</span>
-                  <span className="font-medium text-zoca-text-primary">
+                  <span className="text-zoca-text-2">Channel</span>
+                  <span className="font-medium text-zoca-text">
                     {actionState.kind === "tagging"
                       ? actionState.choice === "connected"
                         ? "✓ Connected"
@@ -584,7 +584,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <label htmlFor={`reason-${customer.entity_id}`} className="text-zoca-text-soft">
+                  <label htmlFor={`reason-${customer.entity_id}`} className="text-zoca-text-2">
                     Why
                   </label>
                   <select
@@ -598,7 +598,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                       });
                     }}
                     disabled={actionState.kind === "submitting"}
-                    className="rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-1.5 py-0.5 text-[11px] text-zoca-text-primary focus:border-zoca-pink-cta focus:outline-none"
+                    className="rounded border border-zoca-border bg-zoca-bg-soft/80 px-1.5 py-0.5 text-[11px] text-zoca-text focus:border-zoca-pink-cta focus:outline-none"
                   >
                     <option value="">(skip)</option>
                     <option value="renewal">Renewal</option>
@@ -610,7 +610,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                     <option value="other">Other</option>
                   </select>
                 </div>
-                <label className="mt-1.5 flex items-center gap-1.5 text-zoca-text-soft">
+                <label className="mt-1.5 flex items-center gap-1.5 text-zoca-text-2">
                   <input
                     type="checkbox"
                     checked={actionState.kind === "tagging" ? actionState.followUp : false}
@@ -628,7 +628,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                     type="button"
                     onClick={() => setActionState({ kind: "idle" })}
                     disabled={actionState.kind === "submitting"}
-                    className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                    className="text-[10px] text-zoca-text-2 underline-offset-2 hover:text-zoca-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
                   >
                     cancel
                   </button>
@@ -648,7 +648,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             </div>
           ) : actionState.kind === "escalating" || actionState.kind === "submittingEscalation" ? (
             <div className="flex max-w-[300px] flex-col items-end gap-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-amber-300">
+              <div className="text-[10px] uppercase tracking-wider text-amber-700">
                 ↗ Escalate to pod lead
               </div>
               <div className="rounded-zoca border border-amber-400/30 bg-amber-500/10 p-2 text-[11px]">
@@ -662,14 +662,14 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                     if (actionState.kind !== "escalating") return;
                     setActionState({ kind: "escalating", note: e.target.value });
                   }}
-                  className="w-full rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-1.5 py-1 text-[11px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-pink-cta focus:outline-none"
+                  className="w-full rounded border border-zoca-border bg-zoca-bg-soft/80 px-1.5 py-1 text-[11px] text-zoca-text placeholder:text-zoca-text-2 focus:border-zoca-pink-cta focus:outline-none"
                 />
                 <div className="mt-1 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
                     onClick={() => setActionState({ kind: "idle" })}
                     disabled={actionState.kind === "submittingEscalation"}
-                    className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                    className="text-[10px] text-zoca-text-2 underline-offset-2 hover:text-zoca-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
                   >
                     cancel
                   </button>
@@ -680,7 +680,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                       submitEscalation(note);
                     }}
                     disabled={actionState.kind === "submittingEscalation"}
-                    className="rounded-zoca-pill bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-300 transition hover:bg-amber-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                    className="rounded-zoca-pill bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-700 transition hover:bg-amber-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
                   >
                     {actionState.kind === "submittingEscalation" ? "Sending…" : "Escalate"}
                   </button>
@@ -689,14 +689,14 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             </div>
           ) : actionState.kind === "escalated" ? (
             <div
-              className="max-w-[260px] rounded-zoca-lg border border-amber-400/30 bg-amber-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-amber-300 md:max-w-[300px] md:px-4 md:text-[13px]"
+              className="max-w-[260px] rounded-zoca-lg border border-amber-400/30 bg-amber-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-amber-700 md:max-w-[300px] md:px-4 md:text-[13px]"
               aria-live="polite"
             >
               ↗ Escalated{actionState.to ? ` to ${actionState.to.split(" ")[0]}` : ""}
               <button
                 type="button"
                 onClick={() => setActionState({ kind: "idle" })}
-                className="ml-2 text-[10px] font-normal text-amber-300/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
+                className="ml-2 text-[10px] font-normal text-amber-700/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
               >
                 Undo
               </button>
@@ -715,7 +715,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 <button
                   type="button"
                   onClick={() => setActionState({ kind: "escalating", note: "" })}
-                  className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-amber-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                  className="text-[10px] text-zoca-text-2 underline-offset-2 hover:text-amber-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
                   aria-label="Escalate to pod lead"
                   title="Stuck on this customer? Send to your pod lead."
                 >
@@ -744,25 +744,25 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
       </div>
 
       {/* Metrics summary line — enriched with channels, app tier, billing detail */}
-      <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-soft md:px-5">
+      <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-2 md:px-5">
         {renderMetricsSummary(customer)}
       </div>
 
       {/* HubSpot "last call" summary — Fireflies-derived sentiment + topics (Phase 13) */}
       {customer.hubspot?.last_call && (
-        <div className="border-t border-zoca-border px-4 py-2 text-[11px] text-zoca-text-soft md:px-5">
+        <div className="border-t border-zoca-border px-4 py-2 text-[11px] text-zoca-text-2 md:px-5">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="font-medium text-zoca-text-muted">📞 Last call</span>
+            <span className="font-medium text-zoca-text-2">📞 Last call</span>
             <span title={customer.hubspot.last_call.date}>
               {daysSince(customer.hubspot.last_call.date)}d ago
             </span>
             <span
               className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium ${
                 customer.hubspot.last_call.sentiment === "frustrated"
-                  ? "bg-rose-500/15 text-rose-300"
+                  ? "bg-rose-500/18 text-rose-700"
                   : customer.hubspot.last_call.sentiment === "warm"
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : "bg-zoca-bg-3/40 text-zoca-text-soft"
+                    ? "bg-emerald-500/18 text-emerald-700"
+                    : "bg-zoca-bg-tint text-zoca-text-2"
               }`}
             >
               {customer.hubspot.last_call.sentiment === "frustrated"
@@ -772,8 +772,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                   : "— neutral"}
             </span>
             {customer.hubspot.last_call.topics.length > 0 && (
-              <span className="text-zoca-text-soft" title="Topics extracted from the meeting note">
-                · topics: <span className="text-zoca-text-muted">{customer.hubspot.last_call.topics.join(", ")}</span>
+              <span className="text-zoca-text-2" title="Topics extracted from the meeting note">
+                · topics: <span className="text-zoca-text-2">{customer.hubspot.last_call.topics.join(", ")}</span>
               </span>
             )}
             {customer.hubspot.last_call.fireflies_url && (
@@ -788,7 +788,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             )}
           </div>
           {customer.hubspot.last_call.action_items.length > 0 && (
-            <ul className="mt-1 list-disc pl-5 text-[11px] text-zoca-text-muted">
+            <ul className="mt-1 list-disc pl-5 text-[11px] text-zoca-text-2">
               {customer.hubspot.last_call.action_items.slice(0, 3).map((item, i) => (
                 <li key={i} className="truncate" title={item}>
                   {item}
@@ -806,7 +806,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-2 transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
               aria-expanded={expanded}
               aria-controls={`perf-${customer.entity_id}`}
               title={expanded ? "Hide performance signals" : "Show performance signals (why this customer is on this stoplight)"}
@@ -815,7 +815,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
               {expanded ? "Hide" : "Why?"}
               {customer.performance?.flag && !expanded && (
                 <span
-                  className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300"
+                  className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/18 px-1.5 py-0.5 text-[10px] font-medium text-rose-700"
                   title={(customer.performance.flag_reasons || []).join(" · ") || "Performance trajectory flagged"}
                 >
                   ⚑ {performanceChipSummary(customer.performance) || "trajectory"}
@@ -839,7 +839,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-2 transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
               aria-expanded={expanded}
               aria-controls={`contacts-${customer.entity_id}`}
               title={expanded ? "Hide contacts" : "Show contacts"}
@@ -880,7 +880,7 @@ function StoplightDot({ light }: { light: Stoplight }) {
 
 function FlagChip({ label }: { label: string }) {
   return (
-    <span className="rounded-zoca-sm bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-500/30">
+    <span className="rounded-zoca-sm bg-amber-500/18 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-500/30">
       {label}
     </span>
   );
@@ -968,7 +968,7 @@ function computeTrend(t: "improving" | "worsening" | "stable" | "unknown"): {
     case "stable":
       return {
         label: "— Stable",
-        className: "bg-zoca-bg-1/60 text-zoca-text-soft",
+        className: "bg-zoca-bg-soft/60 text-zoca-text-2",
         title: "Composite score unchanged vs. 7 days ago",
       };
     case "unknown":
@@ -1001,7 +1001,7 @@ function renderReason(text: string): React.ReactNode {
     i % 2 === 0 ? (
       <span key={i}>{part}</span>
     ) : (
-      <strong key={i} className="font-semibold text-zoca-text-primary">
+      <strong key={i} className="font-semibold text-zoca-text">
         {part}
       </strong>
     ),
@@ -1025,7 +1025,7 @@ function FeedbackButton({
   if (state.kind === "done") {
     return (
       <span
-        className="ml-2 inline-flex items-center rounded-zoca-pill bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300"
+        className="ml-2 inline-flex items-center rounded-zoca-pill bg-emerald-500/18 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
         aria-live="polite"
       >
         ✓ Reported — thanks
@@ -1049,7 +1049,7 @@ function FeedbackButton({
             if (e.key === "Escape") setState({ kind: "idle" });
             if (e.key === "Enter") submit(comment);
           }}
-          className="w-44 rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-2 py-0.5 text-[11px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-pink-cta focus:outline-none"
+          className="w-44 rounded border border-zoca-border bg-zoca-bg-soft/80 px-2 py-0.5 text-[11px] text-zoca-text placeholder:text-zoca-text-2 focus:border-zoca-pink-cta focus:outline-none"
           aria-label="Feedback comment"
         />
         <button
@@ -1064,13 +1064,13 @@ function FeedbackButton({
         <button
           type="button"
           onClick={() => setState({ kind: "idle" })}
-          className="text-[11px] text-zoca-text-soft underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          className="text-[11px] text-zoca-text-2 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
           aria-label="Cancel feedback"
         >
           cancel
         </button>
         {state.kind === "error" && (
-          <span className="text-[10px] text-rose-300" role="alert">
+          <span className="text-[10px] text-rose-700" role="alert">
             {state.message}
           </span>
         )}
@@ -1081,7 +1081,7 @@ function FeedbackButton({
     <button
       type="button"
       onClick={() => setState({ kind: "open", comment: "" })}
-      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-soft transition hover:bg-zoca-bg-3/40 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
+      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-2 transition hover:bg-zoca-bg-tint hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
       aria-label="This signal looks wrong — send feedback"
       title="This signal looks wrong — let us know"
     >
@@ -1107,10 +1107,10 @@ function ActionChip({
 }) {
   const toneClass =
     tone === "emerald"
-      ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+      ? "border-emerald-400/40 bg-emerald-500/18 text-emerald-700 hover:bg-emerald-500/25"
       : tone === "amber"
-        ? "border-amber-400/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
-        : "border-rose-400/40 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25";
+        ? "border-amber-400/40 bg-amber-500/18 text-amber-700 hover:bg-amber-500/25"
+        : "border-rose-400/40 bg-rose-500/18 text-rose-700 hover:bg-rose-500/25";
   return (
     <button
       type="button"
@@ -1170,7 +1170,7 @@ function ContactsSection({ contacts }: ContactsSectionProps) {
   if (!contacts || contacts.length === 0) return null;
   return (
     <div className="mt-3 rounded-zoca-sm border border-zoca-border bg-zoca-surface-soft/40 p-3">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zoca-text-soft">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zoca-text-2">
         Contacts
       </div>
       <ul className="space-y-1.5">
@@ -1184,7 +1184,7 @@ function ContactsSection({ contacts }: ContactsSectionProps) {
               <span className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium text-zoca-text">{c.name}</span>
                 {c.job_title && (
-                  <span className="text-[10px] text-zoca-text-soft">{c.job_title}</span>
+                  <span className="text-[10px] text-zoca-text-2">{c.job_title}</span>
                 )}
               </span>
               <span className="flex flex-wrap items-baseline gap-x-2">
@@ -1197,9 +1197,9 @@ function ContactsSection({ contacts }: ContactsSectionProps) {
                     {c.email}
                   </a>
                 ) : (
-                  <span className="text-zoca-text-soft">—</span>
+                  <span className="text-zoca-text-2">—</span>
                 )}
-                <span className="text-[10px] text-zoca-text-soft" title={c.last_activity || ""}>
+                <span className="text-[10px] text-zoca-text-2" title={c.last_activity || ""}>
                   {sinceLabel}
                 </span>
               </span>
