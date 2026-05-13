@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import V2CustomerCard from "./V2CustomerCard";
 import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
+import { SavedViewsRow, type SavedViewConfig } from "./SavedViewsRow";
 
 type CustomerTrendPoint = { date: string; composite: number };
 
@@ -21,6 +22,15 @@ type Props = {
 
 type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all";
 type SortKey = "urgency" | "plan" | "lasttouch";
+
+const FILTER_KEYS: FilterKey[] = ["pinned", "act", "improving", "quiet", "all"];
+const SORT_KEYS: SortKey[] = ["urgency", "plan", "lasttouch"];
+function isFilterKey(v: string): v is FilterKey {
+  return (FILTER_KEYS as string[]).includes(v);
+}
+function isSortKey(v: string): v is SortKey {
+  return (SORT_KEYS as string[]).includes(v);
+}
 
 const ACT_TODAY_TOP_N = 10;
 
@@ -290,6 +300,20 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           active={filter === "all"}
           onClick={() => setFilter("all")}
         />
+
+        {amName && (
+          <SavedViewsRow
+            amName={amName}
+            currentFilter={filter}
+            currentSearch={query}
+            currentSort={sort}
+            onLoadView={(cfg: SavedViewConfig) => {
+              if (cfg.filter && isFilterKey(cfg.filter)) setFilter(cfg.filter);
+              if (typeof cfg.search === "string") setQuery(cfg.search);
+              if (cfg.sort && isSortKey(cfg.sort)) setSort(cfg.sort);
+            }}
+          />
+        )}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* Search */}
