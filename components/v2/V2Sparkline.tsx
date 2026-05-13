@@ -35,7 +35,7 @@ export default function V2Sparkline({
   showLastValue = false,
   formatLastValue,
   referenceValue,
-  referenceColor = "rgba(255,255,255,0.18)",
+  referenceColor = "rgba(11,5,29,0.18)",
   className,
 }: Props) {
   const gradId = useId();
@@ -45,7 +45,7 @@ export default function V2Sparkline({
   if (!safeValues.length) {
     return (
       <span
-        className={`inline-block text-[10px] text-zoca-text-soft ${className || ""}`}
+        className={`inline-block text-[10px] text-zoca-text-3 ${className || ""}`}
         aria-label="No trend data"
       >
         —
@@ -129,7 +129,7 @@ export default function V2Sparkline({
       </svg>
       {showLastValue && (
         <span
-          className="text-[10px] font-medium tabular-nums text-zoca-text-soft"
+          className="text-[10px] font-medium tabular-nums text-zoca-text-2"
           aria-hidden
         >
           {formatLastValue ? formatLastValue(lastVal) : lastVal}

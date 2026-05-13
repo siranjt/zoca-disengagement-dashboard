@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { POD_MAP } from "@/lib/config";
 
 const POD_COLOR_DOT: Record<string, string> = {
-  "Pod 1": "bg-violet-400",
-  "Pod 2": "bg-cyan-400",
-  "Pod 3": "bg-emerald-400",
-  "Pod 4": "bg-amber-400",
-  "Pod 5": "bg-pink-400",
-  Floating: "bg-slate-400",
+  "Pod 1": "bg-violet-500",
+  "Pod 2": "bg-cyan-500",
+  "Pod 3": "bg-emerald-500",
+  "Pod 4": "bg-amber-500",
+  "Pod 5": "bg-pink-500",
+  Floating: "bg-slate-500",
 };
 
 const POD_OPTIONS = ["All", "Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
@@ -55,13 +55,29 @@ function formatMoney(n: number): string {
 }
 
 function StoplightChip({ tier }: { tier: Stoplight }) {
-  const map: Record<Stoplight, string> = {
-    RED: "bg-rose-500/15 text-rose-300",
-    YELLOW: "bg-amber-500/15 text-amber-300",
-    GREEN: "bg-emerald-500/15 text-emerald-300",
+  // Phase 17.E — light-theme stoplight chips matching .zoca-chip-* family.
+  const styles: Record<Stoplight, React.CSSProperties> = {
+    RED: {
+      background: "rgba(255,134,225,0.12)",
+      color: "#c026d3",
+      border: "1px solid rgba(255,86,187,0.22)",
+    },
+    YELLOW: {
+      background: "rgba(245,158,11,0.10)",
+      color: "#b45309",
+      border: "1px solid rgba(245,158,11,0.24)",
+    },
+    GREEN: {
+      background: "rgba(16,185,129,0.08)",
+      color: "#047857",
+      border: "1px solid rgba(16,185,129,0.22)",
+    },
   };
   return (
-    <span className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-semibold ${map[tier]}`}>
+    <span
+      className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+      style={styles[tier]}
+    >
       {tier}
     </span>
   );
@@ -88,37 +104,38 @@ function MovementGroup({
   const visible = expanded ? rows : rows.slice(0, maxRows);
   const hasMore = rows.length > maxRows;
   return (
-    <div className="rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30 p-3">
+    <div className="zoca-card" style={{ padding: "14px 14px 12px" }}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <div>
-          <h4 className="font-display text-sm font-bold text-zoca-text-primary">
+          <h4 className="font-bold text-zoca-text" style={{ fontSize: "14px", letterSpacing: "-0.01em" }}>
             {title}{" "}
-            <span className="font-normal text-zoca-text-soft">({rows.length})</span>
+            <span className="font-normal text-zoca-text-2">({rows.length})</span>
           </h4>
-          <p className="mt-0.5 text-[10px] text-zoca-text-soft">{hint}</p>
+          <p className="mt-0.5 text-[10px] text-zoca-text-2">{hint}</p>
         </div>
       </div>
       {rows.length === 0 ? (
         <p
-          className={`py-2 text-[12px] ${
-            emptyTone === "good" ? "text-emerald-300/80" : "text-zoca-text-soft"
-          }`}
+          className="py-2 text-[12px]"
+          style={{ color: emptyTone === "good" ? "#047857" : "var(--zoca-text-2)" }}
         >
           {emptyText}
         </p>
       ) : (
-        <ul className="divide-y divide-zoca-border text-[12px]">
+        <ul className="divide-y text-[12px]" style={{ borderColor: "var(--zoca-border)" }}>
           {visible.map((r, idx) => {
             const pod = r.pod || POD_MAP[r.am_name] || "Floating";
             const isTop = idx === 0;
             return (
               <li
                 key={r.entity_id}
-                className={`flex items-center gap-2 py-1.5 ${isTop ? "rounded bg-zoca-bg-3/30 px-2 -mx-2" : ""}`}
+                className={`flex items-center gap-2 py-1.5 ${isTop ? "rounded px-2 -mx-2" : ""}`}
+                style={isTop ? { background: "rgba(255,86,187,0.06)" } : undefined}
               >
                 {isTop && (
                   <span
-                    className="rounded-zoca-pill bg-zoca-pink-cta/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zoca-pink-cta"
+                    className="zoca-chip-pink"
+                    style={{ padding: "2px 6px", fontSize: "9px", letterSpacing: "0.08em" }}
                     title="Highest-impact row in this bucket"
                   >
                     #1
@@ -127,17 +144,18 @@ function MovementGroup({
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => onJumpToAm && onJumpToAm(r.am_name)}
-                    className="block w-full truncate text-left font-medium text-zoca-text-primary underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                    className="block w-full truncate text-left font-medium text-zoca-text underline-offset-2 hover:underline focus:outline-none"
+                    style={{ color: "var(--zoca-text)" }}
                     title={`${r.bizname} · click to open ${r.am_name}'s book`}
                     aria-label={`Open ${r.am_name}'s book (customer ${r.bizname})`}
                   >
                     {r.bizname}
                   </button>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-zoca-text-soft">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-zoca-text-2">
                     <span>{r.am_name}</span>
                     <span className="inline-flex items-center gap-1">
                       <span
-                        className={`h-1 w-1 rounded-full ${POD_COLOR_DOT[pod] || "bg-slate-400"}`}
+                        className={`h-1 w-1 rounded-full ${POD_COLOR_DOT[pod] || "bg-slate-500"}`}
                         aria-hidden
                       />
                       {pod}
@@ -146,19 +164,19 @@ function MovementGroup({
                 </div>
                 <div className="flex items-center gap-1">
                   <StoplightChip tier={r.from} />
-                  <span className="text-zoca-text-soft" aria-hidden>
+                  <span className="text-zoca-text-3" aria-hidden>
                     →
                   </span>
                   <StoplightChip tier={r.to} />
                 </div>
                 <div
-                  className="hidden w-20 text-right text-[10px] tabular-nums text-zoca-text-muted sm:block"
+                  className="hidden w-20 text-right text-[10px] tabular-nums text-zoca-text-2 sm:block"
                   title={`Composite ${r.composite_from} → ${r.composite_to}`}
                 >
                   {r.composite_from} → {r.composite_to}
                 </div>
                 <div
-                  className="w-16 text-right text-[10px] tabular-nums text-zoca-text-soft"
+                  className="w-16 text-right text-[10px] tabular-nums text-zoca-text-2"
                   title={`Plan amount: ${formatMoney(r.plan_amount)}`}
                 >
                   {formatMoney(r.plan_amount)}
@@ -171,7 +189,8 @@ function MovementGroup({
       {hasMore && (
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-[11px] text-zoca-text-soft underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          className="mt-2 text-[11px] text-zoca-text-2 underline-offset-2 hover:underline focus:outline-none"
+          style={{ color: "var(--zoca-pink)" }}
         >
           {expanded ? "Show less" : `Show ${rows.length - maxRows} more`}
         </button>
@@ -304,23 +323,26 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
     <section aria-label="Stoplight movement" className="mb-7">
       <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="font-display text-base font-bold text-zoca-text-primary">
+          <h3
+            className="font-extrabold text-zoca-text"
+            style={{ fontSize: "17px", letterSpacing: "-0.015em" }}
+          >
             Stoplight movement
           </h3>
-          <p className="mt-0.5 text-[11px] text-zoca-text-soft">
+          <p className="mt-0.5 text-[11px] text-zoca-text-2">
             {state.status === "ready"
               ? `Customers whose stoplight changed between ${state.data.comparedAt} and ${state.data.currentAt}.`
               : `Comparing today's snapshot to ${days} days ago.`}
           </p>
           {summary && (
-            <p className="mt-1 text-[12px] text-zoca-text-muted">
-              <span className="font-semibold text-rose-300">{summary.flipped}</span> flipped
-              to RED · <span className="font-semibold text-amber-300">{summary.degraded}</span>{" "}
+            <p className="mt-1 text-[12px] text-zoca-text-2">
+              <span className="font-semibold" style={{ color: "var(--zoca-pink)" }}>{summary.flipped}</span> flipped
+              to RED · <span className="font-semibold" style={{ color: "#b45309" }}>{summary.degraded}</span>{" "}
               degraded ·{" "}
-              <span className="font-semibold text-emerald-300">{summary.recovered}</span>{" "}
+              <span className="font-semibold" style={{ color: "#047857" }}>{summary.recovered}</span>{" "}
               recovered
               {podFilter !== "All" && (
-                <span className="ml-1 text-zoca-text-soft"> · {podFilter}</span>
+                <span className="ml-1 text-zoca-text-2"> · {podFilter}</span>
               )}
             </p>
           )}
@@ -338,11 +360,20 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
                     onClick={() => setPodFilter(p)}
                     aria-pressed={active}
                     aria-label={`Filter movement to ${p}`}
-                    className={`inline-flex items-center gap-1 rounded-zoca-pill border px-2 py-0.5 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition focus:outline-none"
+                    style={
                       active
-                        ? "border-zoca-pink-cta bg-zoca-pink-cta/20 text-zoca-text-primary"
-                        : "border-zoca-border-2 bg-zoca-bg-2/60 text-zoca-text-soft hover:border-zoca-border-3 hover:text-zoca-text-primary"
-                    }`}
+                        ? {
+                            borderColor: "var(--zoca-text)",
+                            background: "var(--zoca-text)",
+                            color: "#ffffff",
+                          }
+                        : {
+                            borderColor: "var(--zoca-border)",
+                            background: "#ffffff",
+                            color: "var(--zoca-text-2)",
+                          }
+                    }
                   >
                     {dot && <span className={`h-1 w-1 rounded-full ${dot}`} aria-hidden />}
                     {p}
@@ -354,7 +385,12 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
               onClick={handleExport}
               aria-label="Download movement as CSV"
               title="Download movement as CSV"
-              className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-2 py-0.5 text-[11px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition focus:outline-none"
+              style={{
+                borderColor: "var(--zoca-border)",
+                background: "#ffffff",
+                color: "var(--zoca-text-2)",
+              }}
             >
               <span aria-hidden>↓</span> CSV
             </button>
@@ -367,14 +403,16 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30 p-3"
+              className="zoca-card animate-pulse"
+              style={{ padding: "14px", minHeight: "180px" }}
             >
-              <div className="mb-3 h-4 w-32 animate-pulse rounded bg-zoca-bg-3/40" />
-              <div className="mb-2 h-2 w-44 animate-pulse rounded bg-zoca-bg-3/40" />
+              <div className="mb-3 h-4 w-32 rounded" style={{ background: "var(--zoca-bg-tint)" }} />
+              <div className="mb-2 h-2 w-44 rounded" style={{ background: "var(--zoca-bg-tint)" }} />
               {Array.from({ length: 5 }).map((__, j) => (
                 <div
                   key={j}
-                  className="my-2 h-6 w-full animate-pulse rounded bg-zoca-bg-3/30"
+                  className="my-2 h-6 w-full rounded"
+                  style={{ background: "var(--zoca-bg-soft)" }}
                 />
               ))}
             </div>
@@ -385,7 +423,12 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
       {state.status === "error" && (
         <div
           role="alert"
-          className="rounded-zoca border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-200"
+          className="rounded-2xl px-4 py-3 text-[12px]"
+          style={{
+            border: "1px solid rgba(245,158,11,0.28)",
+            background: "rgba(245,158,11,0.08)",
+            color: "#b45309",
+          }}
         >
           Couldn't load movement: {state.message}. (Likely no snapshot exists for {days} days
           ago yet — the dashboard has been live less than {days} days, or that day's pipeline

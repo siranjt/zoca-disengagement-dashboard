@@ -45,12 +45,12 @@ type AmRow = {
 const POD_OPTIONS = ["All", "Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
 
 const POD_COLOR_DOT: Record<string, string> = {
-  "Pod 1": "bg-violet-400",
-  "Pod 2": "bg-cyan-400",
-  "Pod 3": "bg-emerald-400",
-  "Pod 4": "bg-amber-400",
-  "Pod 5": "bg-pink-400",
-  Floating: "bg-slate-400",
+  "Pod 1": "bg-violet-500",
+  "Pod 2": "bg-cyan-500",
+  "Pod 3": "bg-emerald-500",
+  "Pod 4": "bg-amber-500",
+  "Pod 5": "bg-pink-500",
+  Floating: "bg-slate-500",
 };
 
 const SIGNAL_HELP =
@@ -146,20 +146,21 @@ function TierSpreadBar({
   green: number;
   total: number;
 }) {
-  if (total === 0) return <span className="text-[10px] text-zoca-text-soft">—</span>;
+  if (total === 0) return <span className="text-[10px] text-zoca-text-3">—</span>;
   const r = (red / total) * 100;
   const y = (yellow / total) * 100;
   const g = (green / total) * 100;
   return (
     <div
-      className="flex h-1.5 w-20 overflow-hidden rounded-full bg-zoca-bg-3/40"
+      className="flex h-1.5 w-20 overflow-hidden rounded-full"
+      style={{ background: "var(--zoca-bg-soft)" }}
       role="img"
       aria-label={`Tier spread: ${red} red, ${yellow} yellow, ${green} green`}
       title={`${red} RED · ${yellow} YEL · ${green} GRN`}
     >
-      {r > 0 && <div className="bg-rose-400" style={{ width: `${r}%` }} />}
-      {y > 0 && <div className="bg-amber-400" style={{ width: `${y}%` }} />}
-      {g > 0 && <div className="bg-emerald-400" style={{ width: `${g}%` }} />}
+      {r > 0 && <div style={{ width: `${r}%`, background: "var(--zoca-pink)" }} />}
+      {y > 0 && <div style={{ width: `${y}%`, background: "var(--zoca-amber)" }} />}
+      {g > 0 && <div style={{ width: `${g}%`, background: "var(--zoca-green)" }} />}
     </div>
   );
 }
@@ -172,7 +173,10 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded bg-zoca-pink-cta/30 px-0.5 text-zoca-text-primary">
+      <mark
+        className="rounded px-0.5"
+        style={{ background: "rgba(255,86,187,0.18)", color: "var(--zoca-text)" }}
+      >
         {text.slice(idx, idx + q.length)}
       </mark>
       {text.slice(idx + q.length)}
@@ -361,10 +365,13 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
       {/* Header */}
       <header className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold text-zoca-text-primary">
+          <h2
+            className="font-extrabold text-zoca-text"
+            style={{ fontSize: "20px", letterSpacing: "-0.02em" }}
+          >
             Manager rollup
           </h2>
-          <p className="mt-1 text-xs text-zoca-text-soft">
+          <p className="mt-1 text-xs text-zoca-text-2">
             {totals.total} customers across {sorted.length} AM
             {sorted.length === 1 ? "" : "s"}
             {podFilter !== "All" ? ` · filtered to ${podFilter}` : ""}
@@ -381,14 +388,20 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
               if (e.key === "Escape") setSearch("");
             }}
             aria-label="Search account managers by name"
-            className="w-44 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1.5 text-[13px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-border-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+            className="w-44 rounded-full border px-3 py-1.5 text-[13px] focus:outline-none"
+            style={{
+              borderColor: "var(--zoca-border)",
+              background: "#ffffff",
+              color: "var(--zoca-text)",
+            }}
           />
           <button
             onClick={handleExportCsv}
             disabled={sorted.length === 0}
             aria-label="Download current view as CSV"
             title="Download current view as CSV"
-            className="inline-flex items-center gap-1.5 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1.5 text-[12px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="zoca-btn zoca-btn-outline disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ padding: "6px 14px", fontSize: "12px" }}
           >
             <span aria-hidden>↓</span> CSV
           </button>
@@ -407,11 +420,21 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 onClick={() => setPodFilter(p)}
                 aria-pressed={active}
                 aria-label={`Filter to ${p}`}
-                className={`inline-flex items-center gap-1.5 rounded-zoca-pill border px-3 py-1 text-[12px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition focus:outline-none"
+                style={
                   active
-                    ? "border-zoca-pink-cta bg-zoca-pink-cta/20 text-zoca-text-primary"
-                    : "border-zoca-border-2 bg-zoca-bg-2/60 text-zoca-text-soft hover:border-zoca-border-3 hover:text-zoca-text-primary"
-                }`}
+                    ? {
+                        borderColor: "var(--zoca-pink)",
+                        background:
+                          "linear-gradient(180deg, rgba(255,86,187,0.06), rgba(255,168,205,0.08))",
+                        color: "var(--zoca-text)",
+                      }
+                    : {
+                        borderColor: "var(--zoca-border)",
+                        background: "#ffffff",
+                        color: "var(--zoca-text-2)",
+                      }
+                }
               >
                 {dot && <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden />}
                 {p}
@@ -420,14 +443,15 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           })}
         </div>
         <label
-          className="ml-1 inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zoca-text-soft hover:text-zoca-text-primary"
+          className="ml-1 inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zoca-text-2 hover:text-zoca-text"
           title="Hide AMs with no active customers (e.g. incoming AMs)"
         >
           <input
             type="checkbox"
             checked={showZeroBooks}
             onChange={(e) => setShowZeroBooks(e.target.checked)}
-            className="h-3 w-3 cursor-pointer accent-zoca-pink-cta"
+            className="h-3 w-3 cursor-pointer"
+            style={{ accentColor: "var(--zoca-pink)" }}
             aria-label="Show AMs with empty books"
           />
           Show empty books
@@ -435,7 +459,8 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         {filtersActive && (
           <button
             onClick={clearFilters}
-            className="ml-auto text-[11px] text-zoca-text-soft underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+            className="ml-auto text-[11px] font-semibold underline-offset-2 hover:underline focus:outline-none"
+            style={{ color: "var(--zoca-pink)" }}
             aria-label="Clear all filters"
           >
             Clear filters
@@ -443,41 +468,62 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         )}
       </div>
 
-      {/* Aggregate strip */}
-      <div className="mt-4 grid grid-cols-2 gap-2 rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/40 px-4 py-3 text-[12px] sm:grid-cols-6">
+      {/* Aggregate strip — Phase 17.E: white card with stoplight-tinted numbers */}
+      <div
+        className="zoca-card mt-4 grid grid-cols-2 gap-2 sm:grid-cols-6"
+        style={{ padding: "14px 16px" }}
+      >
         <div>
-          <div className="text-zoca-text-soft">Customers</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-zoca-text-primary">
+          <div className="zoca-micro-label">Customers</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums text-zoca-text"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em" }}
+          >
             {totals.total}
           </div>
         </div>
         <div>
-          <div className="text-zoca-text-soft">RED</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-rose-400">
+          <div className="zoca-micro-label">RED</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-pink)" }}
+          >
             {totals.RED}
           </div>
         </div>
         <div>
-          <div className="text-zoca-text-soft">YELLOW</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-amber-400">
+          <div className="zoca-micro-label">YELLOW</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-amber)" }}
+          >
             {totals.YELLOW}
           </div>
         </div>
         <div>
-          <div className="text-zoca-text-soft">GREEN</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-emerald-400">
+          <div className="zoca-micro-label">GREEN</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-green)" }}
+          >
             {totals.GREEN}
           </div>
         </div>
         <div title="Total MRR across the customers shown">
-          <div className="text-zoca-text-soft">MRR</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-zoca-text-primary">
+          <div className="zoca-micro-label">MRR</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums text-zoca-text"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em" }}
+          >
             {formatMoney(totals.mrr)}
           </div>
         </div>
         <div title="MRR carried by customers currently RED — the dollars actively at risk this week">
-          <div className="text-zoca-text-soft">MRR at risk</div>
-          <div className="mt-0.5 font-display text-lg font-bold text-rose-300">
+          <div className="zoca-micro-label">MRR at risk</div>
+          <div
+            className="mt-0.5 font-extrabold tabular-nums"
+            style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-pink)" }}
+          >
             {formatMoney(totals.mrrAtRisk)}
           </div>
         </div>
@@ -489,9 +535,15 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-x-auto rounded-zoca border border-zoca-border-2">
-        <table className="min-w-full divide-y divide-zoca-border-2 text-[13px]">
-          <thead className="bg-zoca-bg-2/60 text-left text-[11px] uppercase tracking-wider text-zoca-text-soft">
+      <div
+        className="mt-4 overflow-x-auto rounded-2xl border"
+        style={{ borderColor: "var(--zoca-border)", background: "#ffffff" }}
+      >
+        <table className="min-w-full divide-y text-[13px]" style={{ borderColor: "var(--zoca-border)" }}>
+          <thead
+            className="text-left text-[10px] uppercase tracking-wider"
+            style={{ background: "var(--zoca-bg-soft)", color: "var(--zoca-text-2)" }}
+          >
             <tr>
               <Th label="AM" col="am" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
               <Th label="Pod" col="pod" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
@@ -575,7 +627,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 tooltip="Sum of plan_amount for RED-stoplight customers in this book."
               />
               <Th
-                label={"\u26D1"}
+                label={"⛑"}
                 col="flagged"
                 sortKey={sortKey}
                 sortDir={sortDir}
@@ -591,7 +643,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 <span className="inline-flex items-center gap-1">
                   Top signal
                   <span
-                    className="text-zoca-text-soft"
+                    className="text-zoca-text-3"
                     aria-label="Help: top signal definitions"
                   >
                     ⓘ
@@ -600,12 +652,12 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zoca-border bg-zoca-bg-2/20">
+          <tbody className="divide-y" style={{ borderColor: "var(--zoca-border)" }}>
             {sorted.length === 0 && (
               <tr>
                 <td
                   colSpan={14}
-                  className="px-4 py-10 text-center text-sm text-zoca-text-soft"
+                  className="px-4 py-10 text-center text-sm text-zoca-text-2"
                 >
                   {search.trim()
                     ? `No AMs match "${search}".`
@@ -616,11 +668,21 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
               </tr>
             )}
             {sorted.map((r) => (
-              <tr key={r.am} className="group transition hover:bg-zoca-bg-3/40">
+              <tr
+                key={r.am}
+                className="group transition"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--zoca-bg-soft)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
                 <td className="px-3 py-2.5">
                   <button
                     onClick={() => onJumpToAm(r.am)}
-                    className="text-left font-medium text-zoca-text-primary underline-offset-4 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                    className="text-left font-medium underline-offset-4 hover:underline focus:outline-none"
+                    style={{ color: "var(--zoca-text)" }}
                     aria-label={`Open ${r.am}'s book`}
                     title={`Open ${r.am}'s book`}
                   >
@@ -628,16 +690,16 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                   </button>
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className="inline-flex items-center gap-1.5 text-zoca-text-soft">
+                  <span className="inline-flex items-center gap-1.5 text-zoca-text-2">
                     <span
-                      className={`h-1.5 w-1.5 rounded-full ${POD_COLOR_DOT[r.pod] || "bg-slate-400"}`}
+                      className={`h-1.5 w-1.5 rounded-full ${POD_COLOR_DOT[r.pod] || "bg-slate-500"}`}
                       aria-hidden
                     />
                     {r.pod}
                   </span>
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-primary">
-                  {r.total || <span className="text-zoca-text-soft">·</span>}
+                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text">
+                  {r.total || <span className="text-zoca-text-3">·</span>}
                 </td>
                 <td className="px-3 py-2.5">
                   <TierSpreadBar
@@ -652,59 +714,88 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                   title={r.total ? `${r.pctRed.toFixed(0)}% of ${r.total}` : "No customers"}
                 >
                   {r.action > 0 ? (
-                    <span className="rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-300">
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold"
+                      style={{
+                        background: "rgba(255,134,225,0.12)",
+                        color: "#c026d3",
+                        border: "1px solid rgba(255,86,187,0.22)",
+                      }}
+                    >
                       {r.action}
                     </span>
                   ) : (
-                    <span className="text-zoca-text-soft">0</span>
+                    <span className="text-zoca-text-3">0</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-muted">
+                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-2">
                   {r.total ? (
                     `${r.pctRed.toFixed(0)}%`
                   ) : (
-                    <span className="text-zoca-text-soft">·</span>
+                    <span className="text-zoca-text-3">·</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-rose-300">
-                  {r.RED || <span className="text-zoca-text-soft">·</span>}
+                <td
+                  className="px-3 py-2.5 text-right tabular-nums"
+                  style={{ color: "var(--zoca-pink)" }}
+                >
+                  {r.RED || <span className="text-zoca-text-3">·</span>}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-amber-300">
-                  {r.YELLOW || <span className="text-zoca-text-soft">·</span>}
+                <td
+                  className="px-3 py-2.5 text-right tabular-nums"
+                  style={{ color: "var(--zoca-amber)" }}
+                >
+                  {r.YELLOW || <span className="text-zoca-text-3">·</span>}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">
-                  {r.GREEN || <span className="text-zoca-text-soft">·</span>}
+                <td
+                  className="px-3 py-2.5 text-right tabular-nums"
+                  style={{ color: "var(--zoca-green)" }}
+                >
+                  {r.GREEN || <span className="text-zoca-text-3">·</span>}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-muted">
-                  {r.avgComposite || <span className="text-zoca-text-soft">·</span>}
+                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-2">
+                  {r.avgComposite || <span className="text-zoca-text-3">·</span>}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-muted">
-                  {r.mrr ? formatMoney(r.mrr) : <span className="text-zoca-text-soft">·</span>}
+                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text">
+                  {r.mrr ? formatMoney(r.mrr) : <span className="text-zoca-text-3">·</span>}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-rose-300">
+                <td
+                  className="px-3 py-2.5 text-right tabular-nums"
+                  style={{ color: "var(--zoca-pink)" }}
+                >
                   {r.mrrAtRisk ? (
                     formatMoney(r.mrrAtRisk)
                   ) : (
-                    <span className="text-zoca-text-soft">·</span>
+                    <span className="text-zoca-text-3">·</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums" title={r.flagged ? `${r.flagged} of ${r.total} flagged (${((r.flagged / Math.max(r.total, 1)) * 100).toFixed(0)}%)` : "No performance flags"}>
+                <td
+                  className="px-3 py-2.5 text-right tabular-nums"
+                  title={r.flagged ? `${r.flagged} of ${r.total} flagged (${((r.flagged / Math.max(r.total, 1)) * 100).toFixed(0)}%)` : "No performance flags"}
+                >
                   {r.flagged > 0 ? (
-                    <span className="inline-flex items-center gap-0.5 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-300">
-                      {"\u26D1"} {r.flagged}
+                    <span
+                      className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-semibold"
+                      style={{
+                        background: "rgba(255,134,225,0.12)",
+                        color: "#c026d3",
+                        border: "1px solid rgba(255,86,187,0.22)",
+                      }}
+                    >
+                      {"⛑"} {r.flagged}
                     </span>
                   ) : (
-                    <span className="text-zoca-text-soft">·</span>
+                    <span className="text-zoca-text-3">·</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-zoca-text-muted">{r.topSignal}</td>
+                <td className="px-3 py-2.5 text-zoca-text-2">{r.topSignal}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <p className="mt-3 text-[11px] text-zoca-text-soft">
+      <p className="mt-3 text-[11px] text-zoca-text-2">
         Click an AM name to drill into their book. Click any column header to sort. Pod filter,
         search, and "show empty books" all stack.
       </p>
@@ -739,9 +830,14 @@ function Th({
     >
       <button
         onClick={() => onClick(col)}
-        className={`inline-flex items-center gap-1 transition hover:text-zoca-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
-          active ? "text-zoca-text-primary" : ""
-        }`}
+        className="inline-flex items-center gap-1 transition focus:outline-none"
+        style={{ color: active ? "var(--zoca-text)" : "var(--zoca-text-2)" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "var(--zoca-text)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = active ? "var(--zoca-text)" : "var(--zoca-text-2)";
+        }}
         aria-label={`Sort by ${label}${active ? `, currently ${sortDir === "asc" ? "ascending" : "descending"}` : ""}`}
         title={tooltip || `Sort by ${label}`}
       >
