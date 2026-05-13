@@ -160,11 +160,226 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Phase 17.B.1 + 17.C — Tier-based rendering. Cards now have three shapes:
+  //   GREEN  = one-line collapsed (pulse dot + bizname + meta + trend)
+  //   YELLOW = compact card (lighter, "Schedule check-in" / "Snooze 7d")
+  //   RED    = full card with inline action buttons (existing flow below)
+  // -------------------------------------------------------------------------
+  if (s.stoplight === "GREEN") {
+    return (
+      <article
+        role="article"
+        aria-label={`${customer.company} — Doing fine`}
+        className="zoca-fade-in"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "10px 16px",
+          background: "#ffffff",
+          border: "1px solid var(--zoca-border)",
+          borderRadius: "10px",
+          boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
+          transition: "background 0.15s ease, box-shadow 0.15s ease",
+        }}
+      >
+        <span
+          className="zoca-pulse-dot-green"
+          style={{ flexShrink: 0 }}
+          aria-hidden
+        />
+        <span
+          className="font-medium text-zoca-text"
+          style={{
+            fontSize: "13px",
+            maxWidth: "260px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {customer.company || customer.entity_id.slice(0, 8)}
+        </span>
+        <span className="text-[11px] text-zoca-text-2" style={{ flexShrink: 0 }}>
+          {planText}
+          {podText}
+        </span>
+        <span style={{ marginLeft: "auto" }} className="flex items-center gap-3">
+          {trajectoryBadge.label && (
+            <span
+              className="text-[10px] font-semibold"
+              style={{
+                color:
+                  s.trajectory_7d === "improving"
+                    ? "var(--zoca-green)"
+                    : s.trajectory_7d === "worsening"
+                      ? "var(--zoca-pink)"
+                      : "var(--zoca-text-3)",
+              }}
+              title={trajectoryBadge.title}
+            >
+              {trajectoryBadge.label}
+            </span>
+          )}
+          {trend && trend.length > 1 && (
+            <V2Sparkline
+              values={trend.map((p) => p.composite)}
+              width={56}
+              height={14}
+              color="rgb(16, 185, 129)"
+              gradient
+              label="Composite score trend"
+            />
+          )}
+        </span>
+      </article>
+    );
+  }
+
+  if (s.stoplight === "YELLOW") {
+    return (
+      <article
+        role="article"
+        aria-label={`${customer.company} — Keep an eye on${recentlyContacted ? " (contacted recently)" : ""}`}
+        className="zoca-fade-in"
+        style={{
+          background: "#ffffff",
+          border: "1px solid rgba(245, 158, 11, 0.28)",
+          borderRadius: "12px",
+          padding: "12px 16px",
+          boxShadow: "0 1px 3px rgba(11,5,29,0.04)",
+          transition: "box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease",
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className="zoca-pulse-dot-amber"
+            aria-hidden
+            style={{ marginTop: "5px", flexShrink: 0 }}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <h3
+                className="text-[14px] font-semibold text-zoca-text"
+                style={{ margin: 0 }}
+              >
+                {customer.company || customer.entity_id.slice(0, 8)}
+              </h3>
+              <span className="text-[11px] text-zoca-text-2">
+                {planText}
+                {podText}
+              </span>
+              {recentlyContacted && (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{
+                    background: "rgba(16, 185, 129, 0.10)",
+                    color: "#047857",
+                    border: "1px solid rgba(16, 185, 129, 0.24)",
+                  }}
+                  title="Contacted in the last 7 days"
+                >
+                  ✓ Contacted
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-zoca-text-2">
+              {renderReason(s.reason_one_line)}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <button
+              type="button"
+              className="zoca-btn zoca-btn-ghost"
+              style={{ fontSize: "11px", padding: "5px 12px" }}
+              onClick={() => setActionState({ kind: "selecting" })}
+              aria-label="Schedule check-in"
+            >
+              Schedule check-in
+            </button>
+            <button
+              type="button"
+              className="zoca-btn zoca-btn-ghost"
+              style={{ fontSize: "10.5px", padding: "4px 10px" }}
+              onClick={() => setActionState({ kind: "selecting" })}
+              aria-label="Snooze 7 days"
+            >
+              Snooze 7d
+            </button>
+          </div>
+        </div>
+        {actionState.kind === "selecting" && (
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
+            <ActionChip
+              label="✓ Connected"
+              tone="emerald"
+              busy={false}
+              disabled={false}
+              onClick={() =>
+                setActionState({
+                  kind: "tagging",
+                  choice: "connected",
+                  reason: "",
+                  followUp: false,
+                })
+              }
+            />
+            <ActionChip
+              label="📞 VM"
+              tone="amber"
+              busy={false}
+              disabled={false}
+              onClick={() =>
+                setActionState({
+                  kind: "tagging",
+                  choice: "vm",
+                  reason: "",
+                  followUp: true,
+                })
+              }
+            />
+            <ActionChip
+              label="× No reach"
+              tone="rose"
+              busy={false}
+              disabled={false}
+              onClick={() =>
+                setActionState({
+                  kind: "tagging",
+                  choice: "noreach",
+                  reason: "",
+                  followUp: true,
+                })
+              }
+            />
+            <button
+              type="button"
+              onClick={() => setActionState({ kind: "idle" })}
+              className="text-[10px] text-zoca-text-2 underline-offset-2 hover:underline"
+            >
+              cancel
+            </button>
+          </div>
+        )}
+      </article>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // RED — full card render below (existing flow).
+  // -------------------------------------------------------------------------
   return (
     <article
       role="article"
       aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}`}
-      className="group rounded-zoca-lg border border-zoca-border bg-zoca-card transition-all duration-150 hover:border-zoca-border-3 hover:shadow-zoca-sm"
+      className="zoca-card group"
+      style={{
+        borderColor: "rgba(255, 86, 187, 0.22)",
+        background:
+          "linear-gradient(180deg, rgba(255, 86, 187, 0.03) 0%, #ffffff 100%)",
+        boxShadow: "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
+      }}
     >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">
         {/* Stoplight dot — with hover title */}

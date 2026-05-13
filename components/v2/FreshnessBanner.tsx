@@ -34,8 +34,16 @@ export function FreshnessBanner({ generatedAt }: Props) {
     }
   }
 
+  // Phase 17.B.1 — light-theme amber banner (Zoca tokens).
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-100">
+    <div
+      className="flex items-center justify-between gap-4 border-b px-4 py-2.5 text-sm"
+      style={{
+        background: "rgba(245, 158, 11, 0.08)",
+        borderColor: "rgba(245, 158, 11, 0.28)",
+        color: "#b45309",
+      }}
+    >
       <div className="flex items-center gap-2">
         <span aria-hidden>⚠</span>
         <span>
@@ -45,7 +53,12 @@ export function FreshnessBanner({ generatedAt }: Props) {
       <button
         onClick={handleRefresh}
         disabled={refreshing}
-        className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/40 bg-amber-500/20 px-3 py-1 text-xs font-medium transition hover:bg-amber-500/30 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition disabled:opacity-50"
+        style={{
+          background: "rgba(245, 158, 11, 0.16)",
+          border: "1px solid rgba(245, 158, 11, 0.36)",
+          color: "#92400e",
+        }}
       >
         {refreshing ? "Refreshing…" : "Refresh now"}
       </button>

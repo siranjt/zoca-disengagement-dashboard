@@ -191,17 +191,37 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       {/* Hero */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         {heroLabelRich !== null ? (
-          <h1 className="font-display text-2xl font-extrabold tracking-zoca-tight md:text-3xl">
+          <h1
+            className="text-zoca-text"
+            style={{
+              fontSize: "clamp(22px, 2.8vw, 28px)",
+              fontWeight: 800,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.15,
+              margin: 0,
+            }}
+          >
             {heroLabelRich}
           </h1>
         ) : (
-          <h1 className="font-display text-2xl font-extrabold tracking-zoca-tight md:text-3xl">
+          <h1
+            className="text-zoca-text"
+            style={{
+              fontSize: "clamp(22px, 2.8vw, 28px)",
+              fontWeight: 800,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.15,
+              margin: 0,
+            }}
+          >
             Today, you have{" "}
-            <span className="text-zoca-pink-2">{heroCount}</span>{" "}
+            <span className="zoca-num-gradient" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {heroCount}
+            </span>{" "}
             customer{heroCount === 1 ? "" : "s"} to act on
           </h1>
         )}
-        <p className="text-[12px] text-zoca-text-soft">
+        <p className="text-[12px] text-zoca-text-2">
           {amName}
           {pod && ` · ${pod}`}
         </p>
@@ -246,8 +266,13 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search business name…"
               aria-label="Search business name"
-              className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/40 py-1.5 pl-8 pr-3 text-[12px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-purple focus:outline-none"
-              style={{ minWidth: 200 }}
+              className="rounded-full border py-1.5 pl-8 pr-3 text-[12px] focus:outline-none"
+              style={{
+                borderColor: "var(--zoca-border)",
+                background: "#ffffff",
+                color: "var(--zoca-text)",
+                minWidth: 200,
+              }}
             />
           </label>
 
@@ -258,7 +283,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
               aria-label="Sort customers"
-              className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/40 px-2.5 py-1.5 text-[12px] text-zoca-text-primary focus:border-zoca-purple focus:outline-none"
+              className="rounded-full border px-2.5 py-1.5 text-[12px] focus:outline-none"
+              style={{
+                borderColor: "var(--zoca-border)",
+                background: "#ffffff",
+                color: "var(--zoca-text)",
+              }}
             >
               <option value="urgency">By urgency</option>
               <option value="plan">By plan amount</option>
@@ -321,17 +351,30 @@ function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       aria-label={`${label} — ${count} customers`}
-      className={`group inline-flex items-center gap-2 rounded-zoca-pill border px-3.5 py-1.5 text-[12px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 ${
+      className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition focus-visible:outline-none focus-visible:ring-2"
+      style={
         active
-          ? "border-zoca-purple bg-zoca-purple/20 text-zoca-text-primary"
-          : "border-zoca-border-2 bg-zoca-bg-2/40 text-zoca-text-muted hover:border-zoca-border-3 hover:text-zoca-text-primary"
-      }`}
+          ? {
+              borderColor: "var(--zoca-pink)",
+              background:
+                "linear-gradient(180deg, rgba(255,86,187,0.06), rgba(255,168,205,0.08))",
+              color: "var(--zoca-text)",
+            }
+          : {
+              borderColor: "var(--zoca-border)",
+              background: "#ffffff",
+              color: "var(--zoca-text-2)",
+            }
+      }
     >
       <span>{label}</span>
       <span
-        className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-semibold ${
-          active ? "bg-white/15" : "bg-zoca-bg-1/80"
-        }`}
+        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+        style={
+          active
+            ? { background: "rgba(255,86,187,0.14)", color: "#c026d3" }
+            : { background: "var(--zoca-bg-soft)", color: "var(--zoca-text-2)" }
+        }
       >
         {count}
       </span>

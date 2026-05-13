@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ZocaLogo from "@/components/ZocaLogo";
 import { ACTIVE_AMS, INCOMING_AMS, POD_MAP } from "@/lib/config";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
-import V2TopBar from "./V2TopBar";
 import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
 import V2Rollup from "./V2Rollup";
@@ -103,27 +102,42 @@ export default function V2Dashboard() {
     return Array.from(set).sort();
   }, [snapshot]);
 
-  const freshnessLabel = useMemo(() => {
-    if (snapshot.status !== "ready") return "loading…";
-    const generatedAt = new Date(snapshot.snapshot.generatedAt).getTime();
-    const now = Date.now();
-    const diffMin = Math.max(0, Math.floor((now - generatedAt) / 60000));
-    if (diffMin < 1) return "Updated just now";
-    if (diffMin < 60) return `Updated ${diffMin} min ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `Updated ${diffHr} hr ago`;
-    return `Updated ${Math.floor(diffHr / 24)} days ago`;
-  }, [snapshot]);
-
   const selectedPod = selectedAm ? POD_MAP[selectedAm] || "" : "";
 
   const ready = snapshot.status === "ready" ? snapshot.snapshot : null;
-  const mrrAtRisk = ready
-    ? ready.customers
-        .filter((c) => c.am_name === selectedAm && c.signals_v2?.stoplight === "RED")
-        .reduce((sum, c) => sum + (Number(c.plan_amount) || 0), 0)
-    : 0;
-  const scopeCustomerCount = ready?.scope?.customer_count ?? 921;
+
+  // ---------------------------------------------------------------------------
+  // KPI tiles — RED count + MRR-at-risk computed CONSISTENTLY from this AM's
+  // book. Phase 17.B had a bug where RED count was snapshot-wide while MRR
+  // filtered to selectedAm → ratio looked nonsensical. Both now filter the
+  // same way: only `am_name === selectedAm` customers contribute to either.
+  // ---------------------------------------------------------------------------
+  const { redCountForAm, yellowCountForAm, greenCountForAm, mrrAtRisk } = useMemo(() => {
+    if (!ready) {
+      return { redCountForAm: 0, yellowCountForAm: 0, greenCountForAm: 0, mrrAtRisk: 0 };
+    }
+    let red = 0;
+    let yellow = 0;
+    let green = 0;
+    let mrr = 0;
+    for (const c of ready.customers) {
+      if (c.am_name !== selectedAm) continue;
+      const light = c.signals_v2?.stoplight;
+      if (light === "RED") {
+        red++;
+        const amt = Number(c.plan_amount);
+        if (Number.isFinite(amt) && amt > 0) mrr += amt;
+      } else if (light === "YELLOW") {
+        yellow++;
+      } else if (light === "GREEN") {
+        green++;
+      }
+    }
+    return { redCountForAm: red, yellowCountForAm: yellow, greenCountForAm: green, mrrAtRisk: mrr };
+  }, [ready, selectedAm]);
+
+  const scopeCustomerCount = amCustomers.length;
+  const totalScopeCount = ready?.scope?.customer_count ?? 921;
 
   return (
     <div
@@ -131,16 +145,23 @@ export default function V2Dashboard() {
       className="min-h-screen text-zoca-text"
       style={{ background: "var(--zoca-bg-soft)" }}
     >
-      <V2Header generatedAt={ready?.generatedAt} />
+      <V2Header
+        generatedAt={ready?.generatedAt}
+        selectedAm={selectedAm}
+        allAms={allAms}
+        onAmChange={handleSelectAm}
+        view={view}
+        setView={setView}
+      />
       {ready && <FreshnessBanner generatedAt={ready.generatedAt} />}
       <V2Hero
         amName={selectedAm}
-        redCount={ready?.stoplightCounts?.RED ?? 0}
-        customerCount={scopeCustomerCount}
+        redCount={redCountForAm}
+        customerCount={totalScopeCount}
       />
       <V2RefreshBar
         showing={amCustomers.length}
-        total={scopeCustomerCount}
+        total={totalScopeCount}
         generatedAt={ready?.generatedAt}
         amName={selectedAm}
         pod={selectedPod}
@@ -150,38 +171,29 @@ export default function V2Dashboard() {
           {
             label: "Total",
             value: scopeCustomerCount,
-            subtitle: "active customers",
+            subtitle: "in your book",
             color: "midnight",
           },
           {
             label: "Need to call",
-            value: ready?.stoplightCounts?.RED ?? 0,
+            value: redCountForAm,
             subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
             color: "pink",
             selected: true,
           },
           {
             label: "Watch",
-            value: ready?.stoplightCounts?.YELLOW ?? 0,
+            value: yellowCountForAm,
             subtitle: "likely save calls",
             color: "amber",
           },
           {
             label: "Healthy",
-            value: ready?.stoplightCounts?.GREEN ?? 0,
+            value: greenCountForAm,
             subtitle: "in your book",
             color: "green",
           },
         ]}
-      />
-      <V2TopBar
-        selectedAm={selectedAm}
-        selectedPod={selectedPod}
-        allAms={allAms}
-        view={view}
-        freshness={freshnessLabel}
-        onSelectAm={handleSelectAm}
-        onSetView={setView}
       />
 
       {ready && <ScopeStrip scope={ready.scope} />}
@@ -304,4 +316,3 @@ function V2SelectAmPrompt() {
     </div>
   );
 }
-

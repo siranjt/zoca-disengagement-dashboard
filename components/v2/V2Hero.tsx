@@ -17,52 +17,62 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
       className="zoca-fade-in text-center px-6"
       style={{ paddingTop: "44px", paddingBottom: "24px" }}
     >
-      <div
-        className="inline-flex items-center gap-2 px-4 py-1.5 mb-5 rounded-full"
-        style={{
-          border: "1px solid rgba(20,110,245,0.18)",
-          background: "rgba(20,110,245,0.06)",
-        }}
-      >
-        <span className="zoca-pulse-dot-green" />
-        <span
-          className="text-[11px] font-semibold uppercase text-zoca-blue"
-          style={{ letterSpacing: "0.08em" }}
-        >
-          Live customer signals · auto-scored by Claude
-        </span>
-      </div>
-      <h1
-        className="m-0 font-extrabold"
-        style={{
-          fontSize: "clamp(40px, 6vw, 64px)",
-          lineHeight: 1.02,
-          letterSpacing: "-0.035em",
-          position: "relative",
-          display: "inline-block",
-        }}
-      >
-        <ZocaSparkle
-          size={18}
-          style={{ position: "absolute", top: "-8px", left: "-26px" }}
-        />
-        <span className="zoca-gradient-text">{title}</span>
-        <ZocaSparkle
-          size={14}
-          delay={1}
+      {/* Chip — wrapped in a block-level container so it stacks ABOVE the h1
+          instead of sitting next to it on the same baseline. */}
+      <div className="mb-5 flex justify-center">
+        <div
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
           style={{
-            position: "absolute",
-            top: "-2px",
-            right: "-30px",
-            color: "var(--zoca-blue)",
+            border: "1px solid rgba(20,110,245,0.18)",
+            background: "rgba(20,110,245,0.06)",
           }}
-        />
-        <ZocaSparkle
-          size={11}
-          delay={2}
-          style={{ position: "absolute", bottom: "2px", right: "-14px" }}
-        />
-      </h1>
+        >
+          <span className="zoca-pulse-dot-green" />
+          <span
+            className="text-[11px] font-semibold uppercase text-zoca-blue"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Live customer signals · auto-scored by Claude
+          </span>
+        </div>
+      </div>
+
+      {/* Title — wrapped in a block-level container so the gradient h1 with its
+          absolutely-positioned sparkles centers cleanly under the chip. */}
+      <div>
+        <h1
+          className="m-0 font-extrabold"
+          style={{
+            fontSize: "clamp(40px, 6vw, 64px)",
+            lineHeight: 1.02,
+            letterSpacing: "-0.035em",
+            position: "relative",
+            display: "inline-block",
+          }}
+        >
+          <ZocaSparkle
+            size={18}
+            style={{ position: "absolute", top: "-8px", left: "-26px" }}
+          />
+          <span className="zoca-gradient-text">{title}</span>
+          <ZocaSparkle
+            size={14}
+            delay={1}
+            style={{
+              position: "absolute",
+              top: "-2px",
+              right: "-30px",
+              color: "var(--zoca-blue)",
+            }}
+          />
+          <ZocaSparkle
+            size={11}
+            delay={2}
+            style={{ position: "absolute", bottom: "2px", right: "-14px" }}
+          />
+        </h1>
+      </div>
+
       <p
         className="mx-auto mt-4 mb-0 text-zoca-text-2"
         style={{
