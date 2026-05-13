@@ -5,6 +5,7 @@ import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
 import { fetchPerformanceMetrics } from "./performance";
 import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";
 import { writeSnapshotV2, readSnapshotByDate, writeCustomerTrendRows } from "./postgres";
+import { enrichRedNarratives } from "./narrative-enrich";
 import { readPipelineStage } from "./pipeline-state";
 import {
   writePipelineStage,
@@ -643,6 +644,24 @@ export async function composeSnapshot(
 
   for (const t of TIER_ORDER) {
     if (snapshot.tierCounts[t] == null) snapshot.tierCounts[t] = 0;
+  }
+
+  // -------------------------------------------------------------------------
+  // 2.4  LLM narrative enrichment for RED customers (Phase 11)
+  //      No-op when ANTHROPIC_API_KEY is unset. Concurrency-capped at 15
+  //      with per-call 5s timeout — falls back to deterministic templates
+  //      silently on any failure.
+  // -------------------------------------------------------------------------
+  try {
+    const result = await enrichRedNarratives(snapshot);
+    console.log(
+      `[compose] narrative enrichment: enriched=${result.enriched} skipped=${result.skipped} took ${result.durationMs}ms`,
+    );
+    if (result.enriched > 0) errors.push(`narrative enrichment ran on ${result.enriched} customers`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[compose] narrative enrichment failed:", msg);
+    errors.push(`narrative enrichment: ${msg}`);
   }
 
   // -------------------------------------------------------------------------

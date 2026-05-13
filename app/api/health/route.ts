@@ -118,6 +118,8 @@ export async function GET() {
       cronConfigured: !!process.env.CRON_SECRET,
       chargebeeConfigured: !!process.env.CHARGEBEE_API_KEY,
       postgresConfigured: !!process.env.POSTGRES_URL,
+      anthropicConfigured: !!process.env.ANTHROPIC_API_KEY,
+      slackWebhookConfigured: !!process.env.SLACK_WEBHOOK_URL,
     },
   };
   return NextResponse.json(body, {
