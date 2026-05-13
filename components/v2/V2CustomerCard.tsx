@@ -211,6 +211,21 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                   💼 {customer.hubspot.open_deal_count} deal{customer.hubspot.open_deal_count === 1 ? "" : "s"}
                 </span>
               )}
+            {/* Phase 14B (Tier C): HubSpot vs. Metabase calls drift */}
+            {customer.hubspot?.comms_drift && (
+              <span
+                className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-medium ${
+                  customer.hubspot.comms_drift.delta > 0
+                    ? "bg-amber-500/15 text-amber-300"
+                    : "bg-sky-500/15 text-sky-300"
+                }`}
+                title={`HubSpot logged ${customer.hubspot.comms_drift.hubspot_calls_30d} calls in 30d; Metabase phone CSV shows ${customer.hubspot.comms_drift.metabase_calls_30d}. Data hygiene flag.`}
+              >
+                {customer.hubspot.comms_drift.delta > 0
+                  ? `📞 +${customer.hubspot.comms_drift.delta} missing`
+                  : `📞 ${customer.hubspot.comms_drift.delta} extra`}
+              </span>
+            )}
             {recentlyContacted && (
               <span
                 className="rounded-zoca-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"
@@ -595,6 +610,31 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
             {expanded && (
               <div id={`perf-${customer.entity_id}`}>
                 <V2PerformancePanel performance={customer.performance} />
+                {customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 && (
+                  <ContactsSection contacts={customer.hubspot.contacts} />
+                )}
+              </div>
+            )}
+          </>
+        ) : customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 ? (
+          // No performance data, but we have contacts — still expose the
+          // CONTACTS section behind a "Why?" toggle so the buyer-side org
+          // chart is reachable on every matched customer.
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              aria-expanded={expanded}
+              aria-controls={`contacts-${customer.entity_id}`}
+              title={expanded ? "Hide contacts" : "Show contacts"}
+            >
+              <span aria-hidden>{expanded ? "▾" : "▸"}</span>
+              {expanded ? "Hide" : "Why?"}
+            </button>
+            {expanded && (
+              <div id={`contacts-${customer.entity_id}`}>
+                <ContactsSection contacts={customer.hubspot.contacts} />
               </div>
             )}
           </>
@@ -898,4 +938,60 @@ function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>)
   }
   if (!parts.length) return null;
   return parts.slice(0, 2).join(" \u00B7 ");
+}
+
+// ---------------------------------------------------------------------------
+// CONTACTS section (Phase 14C — Tier E: buyer-side org chart)
+//
+// Surfaces up to 5 HubSpot contacts per customer inside the "Why?" expand,
+// matching the styling of the PERFORMANCE SIGNALS section in V2PerformancePanel.
+// ---------------------------------------------------------------------------
+
+type ContactsSectionProps = {
+  contacts: NonNullable<NonNullable<ScoredCustomerV2["hubspot"]>["contacts"]>;
+};
+
+function ContactsSection({ contacts }: ContactsSectionProps) {
+  if (!contacts || contacts.length === 0) return null;
+  return (
+    <div className="mt-3 rounded-zoca-sm border border-zoca-border bg-zoca-surface-soft/40 p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zoca-text-soft">
+        Contacts
+      </div>
+      <ul className="space-y-1.5">
+        {contacts.slice(0, 5).map((c) => {
+          const sinceLabel = c.last_activity ? `${daysSince(c.last_activity)}d ago` : "—";
+          return (
+            <li
+              key={c.contact_id}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[11px]"
+            >
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-medium text-zoca-text">{c.name}</span>
+                {c.job_title && (
+                  <span className="text-[10px] text-zoca-text-soft">{c.job_title}</span>
+                )}
+              </span>
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                {c.email ? (
+                  <a
+                    href={`mailto:${c.email}`}
+                    className="text-zoca-pink-cta hover:underline"
+                    title={`Email ${c.name}`}
+                  >
+                    {c.email}
+                  </a>
+                ) : (
+                  <span className="text-zoca-text-soft">—</span>
+                )}
+                <span className="text-[10px] text-zoca-text-soft" title={c.last_activity || ""}>
+                  {sinceLabel}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }

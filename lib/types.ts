@@ -290,6 +290,28 @@ export type HubspotJoinFields = {
     action_items: string[];
     fireflies_url: string | null;
   } | null;
+  /**
+   * Phase 14B (Tier C): comms drift between HubSpot calls (30d) and Metabase
+   * phone CSV (30d). Only set when |delta| >= 3. Positive delta = HubSpot has
+   * more calls than Metabase (Metabase isn't catching them); negative delta
+   * = Metabase has more (HubSpot isn't capturing them).
+   */
+  comms_drift?: {
+    hubspot_calls_30d: number;
+    metabase_calls_30d: number;
+    delta: number;
+  } | null;
+  /**
+   * Phase 14C (Tier E): top 5 contacts at the company by last activity.
+   * Drives the CONTACTS section in the V2 customer card "Why?" expand.
+   */
+  contacts?: Array<{
+    contact_id: string;
+    name: string;
+    email: string | null;
+    job_title: string | null;
+    last_activity: string | null;
+  }>;
 };
 
 /** v2 scored customer — superset of v1 with usage, billing, performance, tickets, pod */

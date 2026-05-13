@@ -1,4 +1,5 @@
 import { fetchAllLiveSubsWithEntityMap } from "./chargebee";
+import { fetchPlaceIdsForEntities } from "./metabase-place-id";
 import { fetchUnpaidInvoices, fetchRecentTransactions, buildBillingMetrics, scoreBilling } from "./billing";
 import { fetchBaseSheet, fetchAllCommsSequential, groupCommsByEntity } from "./metabase";
 import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
@@ -11,6 +12,8 @@ import {
   type HubspotCompanyRow,
 } from "./hubspot-companies";
 import { fetchDealsForCompanies, type DealsForCompany } from "./hubspot-deals";
+import { fetchCallsForCompanies, type CallsForCompany } from "./hubspot-calls";
+import { fetchContactsForCompanies, type CompanyContact } from "./hubspot-contacts";
 import { fetchEnrichedNotesPerCompany, type LastCallSummary } from "./hubspot-notes";
 import { readNoteEnrichments, writeNoteEnrichments, type CachedNoteEnrichment } from "./postgres";
 import { readPipelineStage } from "./pipeline-state";
@@ -67,6 +70,7 @@ export type StageAData = {
     email: string;
     phone: string;
     activated_at: string | null;
+    place_id: string | null;
   }>;
   baseSheetByEntityId: Record<string, BaseSheetRow>;
   billingMetrics: Record<string, BillingMetrics>;
@@ -77,11 +81,18 @@ export type StageAData = {
     baseSheetRowCount: number;
     excludedCount: number;
     multiEntityExpansion: number;
+    placeIdsResolved: number;
   };
 };
 
 export type StageBData = {
   commsMetricsByEntity: Record<string, CustomerMetrics>;
+  /**
+   * Phase 14B: per-entity, per-channel event count for the last 30 days.
+   * Used by compose to derive HubSpot vs. Metabase calls drift on phone.
+   * Shape: entityId -> { chat, email, phone, video, sms }.
+   */
+  channelCounts30dByEntity: Record<string, Record<string, number>>;
   commsStats: {
     rawRows: Record<string, number>;
     eventsKept: Record<string, number>;
@@ -121,10 +132,16 @@ export type StageDData = {
   companiesByPlaceId: Record<string, HubspotCompanyByPlaceId>;
   dealsByHubspotCompanyId: Record<string, DealsForCompany>;
   notesByHubspotCompanyId: Record<string, LastCallSummary>;
+  /** Phase 14B (Tier C) — 30d call counts per HubSpot company */
+  callsByHubspotCompanyId: Record<string, CallsForCompany>;
+  /** Phase 14C (Tier E) — top contacts per HubSpot company */
+  contactsByHubspotCompanyId: Record<string, CompanyContact[]>;
   diagnostics: {
     totalCompanies: number;
     companiesWithDeals: number;
     companiesWithRecentNotes: number;
+    companiesWithCalls: number;
+    companiesWithContacts: number;
     notesEnrichedNew: number;
     notesEnrichedCached: number;
   };
@@ -215,6 +232,16 @@ export async function runStageA(today: number = todayMs()): Promise<{
       subsByCustomer.set(s.customer_id, s);
     }
   }
+  // Resolve entity_id -> place_id via Aurora (Phase 14A). When METABASE_API_KEY
+  // is unset (dev/CI), this returns an empty Map and every entityMeta entry
+  // gets place_id: null — the HubSpot join falls back to bizname cleanly.
+  const placeIdByEntity = await fetchPlaceIdsForEntities(Array.from(activeEntityIds)).catch(
+    (e: Error) => {
+      errors.push(`Metabase place_id: ${e.message}`);
+      return new Map<string, string>();
+    },
+  );
+
   for (const eid of activeEntityIds) {
     const cid = entityToCustomer.get(eid) || "";
     const sub = subsByCustomer.get(cid);
@@ -228,6 +255,7 @@ export async function runStageA(today: number = todayMs()): Promise<{
       email: sub?.email || "",
       phone: sub?.phone || "",
       activated_at: sub?.activated_at ? new Date(sub.activated_at).toISOString() : null,
+      place_id: placeIdByEntity.get(eid) || null,
     };
   }
 
@@ -259,6 +287,7 @@ export async function runStageA(today: number = todayMs()): Promise<{
       baseSheetRowCount: baseSheetResult.rows.length,
       excludedCount,
       multiEntityExpansion,
+      placeIdsResolved: placeIdByEntity.size,
     },
   };
   return { data, durationMs: Date.now() - started, errors };
@@ -297,8 +326,17 @@ export async function runStageB(today: number = todayMs()): Promise<{
 
   // Compute per-entity comms metrics. The raw events array can be GC'd after this.
   const commsMetricsByEntity: Record<string, CustomerMetrics> = {};
+  // Phase 14B: per-entity, per-channel 30d counts (built in the same pass over
+  // grouped events so we don't have to retain the raw events array).
+  const channelCounts30dByEntity: Record<string, Record<string, number>> = {};
+  const cutoff30d = today - 30 * 86400 * 1000;
   for (const [eid, evs] of byEntity) {
     commsMetricsByEntity[eid] = computeMetrics(evs, today);
+    const perCh: Record<string, number> = { chat: 0, email: 0, phone: 0, video: 0, sms: 0 };
+    for (const e of evs) {
+      if (e.ts >= cutoff30d) perCh[e.channel] = (perCh[e.channel] || 0) + 1;
+    }
+    channelCounts30dByEntity[eid] = perCh;
   }
   memSnap("B after metrics");
 
@@ -324,6 +362,7 @@ export async function runStageB(today: number = todayMs()): Promise<{
   memSnap("B end");
   const data: StageBData = {
     commsMetricsByEntity,
+    channelCounts30dByEntity,
     commsStats: commsResult.stats,
     perSourceEventCount,
     perDirectionCount,
@@ -473,14 +512,38 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   }
   memSnap("D after notes");
 
+  // 4. Calls per company (Phase 14B — Tier C: comms drift)
+  const callsMap = await fetchCallsForCompanies(hubspotCompanyIds).catch((e: Error) => {
+    errors.push(`HubSpot calls: ${e.message}`);
+    return new Map<string, CallsForCompany>();
+  });
+  memSnap("D after calls");
+  const callsByHubspotCompanyId: Record<string, CallsForCompany> = {};
+  for (const [cid, c] of callsMap) callsByHubspotCompanyId[cid] = c;
+
+  // 5. Contacts per company (Phase 14C — Tier E: buyer-side org chart)
+  const contactsMap = await fetchContactsForCompanies(hubspotCompanyIds).catch(
+    (e: Error) => {
+      errors.push(`HubSpot contacts: ${e.message}`);
+      return new Map<string, CompanyContact[]>();
+    },
+  );
+  memSnap("D after contacts");
+  const contactsByHubspotCompanyId: Record<string, CompanyContact[]> = {};
+  for (const [cid, cs] of contactsMap) contactsByHubspotCompanyId[cid] = cs;
+
   const data: StageDData = {
     companiesByPlaceId,
     dealsByHubspotCompanyId,
     notesByHubspotCompanyId,
+    callsByHubspotCompanyId,
+    contactsByHubspotCompanyId,
     diagnostics: {
       totalCompanies: Object.keys(companiesByPlaceId).length,
       companiesWithDeals: Object.keys(dealsByHubspotCompanyId).length,
       companiesWithRecentNotes: Object.keys(notesByHubspotCompanyId).length,
+      companiesWithCalls: Object.keys(callsByHubspotCompanyId).length,
+      companiesWithContacts: Object.keys(contactsByHubspotCompanyId).length,
       notesEnrichedNew,
       notesEnrichedCached,
     },
@@ -549,11 +612,16 @@ export async function composeSnapshot(
   const stageD = (d?.data as StageDData | undefined) ?? null;
   const today = stageA.todayMs;
 
-  // Pre-build name-keyed HubSpot lookup if Stage D landed
+  // Pre-build HubSpot lookups if Stage D landed
+  // Phase 14A: place_id is the canonical join key (HubSpot companies are
+  // natively keyed by place_id); bizname stays as a fallback for entities
+  // without GBP/place_id resolved.
+  const hubspotByPlaceId: Map<string, HubspotCompanyByPlaceId> = new Map();
   const hubspotByNormalizedName: Map<string, HubspotCompanyByPlaceId> = new Map();
   if (stageD) {
     const { normalizeName } = await import("./hubspot-companies");
     for (const c of Object.values(stageD.companiesByPlaceId)) {
+      if (c.place_id) hubspotByPlaceId.set(c.place_id, c);
       hubspotByNormalizedName.set(normalizeName(c.name), c);
     }
     console.log(
@@ -566,6 +634,10 @@ export async function composeSnapshot(
   // -------------------------------------------------------------------------
   const scored: ScoredCustomerV2[] = [];
   let mixpanelCoverage = 0;
+  // Phase 14A: track join performance for logging
+  let matchedByPlaceId = 0;
+  let matchedByBizname = 0;
+  let hubspotUnmatched = 0;
 
   for (const entityId of stageA.activeEntityIds) {
     const meta = stageA.entityMeta[entityId];
@@ -620,37 +692,76 @@ export async function composeSnapshot(
     const amName = bs?.am_name || "";
     const pod = POD_MAP[amName] || "";
 
-    // HubSpot join (Phase 13) — match by normalized bizname when Stage D is present
+    // HubSpot join (Phase 14A) — place_id first, bizname fallback.
+    // The bizname fallback is intentionally preserved: ~16% of customers
+    // don't have a place_id in Aurora yet (no GBP or unconnected), and
+    // bizname catches most of them.
     let hubspotJoin: ScoredCustomerV2["hubspot"] = null;
     if (stageD) {
       const { normalizeName } = await import("./hubspot-companies");
-      const lookupName = (bs?.bizname || meta?.company_from_chargebee || "").trim();
-      if (lookupName) {
-        const hsCo = hubspotByNormalizedName.get(normalizeName(lookupName));
-        if (hsCo) {
-          const deals = stageD.dealsByHubspotCompanyId[hsCo.hubspot_company_id];
-          const note = stageD.notesByHubspotCompanyId[hsCo.hubspot_company_id];
-          const lifecycleDrift =
-            !!hsCo.lifecycle_stage && hsCo.lifecycle_stage.toLowerCase() !== "customer";
-          hubspotJoin = {
-            hubspot_company_id: hsCo.hubspot_company_id,
-            icp_tier: hsCo.icp_tier,
-            lifecycle_drift: lifecycleDrift,
-            open_deal_count: deals?.open_deal_count ?? 0,
-            open_deal_stages: deals?.open_deal_stages ?? [],
-            total_open_amount: deals?.total_open_amount ?? 0,
-            last_call: note
-              ? {
-                  note_id: note.note_id,
-                  date: note.date,
-                  sentiment: note.sentiment,
-                  topics: note.topics,
-                  action_items: note.action_items,
-                  fireflies_url: note.fireflies_url,
-                }
-              : null,
-          };
+      let hsCo: HubspotCompanyByPlaceId | undefined;
+      let matchedVia: "place_id" | "bizname" | null = null;
+      const placeId = meta?.place_id || "";
+      if (placeId) {
+        hsCo = hubspotByPlaceId.get(placeId);
+        if (hsCo) matchedVia = "place_id";
+      }
+      if (!hsCo) {
+        const lookupName = (bs?.bizname || meta?.company_from_chargebee || "").trim();
+        if (lookupName) {
+          hsCo = hubspotByNormalizedName.get(normalizeName(lookupName));
+          if (hsCo) matchedVia = "bizname";
         }
+      }
+      if (hsCo) {
+        if (matchedVia === "place_id") matchedByPlaceId++;
+        else if (matchedVia === "bizname") matchedByBizname++;
+        const deals = stageD.dealsByHubspotCompanyId[hsCo.hubspot_company_id];
+        const note = stageD.notesByHubspotCompanyId[hsCo.hubspot_company_id];
+        const lifecycleDrift =
+          !!hsCo.lifecycle_stage && hsCo.lifecycle_stage.toLowerCase() !== "customer";
+
+        // Phase 14B (Tier C): comms drift between HubSpot calls and Metabase phone
+        const hubspotCalls =
+          stageD.callsByHubspotCompanyId[hsCo.hubspot_company_id]?.call_count_30d ?? 0;
+        const metabaseCalls =
+          stageB.channelCounts30dByEntity[entityId]?.phone ?? 0;
+        const driftDelta = hubspotCalls - metabaseCalls;
+        const commsDrift =
+          Math.abs(driftDelta) >= 3
+            ? {
+                hubspot_calls_30d: hubspotCalls,
+                metabase_calls_30d: metabaseCalls,
+                delta: driftDelta,
+              }
+            : null;
+
+        // Phase 14C (Tier E): top contacts
+        const contacts =
+          stageD.contactsByHubspotCompanyId[hsCo.hubspot_company_id] ?? [];
+
+        hubspotJoin = {
+          hubspot_company_id: hsCo.hubspot_company_id,
+          icp_tier: hsCo.icp_tier,
+          lifecycle_drift: lifecycleDrift,
+          open_deal_count: deals?.open_deal_count ?? 0,
+          open_deal_stages: deals?.open_deal_stages ?? [],
+          total_open_amount: deals?.total_open_amount ?? 0,
+          last_call: note
+            ? {
+                note_id: note.note_id,
+                date: note.date,
+                sentiment: note.sentiment,
+                topics: note.topics,
+                action_items: note.action_items,
+                fireflies_url: note.fireflies_url,
+              }
+            : null,
+          comms_drift: commsDrift,
+          contacts,
+        };
+      } else {
+        hubspotUnmatched++;
       }
     }
 
@@ -687,6 +798,11 @@ export async function composeSnapshot(
   }
 
   memSnap("compose after score");
+  if (stageD) {
+    console.log(
+      `[compose] hubspot join: ${matchedByPlaceId} via place_id, ${matchedByBizname} via bizname, ${hubspotUnmatched} unmatched`,
+    );
+  }
 
   // Sort by composite desc, then comms volume desc
   scored.sort((a, b) => {
