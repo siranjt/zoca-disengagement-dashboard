@@ -133,9 +133,9 @@ export type StageDData = {
   dealsByHubspotCompanyId: Record<string, DealsForCompany>;
   notesByHubspotCompanyId: Record<string, LastCallSummary>;
   /** Phase 14B (Tier C) — 30d call counts per HubSpot company */
-  callsByHubspotCompanyId: Record<string, CallsForCompany>;
+  callsByHubspotCompanyId?: Record<string, CallsForCompany>;
   /** Phase 14C (Tier E) — top contacts per HubSpot company */
-  contactsByHubspotCompanyId: Record<string, CompanyContact[]>;
+  contactsByHubspotCompanyId?: Record<string, CompanyContact[]>;
   diagnostics: {
     totalCompanies: number;
     companiesWithDeals: number;
@@ -625,7 +625,11 @@ export async function composeSnapshot(
       hubspotByNormalizedName.set(normalizeName(c.name), c);
     }
     console.log(
-      `[compose] Stage D available: ${Object.keys(stageD.companiesByPlaceId).length} HubSpot companies, ${Object.keys(stageD.dealsByHubspotCompanyId).length} with deals, ${Object.keys(stageD.notesByHubspotCompanyId).length} with notes`,
+      `[compose] stageD shape: companies=${Object.keys(stageD?.companiesByPlaceId ?? {}).length}, ` +
+        `deals=${Object.keys(stageD?.dealsByHubspotCompanyId ?? {}).length}, ` +
+        `notes=${Object.keys(stageD?.notesByHubspotCompanyId ?? {}).length}, ` +
+        `calls=${Object.keys(stageD?.callsByHubspotCompanyId ?? {}).length}, ` +
+        `contacts=${Object.keys(stageD?.contactsByHubspotCompanyId ?? {}).length}`,
     );
   }
 
@@ -716,14 +720,16 @@ export async function composeSnapshot(
       if (hsCo) {
         if (matchedVia === "place_id") matchedByPlaceId++;
         else if (matchedVia === "bizname") matchedByBizname++;
-        const deals = stageD.dealsByHubspotCompanyId[hsCo.hubspot_company_id];
-        const note = stageD.notesByHubspotCompanyId[hsCo.hubspot_company_id];
+        const deals = stageD?.dealsByHubspotCompanyId?.[hsCo.hubspot_company_id];
+        const note = stageD?.notesByHubspotCompanyId?.[hsCo.hubspot_company_id];
         const lifecycleDrift =
           !!hsCo.lifecycle_stage && hsCo.lifecycle_stage.toLowerCase() !== "customer";
 
         // Phase 14B (Tier C): comms drift between HubSpot calls and Metabase phone
+        // Phase 14.1: optional-chain the parent map — older cached Stage D
+        // payloads (pre-Phase 14) don't have this field at all.
         const hubspotCalls =
-          stageD.callsByHubspotCompanyId[hsCo.hubspot_company_id]?.call_count_30d ?? 0;
+          stageD?.callsByHubspotCompanyId?.[hsCo.hubspot_company_id]?.call_count_30d ?? 0;
         const metabaseCalls =
           stageB.channelCounts30dByEntity[entityId]?.phone ?? 0;
         const driftDelta = hubspotCalls - metabaseCalls;
@@ -737,8 +743,9 @@ export async function composeSnapshot(
             : null;
 
         // Phase 14C (Tier E): top contacts
+        // Phase 14.1: optional-chain the parent map (see comms-drift note above).
         const contacts =
-          stageD.contactsByHubspotCompanyId[hsCo.hubspot_company_id] ?? [];
+          stageD?.contactsByHubspotCompanyId?.[hsCo.hubspot_company_id] ?? [];
 
         hubspotJoin = {
           hubspot_company_id: hsCo.hubspot_company_id,
