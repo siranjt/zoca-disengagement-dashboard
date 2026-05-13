@@ -21,7 +21,9 @@ export type V2View = "am" | "pod" | "leadership";
 
 export default function V2Dashboard() {
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
-  const [selectedAm, setSelectedAm] = useState<string>("");
+  // Initialize to a stable default. Real value (URL > localStorage > default)
+  // gets applied in the useEffect below — avoids "0 customers" flicker.
+  const [selectedAm, setSelectedAm] = useState<string>(() => ACTIVE_AMS[0] as string);
   const [view, setView] = useState<V2View>("am");
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);

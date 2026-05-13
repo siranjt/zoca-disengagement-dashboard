@@ -56,7 +56,7 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Chargebee ${status} ${res.status}: ${text.slice(0, 300)}`);
+        throw new Error(`Chargebee ${status} ${res.status}: ${text.slice(0, 200)}`);
       }
       const data = (await res.json()) as {
         list: { subscription: any; customer: any }[];

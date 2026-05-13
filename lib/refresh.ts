@@ -1,6 +1,6 @@
 import { fetchAllLiveSubsWithEntityMap } from "./chargebee";
 import { fetchUnpaidInvoices, fetchRecentTransactions, buildBillingMetrics, scoreBilling } from "./billing";
-import { fetchBaseSheet, fetchAllComms, fetchAllCommsSequential, groupCommsByEntity } from "./metabase";
+import { fetchBaseSheet, fetchAllCommsSequential, groupCommsByEntity } from "./metabase";
 import { fetchUsageMetrics, scoreUsage } from "./mixpanel";
 import { fetchPerformanceMetrics } from "./performance";
 import { computeMetrics, scoreCustomer, computeTicketsFlag, composeHybridSignals } from "./scoring";

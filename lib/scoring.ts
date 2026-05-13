@@ -508,7 +508,8 @@ function pickMultiAction(strong: string[], a: NarrativeArgs): string {
 
   // 1) Very deep client silence overrides everything — it's the strongest
   //    churn signal we have. Tell the AM to phone TODAY.
-  if (strong.includes("clientSilent") && dsi >= 60 && dsi < 9999) {
+  // Treat 9999 (never replied) as the deepest silence, not "no data".
+  if (strong.includes("clientSilent") && dsi >= 60) {
     return `Cold-reach by phone today — ${dsi}d silence is critical churn risk.`;
   }
 

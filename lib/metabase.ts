@@ -118,6 +118,7 @@ export type CommsParseStats = {
  *  - Video: counted as mutual — one in + one out per meeting
  *  - SMS:   Sender = "Received_By_Client" → out, "Sent_By_Client" → in
  */
+/** @deprecated Use fetchAllCommsSequential() instead. Kept for backward compat only. */
 export async function fetchAllComms(
   todayMs: number,
 ): Promise<{ events: CommsEvent[]; stats: CommsParseStats }> {

@@ -242,50 +242,42 @@ export default function V2ManagerDashboard() {
     window.history.replaceState({}, "", url.toString());
   }, [compareDays, mounted]);
 
-  // Fetch available dates
+  // Parallel-fetch the three independent secondary feeds (dates / tier-trend / pod-trends)
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      const [datesRes, trendRes, podRes] = await Promise.allSettled([
+        fetch("/api/v2/snapshot/dates?limit=30", { cache: "no-store" }),
+        fetch("/api/v2/snapshot/trend?days=14", { cache: "no-store" }),
+        fetch("/api/v2/trends/pods?days=14", { cache: "no-store" }),
+      ]);
+      if (cancelled) return;
       try {
-        const res = await fetch("/api/v2/snapshot/dates?limit=30", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as { dates: string[] };
-        setAvailableDates(json.dates || []);
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
-
-  // Fetch 14-day tier trend for KPI sparklines
-  useEffect(() => {
-    (async () => {
+        if (datesRes.status === "fulfilled" && datesRes.value.ok) {
+          const json = (await datesRes.value.json()) as { dates: string[] };
+          if (!cancelled) setAvailableDates(json.dates || []);
+        }
+      } catch { /* ignore */ }
       try {
-        const res = await fetch("/api/v2/snapshot/trend?days=14", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as { rows: TierTrendRow[] };
-        setTierTrend(json.rows || []);
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
-
-  // Fetch 14-day per-pod trend for pod-card sparklines
-  useEffect(() => {
-    (async () => {
+        if (trendRes.status === "fulfilled" && trendRes.value.ok) {
+          const json = (await trendRes.value.json()) as { rows: TierTrendRow[] };
+          if (!cancelled) setTierTrend(json.rows || []);
+        }
+      } catch { /* ignore */ }
       try {
-        const res = await fetch("/api/v2/trends/pods?days=14", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as {
-          data: { pod: string; points: PodTrendPoint[] }[];
-        };
-        const map: Record<string, PodTrendPoint[]> = {};
-        for (const b of json.data || []) map[b.pod] = b.points;
-        setPodTrends(map);
-      } catch {
-        /* ignore */
-      }
+        if (podRes.status === "fulfilled" && podRes.value.ok) {
+          const json = (await podRes.value.json()) as {
+            data: { pod: string; points: PodTrendPoint[] }[];
+          };
+          const map: Record<string, PodTrendPoint[]> = {};
+          for (const b of json.data || []) map[b.pod] = b.points;
+          if (!cancelled) setPodTrends(map);
+        }
+      } catch { /* ignore */ }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch primary snapshot

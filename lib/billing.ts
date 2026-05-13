@@ -44,7 +44,7 @@ export async function fetchUnpaidInvoices(): Promise<ChargebeeInvoice[]> {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Chargebee invoices ${status} ${res.status}: ${text.slice(0, 300)}`);
+        throw new Error(`Chargebee invoices ${status} ${res.status}: ${text.slice(0, 200)}`);
       }
       const data = (await res.json()) as { list: { invoice: any }[]; next_offset?: string };
       for (const item of data.list || []) {
@@ -96,7 +96,7 @@ export async function fetchRecentTransactions(daysBack: number = 90): Promise<Ch
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Chargebee transactions ${status} ${res.status}: ${text.slice(0, 300)}`);
+        throw new Error(`Chargebee transactions ${status} ${res.status}: ${text.slice(0, 200)}`);
       }
       const data = (await res.json()) as { list: { transaction: any }[]; next_offset?: string };
       for (const item of data.list || []) {

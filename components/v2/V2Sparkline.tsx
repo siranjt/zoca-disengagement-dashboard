@@ -40,7 +40,9 @@ export default function V2Sparkline({
 }: Props) {
   const gradId = useId();
 
-  if (!values.length) {
+  // Filter NaN/non-finite values to prevent SVG path corruption
+  const safeValues = values.filter((v) => Number.isFinite(v));
+  if (!safeValues.length) {
     return (
       <span
         className={`inline-block text-[10px] text-zoca-text-soft ${className || ""}`}
@@ -51,12 +53,12 @@ export default function V2Sparkline({
     );
   }
 
-  const lo = min !== undefined ? min : Math.min(...values);
-  const hi = max !== undefined ? max : Math.max(...values);
+  const lo = min !== undefined ? min : Math.min(...safeValues);
+  const hi = max !== undefined ? max : Math.max(...safeValues);
   const range = hi - lo || 1;
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  const step = safeValues.length > 1 ? width / (safeValues.length - 1) : 0;
 
-  const pts = values.map((v, i) => {
+  const pts = safeValues.map((v, i) => {
     const x = i * step;
     const y = height - ((v - lo) / range) * height;
     return { x, y };
@@ -81,7 +83,7 @@ export default function V2Sparkline({
       ? height - ((referenceValue - lo) / range) * height
       : null;
 
-  const lastVal = values[values.length - 1];
+  const lastVal = safeValues[safeValues.length - 1];
 
   return (
     <span className={`inline-flex items-center gap-1 ${className || ""}`}>
@@ -92,7 +94,7 @@ export default function V2Sparkline({
         role="img"
         aria-label={
           label ||
-          `Sparkline of ${values.length} values, last value ${lastVal}`
+          `Sparkline of ${safeValues.length} values, last value ${lastVal}`
         }
       >
         {gradient && (

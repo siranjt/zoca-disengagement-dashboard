@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
+import { memo, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
@@ -25,8 +26,9 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
   Cold: "text-amber-300",
   Dormant: "text-red-300",
 };
+const ENGAGEMENT_FALLBACK = "text-zoca-text-soft";
 
-export default function V2CustomerCard({ customer, trend }: Props) {
+function V2CustomerCardInner({ customer, trend }: Props) {
   const { signals_v2: s, metrics } = customer;
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
@@ -63,7 +65,7 @@ export default function V2CustomerCard({ customer, trend }: Props) {
       });
       if (!res.ok) {
         const txt = await res.text().catch(() => res.statusText);
-        setActionState({ kind: "error", message: `${res.status}: ${txt.slice(0, 120)}` });
+        setActionState({ kind: "error", message: `${res.status}: ${txt.slice(0, 200)}` });
         return;
       }
       setActionState({ kind: "done", choice, at: Date.now() });
@@ -126,10 +128,9 @@ export default function V2CustomerCard({ customer, trend }: Props) {
             {podText}
             {customer.am_name && ` · ${customer.am_name}`}
           </div>
-          <p
-            className="mt-2 text-[13px] leading-relaxed text-zoca-text-primary/95 md:text-sm"
-            dangerouslySetInnerHTML={{ __html: highlightReason(s.reason_one_line) }}
-          />
+          <p className="mt-2 text-[13px] leading-relaxed text-zoca-text-primary/95 md:text-sm">
+            {renderReason(s.reason_one_line)}
+          </p>
           {/* Modifier flag chips */}
           {(s.flag_performance || s.flag_tickets) && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -243,30 +244,34 @@ export default function V2CustomerCard({ customer, trend }: Props) {
 
       {/* Performance signals (expand-on-demand; auto-expanded for RED) */}
       <div className="border-t border-zoca-border px-4 py-2 md:px-5">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
-          aria-expanded={expanded}
-          aria-controls={`perf-${customer.entity_id}`}
-          title={expanded ? "Hide performance signals" : "Show performance signals (why this customer is on this stoplight)"}
-        >
-          <span aria-hidden>{expanded ? "▾" : "▸"}</span>
-          {expanded ? "Hide" : "Why?"}
-          {customer.performance?.flag && !expanded && (
-            <span
-              className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300"
-              title={(customer.performance.flag_reasons || []).join(" · ") || "Performance trajectory flagged"}
+{customer.performance ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-soft transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              aria-expanded={expanded}
+              aria-controls={`perf-${customer.entity_id}`}
+              title={expanded ? "Hide performance signals" : "Show performance signals (why this customer is on this stoplight)"}
             >
-              ⚑ {performanceChipSummary(customer.performance) || "trajectory"}
-            </span>
-          )}
-        </button>
-        {expanded && (
-          <div id={`perf-${customer.entity_id}`}>
-            <V2PerformancePanel performance={customer.performance} />
-          </div>
-        )}
+              <span aria-hidden>{expanded ? "▾" : "▸"}</span>
+              {expanded ? "Hide" : "Why?"}
+              {customer.performance?.flag && !expanded && (
+                <span
+                  className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-300"
+                  title={(customer.performance.flag_reasons || []).join(" · ") || "Performance trajectory flagged"}
+                >
+                  ⚑ {performanceChipSummary(customer.performance) || "trajectory"}
+                </span>
+              )}
+            </button>
+            {expanded && (
+              <div id={`perf-${customer.entity_id}`}>
+                <V2PerformancePanel performance={customer.performance} />
+              </div>
+            )}
+          </>
+        ) : null}
       </div>
     </article>
   );
@@ -321,7 +326,7 @@ function renderMetricsSummary(c: ScoredCustomerV2) {
   const usageNode =
     c.usage != null ? (
       <span>
-        App: <span className={ENGAGEMENT_COLOR[c.usage.engagement_tier]}>{c.usage.engagement_tier}</span>
+        App: <span className={(ENGAGEMENT_COLOR[c.usage.engagement_tier] || ENGAGEMENT_FALLBACK)}>{c.usage.engagement_tier}</span>
       </span>
     ) : (
       <span className="text-red-300">App: no data</span>
@@ -402,8 +407,23 @@ function daysSince(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - ms) / 86400_000));
 }
 
-function highlightReason(text: string): string {
-  return text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
+/**
+ * Render the rationale safely: parse only <b>...</b> markers into React
+ * <strong> nodes; all other markup is stripped to plain text. XSS-safe.
+ */
+function renderReason(text: string): React.ReactNode {
+  if (!text) return null;
+  const stripped = text.replace(/<(?!\/?b\b)[^>]*>/gi, "");
+  const parts = stripped.split(/<b\b[^>]*>([\s\S]*?)<\/b>/gi);
+  return parts.map((part, i) =>
+    i % 2 === 0 ? (
+      <span key={i}>{part}</span>
+    ) : (
+      <strong key={i} className="font-semibold text-zoca-text-primary">
+        {part}
+      </strong>
+    ),
+  );
 }
 
 type ActionChoice = "connected" | "vm" | "noreach";
@@ -441,6 +461,18 @@ function ActionChip({
     </button>
   );
 }
+
+const V2CustomerCard = memo(V2CustomerCardInner, (prev, next) => {
+  return (
+    prev.customer.entity_id === next.customer.entity_id &&
+    prev.customer.signals_v2.composite === next.customer.signals_v2.composite &&
+    prev.customer.signals_v2.stoplight === next.customer.signals_v2.stoplight &&
+    prev.customer.performance?.flag === next.customer.performance?.flag &&
+    prev.trend === next.trend
+  );
+});
+
+export default V2CustomerCard;
 
 function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>): string | null {
   if (!p.flag) return null;
