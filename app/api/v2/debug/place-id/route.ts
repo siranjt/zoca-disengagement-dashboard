@@ -41,27 +41,26 @@ async function runQuery(database: number, sql: string): Promise<unknown> {
 }
 
 /**
- * Phase 14.3 diagnostic — try several Aurora tables to find which one
- * has entity_id -> place_id mapping. The current Stage A uses gbp.locations
- * but returns empty. Compare row counts to pick the right source.
+ * Phase 14.4 diagnostic — confirms which Aurora tables actually expose
+ * a flat entity_id -> place_id mapping. After Metabase inspection we
+ * know gbp.locations only has place_id inside metadata JSONB, while
+ * local_seo.rank and local_seo.competitors both have place_id as a
+ * top-level column. This endpoint sanity-checks all three so future
+ * debugging hits the right tables.
  */
 export async function GET() {
   const queries = [
     {
-      name: "gbp.locations",
-      sql: "SELECT entity_id, place_id FROM gbp.locations WHERE place_id IS NOT NULL AND place_id != '' LIMIT 5",
+      name: "local_seo.rank",
+      sql: "SELECT DISTINCT entity_id, place_id FROM local_seo.rank WHERE place_id IS NOT NULL AND place_id != '' LIMIT 5",
     },
     {
-      name: "entities.location_insights",
-      sql: "SELECT entity_id, place_id FROM entities.location_insights WHERE place_id IS NOT NULL AND place_id != '' LIMIT 5",
+      name: "gbp.locations.metadata",
+      sql: "SELECT entity_id, metadata->>'place_id' AS place_id FROM gbp.locations WHERE metadata->>'place_id' IS NOT NULL LIMIT 5",
     },
     {
-      name: "local_seo.place_details",
-      sql: "SELECT entity_id, place_id FROM local_seo.place_details WHERE place_id IS NOT NULL AND place_id != '' LIMIT 5",
-    },
-    {
-      name: "gbp.locations column inspect",
-      sql: "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'gbp' AND table_name = 'locations' ORDER BY ordinal_position",
+      name: "local_seo.competitors",
+      sql: "SELECT DISTINCT entity_id, place_id FROM local_seo.competitors WHERE place_id IS NOT NULL AND place_id != '' LIMIT 5",
     },
   ];
 

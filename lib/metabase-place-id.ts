@@ -1,12 +1,16 @@
 /**
  * Metabase Dataset API client — entity_id → place_id resolver.
  *
- * Phase 14.3: multi-table fallback. The original implementation queried
- * gbp.locations only, but on this Aurora cluster that table can return
- * empty results for production entity_ids. We now try gbp.locations,
- * then entities.location_insights, then local_seo.place_details in
- * order, using the FIRST table that returns rows. Per-table row counts
- * are logged for diagnosis.
+ * Phase 14.4: confirmed via Metabase that gbp.locations does NOT have a
+ * flat place_id column. The place_id lives inside the metadata JSONB
+ * (and only for ~33% of entities). The actual flat source is
+ * local_seo.rank, which has both entity_id and place_id as columns
+ * (multiple rows per entity, but DISTINCT gets us a clean mapping).
+ *
+ * Strategy: query local_seo.rank first (primary), then
+ * gbp.locations.metadata->>'place_id' as fallback. Accumulate place_ids
+ * from each table — don't return early; some entities live in one
+ * table, others in the other. Dedup on entity_id (first match wins).
  *
  * Auth: `x-api-key: ${METABASE_API_KEY}`. When the env var is unset (the
  * common dev case until the key lands in Vercel), this module logs and
@@ -19,10 +23,27 @@ const METABASE_BASE = "https://metabase.zoca.ai";
 const AURORA_DB_ID = 7;
 const REQUEST_TIMEOUT_MS = 15_000;
 
-const CANDIDATE_TABLES = [
-  "gbp.locations",
-  "entities.location_insights",
-  "local_seo.place_details",
+const CANDIDATE_QUERIES = [
+  {
+    name: "local_seo.rank",
+    sql: `
+      SELECT DISTINCT entity_id, place_id
+      FROM local_seo.rank
+      WHERE entity_id = ANY('{__ENTITY_IDS__}'::uuid[])
+        AND place_id IS NOT NULL
+        AND place_id != ''
+    `,
+  },
+  {
+    name: "gbp.locations.metadata",
+    sql: `
+      SELECT entity_id, metadata->>'place_id' AS place_id
+      FROM gbp.locations
+      WHERE entity_id = ANY('{__ENTITY_IDS__}'::uuid[])
+        AND metadata->>'place_id' IS NOT NULL
+        AND metadata->>'place_id' != ''
+    `,
+  },
 ];
 
 export function metabaseDatasetApiConfigured(): boolean {
@@ -112,11 +133,12 @@ async function runDatasetQuery(args: {
 /**
  * Resolve a list of entity_ids -> place_ids via Aurora.
  *
- * Phase 14.3: tries gbp.locations, entities.location_insights, then
- * local_seo.place_details in order. Uses the FIRST table that returns
- * any rows. Per-table row counts are logged. Entity_ids are UUIDs from
- * trusted internal callers so direct interpolation is safe; we keep the
- * uuid[] cast so Postgres validates them at query time.
+ * Phase 14.4: queries local_seo.rank first (primary; has flat columns
+ * for entity_id and place_id), then gbp.locations.metadata->>'place_id'
+ * as fallback for entities only available there. Per-query row counts
+ * are logged. Entity_ids are UUIDs from trusted internal callers so
+ * direct interpolation is safe; the ::uuid[] cast validates them at
+ * query time.
  *
  * Returns a Map keyed by entity_id. Entities without a place_id (no GBP
  * connected yet) are simply absent from the Map — callers should treat
@@ -134,32 +156,25 @@ export async function fetchPlaceIdsForEntities(
     return out;
   }
 
-  for (const table of CANDIDATE_TABLES) {
-    const sql = `
-      SELECT entity_id, place_id
-      FROM ${table}
-      WHERE entity_id = ANY('{${entityIds.join(",")}}'::uuid[])
-        AND place_id IS NOT NULL
-        AND place_id != ''
-    `;
+  for (const { name, sql: template } of CANDIDATE_QUERIES) {
+    const sql = template.replace("__ENTITY_IDS__", entityIds.join(","));
     try {
       const rows = await runDatasetQuery({ database: AURORA_DB_ID, sql });
-      if (rows.length > 0) {
-        for (const r of rows) {
-          const eid = String(r.entity_id || "").trim();
-          const pid = String(r.place_id || "").trim();
-          if (eid && pid && !out.has(eid)) out.set(eid, pid);
+      let added = 0;
+      for (const r of rows) {
+        const eid = String(r.entity_id || "").trim();
+        const pid = String(r.place_id || "").trim();
+        if (eid && pid && !out.has(eid)) {
+          out.set(eid, pid);
+          added += 1;
         }
-        console.log(
-          `[metabase-place-id] table=${table} -> ${out.size}/${entityIds.length} place_ids resolved`,
-        );
-        if (out.size > 0) return out; // first table that returns data wins
-      } else {
-        console.log(`[metabase-place-id] table=${table} -> 0 rows`);
       }
+      console.log(
+        `[metabase-place-id] ${name} → ${added} new place_ids (running total: ${out.size}/${entityIds.length})`,
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.warn(`[metabase-place-id] table=${table} failed: ${msg}`);
+      console.warn(`[metabase-place-id] ${name} failed: ${msg}`);
     }
   }
 
