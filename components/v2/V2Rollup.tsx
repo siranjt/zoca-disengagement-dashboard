@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
 import { ACTIVE_AMS, INCOMING_AMS, POD_MAP } from "@/lib/config";
+import { AmLink } from "./AmLink";
 
 type Props = {
   snapshot: SnapshotV2;
@@ -679,15 +680,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 }}
               >
                 <td className="px-3 py-2.5">
-                  <button
-                    onClick={() => onJumpToAm(r.am)}
-                    className="text-left font-medium underline-offset-4 hover:underline focus:outline-none"
-                    style={{ color: "var(--zoca-text)" }}
-                    aria-label={`Open ${r.am}'s book`}
-                    title={`Open ${r.am}'s book`}
-                  >
+                  <AmLink amName={r.am} className="text-left font-medium" style={{ color: "var(--zoca-text)" }}>
                     <Highlight text={r.am} query={search} />
-                  </button>
+                  </AmLink>
                 </td>
                 <td className="px-3 py-2.5">
                   <span className="inline-flex items-center gap-1.5 text-zoca-text-2">
@@ -739,7 +734,13 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                   className="px-3 py-2.5 text-right tabular-nums"
                   style={{ color: "var(--zoca-pink)" }}
                 >
-                  {r.RED || <span className="text-zoca-text-3">·</span>}
+                  {r.RED > 0 ? (
+                    <AmLink amName={r.am} filter="act" showArrow={false} style={{ color: "var(--zoca-pink)" }}>
+                      {r.RED}
+                    </AmLink>
+                  ) : (
+                    <span className="text-zoca-text-3">·</span>
+                  )}
                 </td>
                 <td
                   className="px-3 py-2.5 text-right tabular-nums"

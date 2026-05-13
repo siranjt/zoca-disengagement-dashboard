@@ -7,6 +7,7 @@ import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
 import V2PerformancePanel from "./V2PerformancePanel";
 import NotesField from "./NotesField";
+import { AmLink } from "./AmLink";
 import {
   buildMailto,
   buildTelLink,
@@ -538,7 +539,12 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           <div className="mt-1 text-[11px] text-zoca-text-2">
             {planText}
             {podText}
-            {customer.am_name && ` · ${customer.am_name}`}
+            {customer.am_name && (
+              <>
+                {" · "}
+                <AmLink amName={customer.am_name} showArrow={false}>{customer.am_name}</AmLink>
+              </>
+            )}
           </div>
           {/* Phase 20 — one-click contact launchers */}
           {(customer.email || customer.phone) && (

@@ -16,6 +16,7 @@ import ScopeStrip from "./ScopeStrip";
 import FreshnessBanner from "./FreshnessBanner";
 import V2AmActivityRollup from "./V2AmActivityRollup";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { AmLink } from "./AmLink";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -966,15 +967,14 @@ export default function V2ManagerDashboard() {
                       <span className="w-5 text-center text-[11px] font-bold text-zoca-text-2 tabular-nums">
                         #{i + 1}
                       </span>
-                      <button
-                        onClick={() => handleJumpToAm(m.am)}
-                        className="font-medium text-zoca-text underline-offset-4 hover:underline focus:outline-none"
+                      <AmLink
+                        amName={m.am}
+                        filter="act"
+                        className="font-medium text-zoca-text"
                         style={{ color: "var(--zoca-text)" }}
-                        aria-label={`Open ${m.am}'s book`}
-                        title={`Open ${m.am}'s book`}
                       >
                         {m.am}
-                      </button>
+                      </AmLink>
                       <span className="inline-flex items-center gap-1 text-[11px] text-zoca-text-2">
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${POD_COLOR_DOT[m.pod] || "bg-slate-500"}`}
