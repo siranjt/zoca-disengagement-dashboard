@@ -1,10 +1,12 @@
 /**
  * Metabase Dataset API client — entity_id → place_id resolver.
  *
- * Reads Aurora's `gbp.locations` (database id 7) to map every Chargebee
- * entity_id to a Google place_id. The HubSpot integration in Stage D keys
- * companies by place_id; before Phase 14 we only had bizname to join on,
- * which matched ~84% of customers. place_id should lift that to ~99%.
+ * Phase 14.3: multi-table fallback. The original implementation queried
+ * gbp.locations only, but on this Aurora cluster that table can return
+ * empty results for production entity_ids. We now try gbp.locations,
+ * then entities.location_insights, then local_seo.place_details in
+ * order, using the FIRST table that returns rows. Per-table row counts
+ * are logged for diagnosis.
  *
  * Auth: `x-api-key: ${METABASE_API_KEY}`. When the env var is unset (the
  * common dev case until the key lands in Vercel), this module logs and
@@ -16,6 +18,12 @@
 const METABASE_BASE = "https://metabase.zoca.ai";
 const AURORA_DB_ID = 7;
 const REQUEST_TIMEOUT_MS = 15_000;
+
+const CANDIDATE_TABLES = [
+  "gbp.locations",
+  "entities.location_insights",
+  "local_seo.place_details",
+];
 
 export function metabaseDatasetApiConfigured(): boolean {
   return !!process.env.METABASE_API_KEY;
@@ -102,7 +110,14 @@ async function runDatasetQuery(args: {
 }
 
 /**
- * Resolve a list of entity_ids -> place_ids via Aurora's gbp.locations.
+ * Resolve a list of entity_ids -> place_ids via Aurora.
+ *
+ * Phase 14.3: tries gbp.locations, entities.location_insights, then
+ * local_seo.place_details in order. Uses the FIRST table that returns
+ * any rows. Per-table row counts are logged. Entity_ids are UUIDs from
+ * trusted internal callers so direct interpolation is safe; we keep the
+ * uuid[] cast so Postgres validates them at query time.
+ *
  * Returns a Map keyed by entity_id. Entities without a place_id (no GBP
  * connected yet) are simply absent from the Map — callers should treat
  * missing keys as "fall back to bizname join."
@@ -116,48 +131,41 @@ export async function fetchPlaceIdsForEntities(
     console.warn(
       "[metabase-place-id] METABASE_API_KEY not set — place_id join will silently no-op. Set env var on Vercel to enable.",
     );
+    return out;
   }
-  if (!metabaseDatasetApiConfigured()) return out;
 
-  const sql = `
-    SELECT entity_id, place_id
-    FROM gbp.locations
-    WHERE entity_id = ANY({{entity_ids}}::uuid[])
-      AND place_id IS NOT NULL
-      AND place_id != ''
-  `;
-
-  const rows = await runDatasetQuery({
-    database: AURORA_DB_ID,
-    sql,
-    templateTags: {
-      entity_ids: {
-        id: "entity_ids",
-        name: "entity_ids",
-        "display-name": "entity_ids",
-        type: "text",
-      },
-    },
-    parameters: [
-      {
-        type: "category",
-        target: ["variable", ["template-tag", "entity_ids"]],
-        value: entityIds,
-      },
-    ],
-  });
-
-  for (const r of rows) {
-    const eid = String(r.entity_id || "").trim();
-    const pid = String(r.place_id || "").trim();
-    if (eid && pid) out.set(eid, pid);
+  for (const table of CANDIDATE_TABLES) {
+    const sql = `
+      SELECT entity_id, place_id
+      FROM ${table}
+      WHERE entity_id = ANY('{${entityIds.join(",")}}'::uuid[])
+        AND place_id IS NOT NULL
+        AND place_id != ''
+    `;
+    try {
+      const rows = await runDatasetQuery({ database: AURORA_DB_ID, sql });
+      if (rows.length > 0) {
+        for (const r of rows) {
+          const eid = String(r.entity_id || "").trim();
+          const pid = String(r.place_id || "").trim();
+          if (eid && pid && !out.has(eid)) out.set(eid, pid);
+        }
+        console.log(
+          `[metabase-place-id] table=${table} -> ${out.size}/${entityIds.length} place_ids resolved`,
+        );
+        if (out.size > 0) return out; // first table that returns data wins
+      } else {
+        console.log(`[metabase-place-id] table=${table} -> 0 rows`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[metabase-place-id] table=${table} failed: ${msg}`);
+    }
   }
-  console.log(
-    `[metabase-place-id] resolved ${out.size}/${entityIds.length} entity_ids -> place_ids`,
-  );
-  if (out.size === 0 && entityIds.length > 0) {
+
+  if (out.size === 0) {
     console.warn(
-      `[metabase-place-id] returned 0 place_ids for ${entityIds.length} entity_ids — check METABASE_API_KEY and the gbp.locations table.`,
+      `[metabase-place-id] no table returned place_ids for ${entityIds.length} entity_ids`,
     );
   }
   return out;

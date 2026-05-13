@@ -93,6 +93,12 @@ export async function hubspotFetch<T>(
  * Caps at MAX_PAGES * 100 results.
  *
  * For /crm/v3/objects/{type}/search.
+ *
+ * The `body` argument is spread into every paginated request, so any
+ * HubSpot-supported search field passes through transparently — notably
+ * `filterGroups`, `properties`, `sorts`, and `associations` (used by
+ * Phase 14.3's calls fetcher to expand associated companies inline).
+ * Pagination (`limit` + `after`) is owned by this helper.
  */
 type SearchResponse<T> = {
   total: number;
