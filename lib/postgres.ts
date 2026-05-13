@@ -374,6 +374,60 @@ export async function entitiesContactedRecently(amName: string, daysBack: number
 }
 
 // ---------------------------------------------------------------------------
+// AM activity rollup (Phase 15.2): per-AM action counts + outcome breakdown
+// over the last N days. Used by the manager dashboard "AM ACTIVITY" section.
+// ---------------------------------------------------------------------------
+
+export type AmOutcomeStats = {
+  am_name: string;
+  actions_total: number;
+  connected: number;
+  voicemail: number;
+  no_reach: number;
+  escalated: number;
+  re_engaged: number;
+};
+
+export async function getAmOutcomeStats(daysBack: number = 7): Promise<AmOutcomeStats[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  // Guard against the table not existing yet (fresh install / migration not run).
+  await ensureOutcomeTrackingTable();
+  try {
+    const rows = await sql`
+      SELECT
+        a.am_name,
+        COUNT(DISTINCT a.id)::int AS actions_total,
+        COUNT(DISTINCT CASE WHEN a.action_type = 'contacted_connected' THEN a.id END)::int AS connected,
+        COUNT(DISTINCT CASE WHEN a.action_type = 'contacted_vm'        THEN a.id END)::int AS voicemail,
+        COUNT(DISTINCT CASE WHEN a.action_type = 'contacted_noreach'   THEN a.id END)::int AS no_reach,
+        COUNT(DISTINCT CASE WHEN a.action_type = 'escalated'           THEN a.id END)::int AS escalated,
+        COUNT(DISTINCT CASE WHEN o.recovered = TRUE                    THEN o.action_id END)::int AS re_engaged
+      FROM am_actions a
+      LEFT JOIN outcome_tracking o ON o.action_id = a.id
+      WHERE a.created_at >= (NOW() - (${daysBack}::int * INTERVAL '1 day'))
+      GROUP BY a.am_name
+      ORDER BY actions_total DESC, a.am_name ASC
+    `;
+    return rows.map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        am_name: String(row.am_name ?? ""),
+        actions_total: Number(row.actions_total ?? 0),
+        connected: Number(row.connected ?? 0),
+        voicemail: Number(row.voicemail ?? 0),
+        no_reach: Number(row.no_reach ?? 0),
+        escalated: Number(row.escalated ?? 0),
+        re_engaged: Number(row.re_engaged ?? 0),
+      };
+    });
+  } catch (e) {
+    console.warn("[postgres] getAmOutcomeStats failed:", e instanceof Error ? e.message : e);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Signal feedback
 // ---------------------------------------------------------------------------
 

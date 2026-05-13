@@ -19,6 +19,9 @@ import { createHash } from "crypto";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
+/** Bump when system prompts change so cached results invalidate. */
+export const NARRATIVE_PROMPT_VERSION = "v2";
+
 type CallOpts = {
   system?: string;
   prompt: string;
@@ -34,6 +37,8 @@ const CACHE_MAX = 2000;
 function cacheKey(opts: CallOpts): string {
   const h = createHash("sha256");
   h.update(HAIKU_MODEL);
+  h.update("\0");
+  h.update(NARRATIVE_PROMPT_VERSION);
   h.update("\0");
   h.update(opts.system || "");
   h.update("\0");

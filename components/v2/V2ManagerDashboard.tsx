@@ -11,6 +11,8 @@ import V2ManagerToolbar, { type SavedView, nearestAvailable } from "./V2ManagerT
 import V2StoplightMovement from "./V2StoplightMovement";
 import V2Sparkline from "./V2Sparkline";
 import ScopeStrip from "./ScopeStrip";
+import FreshnessBanner from "./FreshnessBanner";
+import V2AmActivityRollup from "./V2AmActivityRollup";
 import { RefreshButton } from "./RefreshButton";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
@@ -645,6 +647,9 @@ export default function V2ManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-zoca-body text-zoca-text-primary print:bg-white print:text-black">
+      {snapshot.status === "ready" && (
+        <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
+      )}
       <a
         href="#manager-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-zoca focus:border focus:border-zoca-pink-cta focus:bg-zoca-bg-2 focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-zoca-text-primary"
@@ -1019,6 +1024,8 @@ export default function V2ManagerDashboard() {
                 onCellClick={(pod) => setSelectedPod(pod)}
               />
             </div>
+
+            <V2AmActivityRollup daysBack={7} />
 
             <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>

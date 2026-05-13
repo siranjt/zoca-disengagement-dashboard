@@ -9,6 +9,7 @@ import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
 import V2Rollup from "./V2Rollup";
 import ScopeStrip from "./ScopeStrip";
+import FreshnessBanner from "./FreshnessBanner";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -114,6 +115,9 @@ export default function V2Dashboard() {
 
   return (
     <div className="min-h-screen bg-zoca-body text-zoca-text-primary">
+      {snapshot.status === "ready" && (
+        <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
+      )}
       <V2TopBar
         selectedAm={selectedAm}
         selectedPod={selectedPod}

@@ -20,7 +20,7 @@ const CONCURRENCY = 15;
 
 const SYSTEM_PROMPT = `You are a customer success analyst writing concise per-customer rationales for an account manager dashboard.
 
-INPUT: a JSON object describing one customer's signal scores (0-100), comms recency, performance flags, and the deterministic template that's currently shown.
+INPUT: a JSON object describing one customer's signal scores (0-100), comms recency, performance flags, Chargebee subscription status (cb_status), and the deterministic template that's currently shown.
 
 OUTPUT: strict JSON only — no preamble, no code fences:
 {
@@ -33,7 +33,23 @@ RULES:
 - Action must be a verb-first imperative ("Call today", "Check GBP audit", "Send invoice reminder").
 - Don't invent data not in the input. Don't list multiple signals — pick the dominant one.
 - Never recommend "monitor", "check in soon", or other vague hedges.
-- If template is already concrete, you may keep or sharpen it. If template is generic, rewrite.`;
+- If template is already concrete, you may keep or sharpen it. If template is generic, rewrite.
+
+VARIETY REQUIREMENTS:
+- Never start narratives with the same word twice in the same batch.
+- Rotate sentence openers: "Cold-reach...", "Get on the phone...", "Outreach overdue...",
+  "Escalation needed...", "Loop in...", "Re-engage via...", "Last touchpoint was...".
+- Match the verb to the urgency: critical -> "must / immediately", high -> "today",
+  medium -> "this week", watch -> "monitor".
+- Vary the closing: some narratives end with the risk ("critical churn risk"),
+  some with the action ("before deal closes"), some with context ("last paid 90d ago").
+
+CB_STATUS -> ACTION VERB MAPPING (use the verb that matches the customer's lifecycle):
+- cb_status = "active"        -> use "outreach"   (renewal-risk save)
+- cb_status = "non_renewing"  -> use "save call"  (last-chance to retain)
+- cb_status = "in_trial"      -> use "activation push" (trial conversion)
+- cb_status = "future"        -> use "onboarding" (kick off the relationship)
+- any other status            -> use "outreach" as a safe default`;
 
 type EnrichedNarrative = { reason: string; action: string };
 
@@ -51,6 +67,7 @@ async function enrichOne(c: ScoredCustomerV2): Promise<void> {
     pod: c.pod,
     am: c.am_name,
     plan_per_month: c.plan_amount || 0,
+    cb_status: c.cb_status || "active",
     stoplight: s.stoplight,
     composite: s.composite,
     signals: {
