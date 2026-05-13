@@ -2,6 +2,158 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Phase 17.A — Zoca brand design tokens (light-theme foundation)
+   These CSS variables, keyframes, and utility classes are the
+   foundation for the Zoca brand re-skin (phases 17.B-D).
+   Defined here ABOVE existing definitions so they're globally
+   available, but the cascade is structured so existing
+   .zoca-btn / .zoca-chip / .zoca-gradient-text / .zoca-fade-in
+   definitions below still win — zero visible change in this phase.
+   ============================================================ */
+:root {
+  /* Zoca brand — surfaces */
+  --zoca-bg: #ffffff;
+  --zoca-bg-soft: #fafafa;
+  --zoca-bg-tint: #f4effd;
+
+  /* Zoca brand — text */
+  --zoca-text: #0b051d;
+  --zoca-text-2: #696376;
+  --zoca-text-3: #bcc1c2;
+
+  /* Zoca brand — accents */
+  --zoca-blue: #146ef5;
+  --zoca-blue-strong: #0a4ec0;
+  --zoca-pink: #ff56bb;
+  --zoca-pink-bright: #ff86e1;
+  --zoca-pink-soft: #ffa8cd;
+
+  /* Zoca brand — borders */
+  --zoca-border: rgba(0, 0, 0, 0.08);
+  --zoca-border-2: rgba(0, 0, 0, 0.12);
+
+  /* Zoca brand — stoplight (semantic) */
+  --zoca-red: #ff56bb;        /* RED status uses brand pink */
+  --zoca-amber: #f59e0b;
+  --zoca-green: #10b981;
+  --zoca-red-soft: rgba(255, 134, 225, 0.12);
+  --zoca-amber-soft: rgba(245, 158, 11, 0.10);
+  --zoca-green-soft: rgba(16, 185, 129, 0.10);
+}
+
+/* Phase 17.A — keyframes for brand animations */
+@keyframes zoca-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes zoca-fade-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes zoca-sparkle {
+  0%, 100% { opacity: 0.6; transform: rotate(0deg) scale(1); }
+  50% { opacity: 1; transform: rotate(15deg) scale(1.15); }
+}
+
+/* Phase 17.A — utility classes for phases 17.B-D
+   Note: .zoca-fade-in is intentionally NOT redefined here — the
+   existing definition below (using @keyframes zFadeIn) wins to
+   preserve current behavior. Phase 17.B will reconcile. */
+.zoca-sparkle { animation: zoca-sparkle 3s ease-in-out infinite; display: inline-block; color: var(--zoca-pink); }
+.zoca-sparkle-delay-1 { animation-delay: 0.8s; }
+.zoca-sparkle-delay-2 { animation-delay: 1.6s; }
+
+.zoca-pulse-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--zoca-blue);
+  box-shadow: 0 0 8px rgba(20, 110, 245, 0.55);
+  animation: zoca-pulse 2s ease-in-out infinite;
+}
+.zoca-pulse-dot-green {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--zoca-green);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  animation: zoca-pulse 2s ease-in-out infinite;
+}
+.zoca-pulse-dot-pink {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--zoca-pink);
+  box-shadow: 0 0 12px rgba(255, 86, 187, 0.7);
+  animation: zoca-pulse 2s ease-in-out infinite;
+}
+.zoca-pulse-dot-amber {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--zoca-amber);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
+  animation: zoca-pulse 2.5s ease-in-out infinite;
+}
+
+.zoca-card {
+  position: relative;
+  background: var(--zoca-bg);
+  border: 1px solid var(--zoca-border);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.zoca-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(20, 110, 245, 0.18);
+  box-shadow:
+    0 12px 28px -8px rgba(11, 5, 29, 0.1),
+    0 0 0 1px rgba(20, 110, 245, 0.18),
+    0 0 32px rgba(255, 168, 205, 0.32);
+}
+
+.zoca-chip-pink {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 86, 187, 0.22);
+  background: rgba(255, 134, 225, 0.12);
+  color: #c026d3;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.zoca-chip-amber {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.10);
+  color: #b45309;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.zoca-chip-green {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.08);
+  color: #047857;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+.zoca-micro-label {
+  font-size: 10px;
+  color: var(--zoca-text-2);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Existing (pre-17.A) styles — preserved to guarantee zero
+   visible change. Phase 17.B will reconcile overlapping
+   selectors with the brand tokens above.
+   ============================================================ */
 :root {
   color-scheme: dark;
 }

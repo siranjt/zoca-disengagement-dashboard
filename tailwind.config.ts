@@ -1,6 +1,10 @@
 import type { Config } from "tailwindcss";
 
-// Zoca dark-mode palette matching zoca.com
+// Zoca palette
+// - Original dark-mode palette (zoca.*) matches zoca.com legacy dark theme.
+// - Phase 17.A introduces the brand-fresh light-theme tokens (zoca-bg, zoca-text,
+//   zoca-blue, zoca-pink, etc.) backed by CSS variables in app/globals.css.
+//   Phases 17.B-D consume these tokens to flip the dashboard surface.
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -22,6 +26,26 @@ const config: Config = {
         "zoca-tighter": "-0.03em",
       },
       colors: {
+        // Phase 17.A — brand tokens (flat keys, CSS-variable backed).
+        // Tailwind classes: bg-zoca-bg, text-zoca-text, border-zoca-border, etc.
+        "zoca-bg": "var(--zoca-bg)",
+        "zoca-bg-soft": "var(--zoca-bg-soft)",
+        "zoca-bg-tint": "var(--zoca-bg-tint)",
+        "zoca-text": "var(--zoca-text)",
+        "zoca-text-2": "var(--zoca-text-2)",
+        "zoca-text-3": "var(--zoca-text-3)",
+        "zoca-blue": "var(--zoca-blue)",
+        "zoca-blue-strong": "var(--zoca-blue-strong)",
+        "zoca-pink": "var(--zoca-pink)",
+        "zoca-pink-bright": "var(--zoca-pink-bright)",
+        "zoca-pink-soft": "var(--zoca-pink-soft)",
+        "zoca-border": "var(--zoca-border)",
+        "zoca-border-2": "var(--zoca-border-2)",
+        "zoca-red": "var(--zoca-red)",
+        "zoca-amber": "var(--zoca-amber)",
+        "zoca-green": "var(--zoca-green)",
+        // Original dark-mode nested palette (kept intact — Tailwind classes like
+        // bg-zoca-bg-0, text-zoca-text-soft, border-zoca-border-2 still resolve).
         zoca: {
           // Backgrounds (dark)
           "bg-0": "#0a0422",     // deepest
@@ -88,6 +112,20 @@ const config: Config = {
           "linear-gradient(135deg, #ffa8cd 0%, #ff86e1 100%)",
         "zoca-banner":
           "linear-gradient(135deg, rgba(255, 134, 225, 0.15), rgba(120, 104, 244, 0.15))",
+      },
+      keyframes: {
+        "zoca-pulse": {
+          "0%, 100%": { opacity: "0.55", transform: "scale(1)" },
+          "50%": { opacity: "1", transform: "scale(1.2)" },
+        },
+        "zoca-fade-in": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "zoca-pulse": "zoca-pulse 2s ease-in-out infinite",
+        "zoca-fade-in": "zoca-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both",
       },
     },
   },
