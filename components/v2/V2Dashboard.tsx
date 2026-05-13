@@ -50,6 +50,10 @@ function V2DashboardInner() {
   const [view, setView] = useState<V2View>("am");
   // Phase 22.B.1 — active signal filter (bound to ?signal= URL param).
   const [signal, setSignal] = useState<SignalKey | null>(null);
+  // Phase 22.B.3 — active pod filter (bound to ?pod= URL param). Driven from
+  // the V2ManagerDashboard signal-heatmap cell-click flow that navigates
+  // here as /v2?pod=Pod+4&signal=we_silent.
+  const [podFilter, setPodFilter] = useState<string | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -64,6 +68,8 @@ function V2DashboardInner() {
     setSelectedAm(defaultAm);
     const sigFromQuery = url.searchParams.get("signal");
     if (isSignalKey(sigFromQuery)) setSignal(sigFromQuery);
+    const podFromQuery = url.searchParams.get("pod");
+    if (podFromQuery) setPodFilter(podFromQuery);
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, []);
 
@@ -117,6 +123,19 @@ function V2DashboardInner() {
     else url.searchParams.set("signal", next);
     window.history.replaceState({}, "", url.toString());
   }, [signal]);
+
+  // Phase 22.B.3 — same mirror, ?pod= edition. Lives alongside the signal
+  // URL effect so they share the same `history.replaceState` cadence.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("pod");
+    const next = podFilter ?? null;
+    if (next === current) return;
+    if (next === null) url.searchParams.delete("pod");
+    else url.searchParams.set("pod", next);
+    window.history.replaceState({}, "", url.toString());
+  }, [podFilter]);
 
   // Phase 22.B.1 — chip click handler. Toggles the active signal and
   // surfaces a toast confirming the filter state. Passed down to
@@ -523,6 +542,8 @@ function V2DashboardInner() {
             signal={signal}
             onSignalChange={setSignal}
             onSignalChipClick={handleSignalChipClick}
+            podFilter={podFilter}
+            onPodFilterChange={setPodFilter}
           />
         )}
         {snapshot.status === "ready" && view === "pod" && (

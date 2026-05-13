@@ -17,6 +17,7 @@ import FreshnessBanner from "./FreshnessBanner";
 import V2AmActivityRollup from "./V2AmActivityRollup";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { AmLink } from "./AmLink";
+import { ToastProvider } from "./Toast";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -165,7 +166,7 @@ function isValidDate(s: string): boolean {
   return s === "today" || /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-export default function V2ManagerDashboard() {
+function V2ManagerDashboardInner() {
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
   const [compareSnapshot, setCompareSnapshot] = useState<SnapshotV2 | null>(null);
   const [compareError, setCompareError] = useState<string | null>(null);
@@ -1053,7 +1054,6 @@ export default function V2ManagerDashboard() {
             <div className="mb-7">
               <V2SignalHeatmap
                 snapshot={snapshot.snapshot}
-                onCellClick={(pod) => setSelectedPod(pod)}
               />
             </div>
 
@@ -1107,6 +1107,18 @@ export default function V2ManagerDashboard() {
         </div>
       </footer>
     </div>
+  );
+}
+
+// Phase 22.B.3 — wrap the manager dashboard with <ToastProvider> so the
+// V2SignalHeatmap cell-click toast (and any future toast usage in the
+// manager tree) has a provider in scope. Phase 22.A only wired this on the
+// /v2 (AM-facing) tree.
+export default function V2ManagerDashboard() {
+  return (
+    <ToastProvider>
+      <V2ManagerDashboardInner />
+    </ToastProvider>
   );
 }
 

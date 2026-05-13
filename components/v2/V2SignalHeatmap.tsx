@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { SnapshotV2 } from "@/lib/types";
 import { POD_MAP } from "@/lib/config";
+import {
+  SIGNAL_LABELS,
+  type SignalKey as TaxonomySignalKey,
+} from "@/lib/signal-taxonomy";
+import { useToast } from "./Toast";
 
 const POD_ORDER = ["Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
 
@@ -17,6 +23,20 @@ const POD_COLOR_DOT: Record<string, string> = {
 
 type SignalKey = "we" | "client" | "drop" | "vol" | "usage" | "billing" | "perf";
 
+// Phase 22.B.3 — bridge from the heatmap's internal short keys to the canonical
+// signal-taxonomy union used elsewhere in the app (V2AMTriage, V2CustomerCard,
+// V2Dashboard URL state). Kept at the click-handler boundary so the heatmap's
+// internal compact keys can stay as they are.
+const TAXONOMY_KEY: Record<SignalKey, TaxonomySignalKey> = {
+  we: "we_silent",
+  client: "client_silent",
+  drop: "resp_drop",
+  vol: "vol_collapse",
+  usage: "usage_low",
+  billing: "billing",
+  perf: "perf_flag",
+};
+
 const SIGNALS: { key: SignalKey; label: string; help: string }[] = [
   { key: "we", label: "We silent", help: "We haven't reached out (sig_we_silent ≥ 70)" },
   { key: "client", label: "Client silent", help: "Customer has gone dark (sig_client_silent ≥ 70)" },
@@ -29,10 +49,12 @@ const SIGNALS: { key: SignalKey; label: string; help: string }[] = [
 
 type Props = {
   snapshot: SnapshotV2;
-  onCellClick?: (pod: string, signalKey: SignalKey) => void;
 };
 
-export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
+export default function V2SignalHeatmap({ snapshot }: Props) {
+  const router = useRouter();
+  const { showToast } = useToast();
+
   const { matrix, max, totalsByPod, totalsBySignal } = useMemo(() => {
     const matrix: Record<string, Record<SignalKey, number>> = {};
     const totalsByPod: Record<string, number> = {};
@@ -92,6 +114,20 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
     return { matrix, max, totalsByPod, totalsBySignal };
   }, [snapshot]);
 
+  // Phase 22.B.3 — clicking a heatmap cell with count > 0 navigates to
+  // /v2?pod=X&signal=Y for an instant pod × signal drilldown.
+  function handleCellClick(podLabel: string, signal: SignalKey) {
+    const taxonomyKey = TAXONOMY_KEY[signal];
+    const params = new URLSearchParams();
+    params.set("pod", podLabel);
+    params.set("signal", taxonomyKey);
+    router.push(`/v2?${params.toString()}`);
+    showToast(`Filtered to ${podLabel} · ${SIGNAL_LABELS[taxonomyKey]}`, {
+      type: "info",
+      icon: "filter",
+    });
+  }
+
   return (
     <section aria-label="Pod-signal heatmap">
       <header className="mt-2 mb-3 flex flex-wrap items-end justify-between gap-3">
@@ -103,7 +139,7 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
             Signal heatmap
           </h3>
           <p className="mt-0.5 text-[11px] text-zoca-text-2">
-            Customers per pod carrying each strong signal (≥70). Darker = more concentrated.
+            Customers per pod carrying each strong signal (≥70). Darker = more concentrated. Click a cell to drill in.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-zoca-text-2">
@@ -200,19 +236,34 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
                           ? "#ffffff"
                           : "var(--zoca-text)";
                     const pct = total ? ((v / total) * 100).toFixed(0) : "0";
+                    const taxonomyLabel = SIGNAL_LABELS[TAXONOMY_KEY[s.key]];
+                    const cellTitle =
+                      v > 0
+                        ? `${pod} · ${s.label}: ${v} of ${total} (${pct}%). Click to drill into the ${taxonomyLabel} signal for ${pod}.`
+                        : `${pod} · ${s.label}: 0 of ${total}`;
                     return (
                       <td
                         key={s.key}
                         className="px-1.5 py-1 text-center"
-                        title={`${pod} · ${s.label}: ${v} of ${total} (${pct}%)`}
+                        title={cellTitle}
                       >
-                        {onCellClick && v > 0 ? (
+                        {v > 0 ? (
                           <button
-                            onClick={() => onCellClick(pod, s.key)}
-                            className="block w-full rounded px-2 py-1.5 font-semibold transition focus:outline-none"
+                            type="button"
+                            onClick={() => handleCellClick(pod, s.key)}
+                            className="block w-full rounded px-2 py-1.5 font-semibold transition focus:outline-none focus-visible:ring-2"
                             style={{
                               background: cellBg,
                               color: cellTextColor,
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.filter = "brightness(1.08)";
+                              (e.currentTarget as HTMLElement).style.transform = "scale(1.02)";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.filter = "";
+                              (e.currentTarget as HTMLElement).style.transform = "";
                             }}
                             aria-label={`${pod} ${s.label}: ${v} customers (${pct}%). Click to drill.`}
                           >
@@ -226,7 +277,7 @@ export default function V2SignalHeatmap({ snapshot, onCellClick }: Props) {
                               color: cellTextColor,
                             }}
                           >
-                            {v || <span className="opacity-40">·</span>}
+                            <span className="opacity-40">·</span>
                           </div>
                         )}
                       </td>

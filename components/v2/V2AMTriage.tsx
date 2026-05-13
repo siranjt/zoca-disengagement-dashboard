@@ -12,6 +12,7 @@ import {
   customerHasSignal,
   type SignalKey,
 } from "@/lib/signal-taxonomy";
+import { POD_MAP } from "@/lib/config";
 
 type CustomerTrendPoint = { date: string; composite: number };
 
@@ -38,6 +39,9 @@ type Props = {
   onSignalChange?: (key: SignalKey | null) => void;
   /** Per-card chip click — toast + filter set are handled by the parent. */
   onSignalChipClick?: (key: SignalKey) => void;
+  /** Phase 22.B.3 — pod filter (?pod=) from heatmap drill-in. Optional. */
+  podFilter?: string | null;
+  onPodFilterChange?: (pod: string | null) => void;
 };
 
 type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
@@ -54,7 +58,7 @@ function isSortKey(v: string): v is SortKey {
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick }: Props) {
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick, podFilter, onPodFilterChange }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
@@ -251,12 +255,17 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   }, [baseBuckets, filter, query, sort]);
 
   // Phase 22.B.1 — narrow visible list to a single signal key when set.
-  // This is a POST-filter on the bucket/search/sort pipeline above, so it
-  // composes with whatever filter lane the AM is currently on.
+  // Phase 22.B.3 — additionally narrow by pod when podFilter is set. Both
+  // are POST-filters on the bucket/search/sort pipeline above, so they
+  // compose with whatever lane the AM is currently on.
   const finalList = useMemo(() => {
-    if (!signal) return filtered;
-    return filtered.filter((c) => customerHasSignal(c, signal));
-  }, [filtered, signal]);
+    let out = filtered;
+    if (signal) out = out.filter((c) => customerHasSignal(c, signal));
+    if (podFilter) {
+      out = out.filter((c) => (POD_MAP[c.am_name] || "Floating") === podFilter);
+    }
+    return out;
+  }, [filtered, signal, podFilter]);
 
   // Hero — count + label
   const heroCount = finalList.length;
@@ -442,43 +451,91 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
         </div>
       </div>
 
-      {/* Phase 22.B.1 — sticky signal filter banner */}
-      {signal && (
+      {/* Phase 22.B.1 + 22.B.3 — sticky filter banners (signal and pod).
+          They sit side-by-side in a flex row, each independently dismissible. */}
+      {(signal || podFilter) && (
         <div
-          role="status"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
+            display: "flex",
+            flexWrap: "wrap",
             gap: "8px",
-            padding: "8px 14px",
-            background: "rgba(255,134,225,0.12)",
-            border: "1px solid rgba(255,86,187,0.22)",
-            color: "#c026d3",
-            borderRadius: "9999px",
-            fontSize: "12px",
-            fontWeight: 600,
             marginBottom: "10px",
-            alignSelf: "flex-start",
           }}
         >
-          <i className="ti ti-filter" aria-hidden style={{ fontSize: "14px" }} />
-          <span>Filtered to: {SIGNAL_LABELS[signal]}</span>
-          <button
-            type="button"
-            onClick={() => onSignalChange?.(null)}
-            aria-label="Clear signal filter"
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "inherit",
-              cursor: "pointer",
-              fontSize: "14px",
-              padding: "0 4px",
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
+          {signal && (
+            <div
+              role="status"
+              className="zoca-fade-in"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                background: "rgba(255,134,225,0.12)",
+                border: "1px solid rgba(255,86,187,0.22)",
+                color: "#c026d3",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              <i className="ti ti-filter" aria-hidden style={{ fontSize: "14px" }} />
+              <span>Filtered to: {SIGNAL_LABELS[signal]}</span>
+              <button
+                type="button"
+                onClick={() => onSignalChange?.(null)}
+                aria-label="Clear signal filter"
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  color: "inherit",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: "0 4px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {podFilter && (
+            <div
+              role="status"
+              className="zoca-fade-in"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                background: "rgba(255,134,225,0.12)",
+                border: "1px solid rgba(255,86,187,0.22)",
+                color: "#c026d3",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              <i className="ti ti-filter" aria-hidden style={{ fontSize: "14px" }} />
+              <span>Filtered to: {podFilter}</span>
+              <button
+                type="button"
+                onClick={() => onPodFilterChange?.(null)}
+                aria-label="Clear pod filter"
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  color: "inherit",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: "0 4px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
       )}
 
