@@ -7,6 +7,11 @@ import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
 import V2PerformancePanel from "./V2PerformancePanel";
 import NotesField from "./NotesField";
+import {
+  buildMailto,
+  buildTelLink,
+  buildHubspotCompanyUrl,
+} from "@/lib/contact-links";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -201,18 +206,23 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           style={{ flexShrink: 0 }}
           aria-hidden
         />
-        <span
-          className="font-medium text-zoca-text"
-          style={{
-            fontSize: "13px",
-            maxWidth: "260px",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
+        <BiznameLink
+          bizname={customer.company || customer.entity_id.slice(0, 8)}
+          hubspotCompanyId={customer.hubspot?.hubspot_company_id}
         >
-          {customer.company || customer.entity_id.slice(0, 8)}
-        </span>
+          <span
+            className="font-medium text-zoca-text"
+            style={{
+              fontSize: "13px",
+              maxWidth: "260px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {customer.company || customer.entity_id.slice(0, 8)}
+          </span>
+        </BiznameLink>
         <span className="text-[11px] text-zoca-text-2" style={{ flexShrink: 0 }}>
           {planText}
           {podText}
@@ -278,12 +288,17 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-2">
-              <h3
-                className="text-[14px] font-semibold text-zoca-text"
-                style={{ margin: 0 }}
+              <BiznameLink
+                bizname={customer.company || customer.entity_id.slice(0, 8)}
+                hubspotCompanyId={customer.hubspot?.hubspot_company_id}
               >
-                {customer.company || customer.entity_id.slice(0, 8)}
-              </h3>
+                <h3
+                  className="text-[14px] font-semibold text-zoca-text"
+                  style={{ margin: 0 }}
+                >
+                  {customer.company || customer.entity_id.slice(0, 8)}
+                </h3>
+              </BiznameLink>
               <span className="text-[11px] text-zoca-text-2">
                 {planText}
                 {podText}
@@ -418,9 +433,14 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         {/* Body */}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-zoca-text md:text-base">
-              {customer.company || customer.entity_id.slice(0, 8)}
-            </h3>
+            <BiznameLink
+              bizname={customer.company || customer.entity_id.slice(0, 8)}
+              hubspotCompanyId={customer.hubspot?.hubspot_company_id}
+            >
+              <h3 className="text-[15px] font-semibold text-zoca-text md:text-base">
+                {customer.company || customer.entity_id.slice(0, 8)}
+              </h3>
+            </BiznameLink>
             {s.pre_launch && (
               <span
                 className="rounded-zoca-pill bg-sky-500/18 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700"
@@ -514,6 +534,36 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             {podText}
             {customer.am_name && ` · ${customer.am_name}`}
           </div>
+          {/* Phase 20 — one-click contact launchers */}
+          {(customer.email || customer.phone) && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              {customer.email && (
+                <a
+                  href={buildMailto(customer.email, {
+                    bizname: customer.company ?? undefined,
+                    amName: customer.am_name ?? undefined,
+                  })}
+                  className="inline-flex items-center gap-1 hover:underline"
+                  style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
+                  title={`Email ${customer.company || "customer"} — opens your mail client with a pre-filled draft`}
+                >
+                  <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px" }} />
+                  {customer.email}
+                </a>
+              )}
+              {customer.phone && (
+                <a
+                  href={buildTelLink(customer.phone)}
+                  className="inline-flex items-center gap-1 hover:underline"
+                  style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
+                  title={`Call ${customer.company || "customer"}`}
+                >
+                  <i className="ti ti-phone" aria-hidden style={{ fontSize: "11px" }} />
+                  {customer.phone}
+                </a>
+              )}
+            </div>
+          )}
           <p className="mt-2 text-[13px] leading-relaxed text-zoca-text md:text-sm">
             {renderReason(s.reason_one_line)}
             <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
@@ -879,7 +929,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                 </div>
                 <V2PerformancePanel performance={customer.performance} />
                 {customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 && (
-                  <ContactsSection contacts={customer.hubspot.contacts} />
+                  <ContactsSection contacts={customer.hubspot.contacts} bizname={customer.company ?? undefined} amName={notesAmName} />
                 )}
               </div>
             )}
@@ -914,7 +964,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                     bizname={customer.company ?? null}
                   />
                 </div>
-                <ContactsSection contacts={customer.hubspot.contacts} />
+                <ContactsSection contacts={customer.hubspot.contacts} bizname={customer.company ?? undefined} amName={notesAmName} />
               </div>
             )}
           </>
@@ -1404,6 +1454,49 @@ function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>)
 }
 
 // ---------------------------------------------------------------------------
+// BiznameLink (Phase 20)
+//
+// Wraps the bizname text so that when the customer has a matched HubSpot
+// company id we render an anchor that opens the HubSpot company page in a
+// new tab. On hover, an external-link icon appears to the right. When there
+// is no company id we just render the children as a plain span so layout
+// stays identical.
+// ---------------------------------------------------------------------------
+
+type BiznameLinkProps = {
+  bizname: string;
+  hubspotCompanyId?: string;
+  children: React.ReactNode;
+};
+
+function BiznameLink({ bizname, hubspotCompanyId, children }: BiznameLinkProps) {
+  if (!hubspotCompanyId) {
+    return <>{children}</>;
+  }
+  return (
+    <a
+      href={buildHubspotCompanyUrl(hubspotCompanyId)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group/biz inline-flex items-baseline gap-1"
+      style={{
+        color: "inherit",
+        textDecoration: "none",
+        cursor: "pointer",
+      }}
+      title={`Open ${bizname} in HubSpot (new tab)`}
+    >
+      {children}
+      <i
+        className="ti ti-external-link opacity-0 transition-opacity group-hover/biz:opacity-100"
+        aria-hidden
+        style={{ fontSize: "12px", color: "var(--zoca-text-3, #94a3b8)" }}
+      />
+    </a>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CONTACTS section (Phase 14C — Tier E: buyer-side org chart)
 //
 // Surfaces up to 5 HubSpot contacts per customer inside the "Why?" expand,
@@ -1412,9 +1505,12 @@ function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>)
 
 type ContactsSectionProps = {
   contacts: NonNullable<NonNullable<ScoredCustomerV2["hubspot"]>["contacts"]>;
+  /** Phase 20 — passed through so mailto: subject/body can be pre-filled. */
+  bizname?: string;
+  amName?: string;
 };
 
-function ContactsSection({ contacts }: ContactsSectionProps) {
+function ContactsSection({ contacts, bizname, amName }: ContactsSectionProps) {
   if (!contacts || contacts.length === 0) return null;
   return (
     <div className="mt-3 rounded-zoca-sm border border-zoca-border bg-zoca-surface-soft/40 p-3">
@@ -1438,10 +1534,12 @@ function ContactsSection({ contacts }: ContactsSectionProps) {
               <span className="flex flex-wrap items-baseline gap-x-2">
                 {c.email ? (
                   <a
-                    href={`mailto:${c.email}`}
-                    className="text-zoca-pink-cta hover:underline"
-                    title={`Email ${c.name}`}
+                    href={buildMailto(c.email, { bizname, amName })}
+                    className="inline-flex items-center gap-1 hover:underline"
+                    style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
+                    title={`Email ${c.name} — opens your mail client with a pre-filled draft`}
                   >
+                    <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px" }} />
                     {c.email}
                   </a>
                 ) : (
