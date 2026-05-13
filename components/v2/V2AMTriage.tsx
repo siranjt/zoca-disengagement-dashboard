@@ -356,6 +356,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                       })
                   : undefined
               }
+              amName={amName}
             />
           ))}
         </div>

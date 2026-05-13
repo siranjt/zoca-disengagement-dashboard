@@ -6,6 +6,7 @@ import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight, EngagementTier } from "@/lib/config";
 import V2Sparkline from "./V2Sparkline";
 import V2PerformancePanel from "./V2PerformancePanel";
+import NotesField from "./NotesField";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -15,6 +16,8 @@ type Props = {
   recentlyContacted?: boolean;
   isPinned?: boolean;
   onTogglePinned?: () => void;
+  /** Phase 18.B — selected AM threaded from V2Dashboard for per-AM notes. */
+  amName?: string;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -31,7 +34,9 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName }: Props) {
+  // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
+  const notesAmName = amName ?? customer.am_name;
   const { signals_v2: s, metrics } = customer;
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
@@ -835,6 +840,18 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             </button>
             {expanded && (
               <div id={`perf-${customer.entity_id}`}>
+                {/* Phase 18.B — private notes (AM-specific) */}
+                <div style={{ marginTop: "12px", marginBottom: "16px" }}>
+                  <div className="zoca-micro-label" style={{ marginBottom: "8px" }}>
+                    Notes (private)
+                  </div>
+                  <NotesField
+                    amName={notesAmName}
+                    entityId={customer.entity_id}
+                    customerId={customer.customer_id ?? null}
+                    bizname={customer.company ?? null}
+                  />
+                </div>
                 <V2PerformancePanel performance={customer.performance} />
                 {customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 && (
                   <ContactsSection contacts={customer.hubspot.contacts} />
@@ -860,11 +877,54 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             </button>
             {expanded && (
               <div id={`contacts-${customer.entity_id}`}>
+                {/* Phase 18.B — private notes (AM-specific) */}
+                <div style={{ marginTop: "12px", marginBottom: "16px" }}>
+                  <div className="zoca-micro-label" style={{ marginBottom: "8px" }}>
+                    Notes (private)
+                  </div>
+                  <NotesField
+                    amName={notesAmName}
+                    entityId={customer.entity_id}
+                    customerId={customer.customer_id ?? null}
+                    bizname={customer.company ?? null}
+                  />
+                </div>
                 <ContactsSection contacts={customer.hubspot.contacts} />
               </div>
             )}
           </>
-        ) : null}
+        ) : (
+          // No performance data and no contacts — but every customer still
+          // gets a private-notes expand (Phase 18.B). Notes are universal.
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zoca-text-2 transition hover:text-zoca-pink-cta focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              aria-expanded={expanded}
+              aria-controls={`notes-${customer.entity_id}`}
+              title={expanded ? "Hide notes" : "Show notes"}
+            >
+              <span aria-hidden>{expanded ? "▾" : "▸"}</span>
+              {expanded ? "Hide" : "Why?"}
+            </button>
+            {expanded && (
+              <div id={`notes-${customer.entity_id}`}>
+                <div style={{ marginTop: "12px", marginBottom: "16px" }}>
+                  <div className="zoca-micro-label" style={{ marginBottom: "8px" }}>
+                    Notes (private)
+                  </div>
+                  <NotesField
+                    amName={notesAmName}
+                    entityId={customer.entity_id}
+                    customerId={customer.customer_id ?? null}
+                    bizname={customer.company ?? null}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </article>
   );
