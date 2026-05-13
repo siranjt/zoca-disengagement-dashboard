@@ -10,6 +10,10 @@ import V2AMTriage from "./V2AMTriage";
 import V2Rollup from "./V2Rollup";
 import ScopeStrip from "./ScopeStrip";
 import FreshnessBanner from "./FreshnessBanner";
+import { V2Header } from "./V2Header";
+import { V2Hero } from "./V2Hero";
+import { V2RefreshBar } from "./V2RefreshBar";
+import { V2KpiTiles } from "./V2KpiTiles";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -113,11 +117,63 @@ export default function V2Dashboard() {
 
   const selectedPod = selectedAm ? POD_MAP[selectedAm] || "" : "";
 
+  const ready = snapshot.status === "ready" ? snapshot.snapshot : null;
+  const mrrAtRisk = ready
+    ? ready.customers
+        .filter((c) => c.am_name === selectedAm && c.signals_v2?.stoplight === "RED")
+        .reduce((sum, c) => sum + (Number(c.plan_amount) || 0), 0)
+    : 0;
+  const scopeCustomerCount = ready?.scope?.customer_count ?? 921;
+
   return (
-    <div className="min-h-screen bg-zoca-body text-zoca-text-primary">
-      {snapshot.status === "ready" && (
-        <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
-      )}
+    <div
+      data-theme="zoca-light"
+      className="min-h-screen text-zoca-text"
+      style={{ background: "var(--zoca-bg-soft)" }}
+    >
+      <V2Header generatedAt={ready?.generatedAt} />
+      {ready && <FreshnessBanner generatedAt={ready.generatedAt} />}
+      <V2Hero
+        amName={selectedAm}
+        redCount={ready?.stoplightCounts?.RED ?? 0}
+        customerCount={scopeCustomerCount}
+      />
+      <V2RefreshBar
+        showing={amCustomers.length}
+        total={scopeCustomerCount}
+        generatedAt={ready?.generatedAt}
+        amName={selectedAm}
+        pod={selectedPod}
+      />
+      <V2KpiTiles
+        tiles={[
+          {
+            label: "Total",
+            value: scopeCustomerCount,
+            subtitle: "active customers",
+            color: "midnight",
+          },
+          {
+            label: "Need to call",
+            value: ready?.stoplightCounts?.RED ?? 0,
+            subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
+            color: "pink",
+            selected: true,
+          },
+          {
+            label: "Watch",
+            value: ready?.stoplightCounts?.YELLOW ?? 0,
+            subtitle: "likely save calls",
+            color: "amber",
+          },
+          {
+            label: "Healthy",
+            value: ready?.stoplightCounts?.GREEN ?? 0,
+            subtitle: "in your book",
+            color: "green",
+          },
+        ]}
+      />
       <V2TopBar
         selectedAm={selectedAm}
         selectedPod={selectedPod}
@@ -128,7 +184,7 @@ export default function V2Dashboard() {
         onSetView={setView}
       />
 
-      {snapshot.status === "ready" && <ScopeStrip scope={snapshot.snapshot.scope} />}
+      {ready && <ScopeStrip scope={ready.scope} />}
 
       <main className="mx-auto max-w-[920px] px-4 pb-24 pt-4 md:px-6">
         {mounted && !welcomeDismissed && snapshot.status === "ready" && (
