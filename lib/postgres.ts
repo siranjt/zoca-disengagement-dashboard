@@ -916,6 +916,96 @@ export async function readPodTrendFlat(days: number = 14): Promise<PodTrendBundl
 }
 
 
+
+// ---------------------------------------------------------------------------
+// HubSpot note enrichment cache (Phase 13.4)
+// One row per note_id; lets us skip re-Haiku when the note content is stable.
+// ---------------------------------------------------------------------------
+
+let _noteEnrichReady = false;
+async function ensureNoteEnrichmentTable(): Promise<void> {
+  if (_noteEnrichReady) return;
+  const sql = getSql();
+  if (!sql) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS hubspot_note_enrichment (
+      note_id TEXT PRIMARY KEY,
+      enriched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      sentiment TEXT NOT NULL DEFAULT 'neutral',
+      topics JSONB NOT NULL DEFAULT '[]'::jsonb,
+      action_items JSONB NOT NULL DEFAULT '[]'::jsonb
+    )
+  `;
+  _noteEnrichReady = true;
+}
+
+export type CachedNoteEnrichment = {
+  sentiment: "warm" | "neutral" | "frustrated";
+  topics: string[];
+  action_items: string[];
+};
+
+/** Read cached enrichments for a list of note_ids. */
+export async function readNoteEnrichments(noteIds: string[]): Promise<Map<string, CachedNoteEnrichment>> {
+  const map = new Map<string, CachedNoteEnrichment>();
+  const sql = getSql();
+  if (!sql || !noteIds.length) return map;
+  await ensureNoteEnrichmentTable();
+  const rows = await sql`
+    SELECT note_id, sentiment, topics, action_items
+    FROM hubspot_note_enrichment
+    WHERE note_id = ANY(${noteIds}::text[])
+  `;
+  for (const r of rows) {
+    const row = r as {
+      note_id: string;
+      sentiment: string;
+      topics: string[];
+      action_items: string[];
+    };
+    map.set(row.note_id, {
+      sentiment: (["warm", "neutral", "frustrated"].includes(row.sentiment)
+        ? row.sentiment
+        : "neutral") as CachedNoteEnrichment["sentiment"],
+      topics: Array.isArray(row.topics) ? row.topics : [],
+      action_items: Array.isArray(row.action_items) ? row.action_items : [],
+    });
+  }
+  return map;
+}
+
+/** Persist new enrichments to the cache. */
+export async function writeNoteEnrichments(items: Map<string, CachedNoteEnrichment>): Promise<void> {
+  const sql = getSql();
+  if (!sql || items.size === 0) return;
+  await ensureNoteEnrichmentTable();
+  // Bulk insert via unnest
+  const ids: string[] = [];
+  const sentiments: string[] = [];
+  const topics: string[] = [];
+  const actions: string[] = [];
+  for (const [noteId, e] of items) {
+    ids.push(noteId);
+    sentiments.push(e.sentiment);
+    topics.push(JSON.stringify(e.topics));
+    actions.push(JSON.stringify(e.action_items));
+  }
+  await sql`
+    INSERT INTO hubspot_note_enrichment (note_id, sentiment, topics, action_items)
+    SELECT * FROM unnest(
+      ${ids}::text[],
+      ${sentiments}::text[],
+      ${topics}::jsonb[],
+      ${actions}::jsonb[]
+    )
+    ON CONFLICT (note_id) DO UPDATE SET
+      enriched_at = NOW(),
+      sentiment = EXCLUDED.sentiment,
+      topics = EXCLUDED.topics,
+      action_items = EXCLUDED.action_items
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // Connection health check
 // ---------------------------------------------------------------------------

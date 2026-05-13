@@ -120,6 +120,7 @@ export async function GET() {
       postgresConfigured: !!process.env.POSTGRES_URL,
       anthropicConfigured: !!process.env.ANTHROPIC_API_KEY,
       slackWebhookConfigured: !!process.env.SLACK_WEBHOOK_URL,
+      hubspotConfigured: !!process.env.HUBSPOT_ACCESS_TOKEN,
     },
   };
   return NextResponse.json(body, {

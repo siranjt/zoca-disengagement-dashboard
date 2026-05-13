@@ -188,6 +188,37 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 🚀 Pre-launch
               </span>
             )}
+            {customer.hubspot?.icp_tier && (
+              <span
+                className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                  customer.hubspot.icp_tier === "Tier 1"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : customer.hubspot.icp_tier === "Tier 2"
+                      ? "bg-amber-500/15 text-amber-300"
+                      : "bg-rose-500/15 text-rose-300"
+                }`}
+                title={`HubSpot ICP rating: ${customer.hubspot.icp_tier}. Tier 1 = strong fit · Tier 2 = workable · Tier 3 = low priority.`}
+              >
+                ICP {customer.hubspot.icp_tier.replace("Tier ", "")}
+              </span>
+            )}
+            {customer.hubspot?.open_deal_count !== undefined &&
+              customer.hubspot.open_deal_count > 0 && (
+                <span
+                  className="rounded-zoca-pill bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-300"
+                  title={`${customer.hubspot.open_deal_count} open deal${customer.hubspot.open_deal_count === 1 ? "" : "s"}: ${customer.hubspot.open_deal_stages?.join(", ")}. Total $${customer.hubspot.total_open_amount?.toLocaleString()}`}
+                >
+                  💼 {customer.hubspot.open_deal_count} deal{customer.hubspot.open_deal_count === 1 ? "" : "s"}
+                </span>
+              )}
+            {customer.hubspot?.am_owner_mismatch && (
+              <span
+                className="rounded-zoca-pill bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+                title={`AM drift: HubSpot says ${customer.hubspot.am_owner_mismatch.hubspot_owner}, BaseSheet says ${customer.hubspot.am_owner_mismatch.basesheet_am}. One of these is stale.`}
+              >
+                ⚠ AM drift
+              </span>
+            )}
             {recentlyContacted && (
               <span
                 className="rounded-zoca-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"
@@ -494,6 +525,57 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
       <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-soft md:px-5">
         {renderMetricsSummary(customer)}
       </div>
+
+      {/* HubSpot "last call" summary — Fireflies-derived sentiment + topics (Phase 13) */}
+      {customer.hubspot?.last_call && (
+        <div className="border-t border-zoca-border px-4 py-2 text-[11px] text-zoca-text-soft md:px-5">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-medium text-zoca-text-muted">📞 Last call</span>
+            <span title={customer.hubspot.last_call.date}>
+              {daysSince(customer.hubspot.last_call.date)}d ago
+            </span>
+            <span
+              className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium ${
+                customer.hubspot.last_call.sentiment === "frustrated"
+                  ? "bg-rose-500/15 text-rose-300"
+                  : customer.hubspot.last_call.sentiment === "warm"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-zoca-bg-3/40 text-zoca-text-soft"
+              }`}
+            >
+              {customer.hubspot.last_call.sentiment === "frustrated"
+                ? "😟 frustrated"
+                : customer.hubspot.last_call.sentiment === "warm"
+                  ? "😊 warm"
+                  : "— neutral"}
+            </span>
+            {customer.hubspot.last_call.topics.length > 0 && (
+              <span className="text-zoca-text-soft" title="Topics extracted from the meeting note">
+                · topics: <span className="text-zoca-text-muted">{customer.hubspot.last_call.topics.join(", ")}</span>
+              </span>
+            )}
+            {customer.hubspot.last_call.fireflies_url && (
+              <a
+                href={customer.hubspot.last_call.fireflies_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto text-zoca-pink-cta underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+              >
+                Fireflies →
+              </a>
+            )}
+          </div>
+          {customer.hubspot.last_call.action_items.length > 0 && (
+            <ul className="mt-1 list-disc pl-5 text-[11px] text-zoca-text-muted">
+              {customer.hubspot.last_call.action_items.slice(0, 3).map((item, i) => (
+                <li key={i} className="truncate" title={item}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Performance signals (expand-on-demand; auto-expanded for RED) */}
       <div className="border-t border-zoca-border px-4 py-2 md:px-5">

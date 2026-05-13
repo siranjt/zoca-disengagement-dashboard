@@ -273,6 +273,28 @@ export type ScoredCustomer = {
   signals: CustomerSignals;
 };
 
+/** HubSpot-derived data joined per customer (Phase 13). All optional — null when
+ *  HubSpot Stage D didn't run or no matching company was found by bizname. */
+export type HubspotJoinFields = {
+  hubspot_company_id?: string;
+  icp_tier?: "Tier 1" | "Tier 2" | "Tier 3" | null;
+  am_owner_mismatch?: { hubspot_owner: string; basesheet_am: string } | null;
+  lifecycle_drift?: boolean;                // HubSpot lifecycle ≠ "customer" but Chargebee says active
+  open_deal_count?: number;
+  open_deal_stages?: string[];
+  total_open_amount?: number;
+  last_lost_reason?: string | null;
+  last_lost_at?: string | null;
+  last_call?: {
+    note_id: string;
+    date: string;
+    sentiment: "warm" | "neutral" | "frustrated" | "unknown";
+    topics: string[];
+    action_items: string[];
+    fireflies_url: string | null;
+  } | null;
+};
+
 /** v2 scored customer — superset of v1 with usage, billing, performance, tickets, pod */
 export type ScoredCustomerV2 = ScoredCustomer & {
   pod: string;                              // "Pod 1" - "Pod 5" / "Floating" / ""
@@ -281,6 +303,7 @@ export type ScoredCustomerV2 = ScoredCustomer & {
   performance: PerformanceMetrics | null;
   tickets: TicketsMetrics | null;
   signals_v2: CustomerSignalsV2;
+  hubspot?: HubspotJoinFields | null;
 };
 
 export type AmTierRow = {

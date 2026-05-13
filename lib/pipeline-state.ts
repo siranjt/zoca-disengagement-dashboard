@@ -15,7 +15,7 @@ import { pgConfigured } from "./config";
  * Vercel Hobby's 60s timeout.
  */
 
-export type PipelineStage = "A" | "B" | "C";
+export type PipelineStage = "A" | "B" | "C" | "D";
 
 let _sql: NeonQueryFunction<false, false> | null = null;
 function getSql(): NeonQueryFunction<false, false> | null {
@@ -110,28 +110,32 @@ export async function readAllPipelineStages(snapshotDate: string): Promise<{
   a: StageReadResult<unknown> | null;
   b: StageReadResult<unknown> | null;
   c: StageReadResult<unknown> | null;
+  d: StageReadResult<unknown> | null;
   missing: PipelineStage[];
   staleStages: PipelineStage[];
 }> {
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, d] = await Promise.all([
     readPipelineStage("A", snapshotDate),
     readPipelineStage("B", snapshotDate),
     readPipelineStage("C", snapshotDate),
+    readPipelineStage("D", snapshotDate),
   ]);
   const missing: PipelineStage[] = [];
   if (!a) missing.push("A");
   if (!b) missing.push("B");
   if (!c) missing.push("C");
+  // Stage D is OPTIONAL — only required when HubSpot integration is wired.
+  // composeSnapshot treats missing D as "no HubSpot data this run" and proceeds.
 
-  // Mark stages as "stale" if their generated_at is > 6h ago — protects against
-  // running compose against yesterday's stage data accidentally.
+  // Mark stages as "stale" if their generated_at is > 6h ago.
   const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
   const staleStages: PipelineStage[] = [];
   if (a && Date.parse(a.generatedAt) < sixHoursAgo) staleStages.push("A");
   if (b && Date.parse(b.generatedAt) < sixHoursAgo) staleStages.push("B");
   if (c && Date.parse(c.generatedAt) < sixHoursAgo) staleStages.push("C");
+  if (d && Date.parse(d.generatedAt) < sixHoursAgo) staleStages.push("D");
 
-  return { a, b, c, missing, staleStages };
+  return { a, b, c, d, missing, staleStages };
 }
 
 /**
