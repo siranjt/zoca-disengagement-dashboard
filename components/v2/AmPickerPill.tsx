@@ -117,10 +117,20 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
         <div
           role="menu"
           aria-label="Choose an AM"
-          className="absolute left-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border bg-white"
+          className="absolute left-0 top-full mt-2 w-72 overflow-hidden rounded-xl border bg-white"
           style={{
             borderColor: "var(--zoca-border)",
             boxShadow: "0 12px 32px rgba(11,5,29,0.12)",
+            // Phase 24.A hotfix: dropdown was being shadowed by .v2-mesh-bg > *
+            // { position: relative; z-index: 1 } cascade in app/globals.css —
+            // siblings (hero h1) at z-index 1 stacked above the dropdown's z-30
+            // because the mesh wrapper's `> *` rule established sibling
+            // stacking contexts that capped the dropdown at the sibling's
+            // z-index. Use a high explicit z-index (and position absolute
+            // already set via Tailwind) so the panel always sits above the
+            // hero text and accepts pointer events.
+            position: "absolute",
+            zIndex: 9999,
           }}
         >
           <div

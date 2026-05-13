@@ -475,9 +475,11 @@ button:active:not(.no-press),
   transition: transform 0.18s ease, filter 0.18s ease;
   border: 0;
   background: inherit;
-  font: inherit;
   color: inherit;
-  padding: 0;
+  /* Phase 24.A hotfix: do NOT set `font: inherit` or `padding: 0` here —
+     it was clobbering Tailwind utilities (text-[10px], px-[11px], py-[4px])
+     and making signal chips render at the parent card's body font size
+     (~14-16px) instead of the intended 10px micro-label scale. */
 }
 .v2-chip-clickable:hover {
   transform: scale(1.04);
