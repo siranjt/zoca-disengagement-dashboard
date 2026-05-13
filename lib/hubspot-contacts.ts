@@ -57,6 +57,9 @@ export async function fetchContactsForCompanies(
     console.warn(`[hubspot-contacts] associations error (skipping): ${msg}`);
     return out;
   }
+  console.log(
+    `[hubspot-contacts] companies with contacts: ${companyToContactIds.size}/${hubspotCompanyIds.length}`,
+  );
   if (companyToContactIds.size === 0) return out;
 
   // 2) collect unique contact ids
@@ -64,6 +67,9 @@ export async function fetchContactsForCompanies(
   for (const ids of companyToContactIds.values()) {
     for (const id of ids) allContactIds.add(id);
   }
+  console.log(
+    `[hubspot-contacts] unique contact IDs to fetch: ${allContactIds.size}`,
+  );
   if (allContactIds.size === 0) return out;
 
   // 3) batch read (auto-chunks at 100)

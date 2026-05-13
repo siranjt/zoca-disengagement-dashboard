@@ -159,6 +159,28 @@ function memSnap(label: string): void {
   );
 }
 
+/**
+ * Phase 14.2 — per-fetcher timing wrapper for Stage D.
+ * Logs `[stageD] <label> OK in Xms` on success and `FAILED in Xms` on error,
+ * then re-throws so existing .catch() handlers (which translate errors into
+ * empty Maps + push to errors[]) still run. This gives us per-call visibility
+ * inside the Promise that previously failed silently inside the catch block.
+ */
+async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const t0 = Date.now();
+  try {
+    const result = await fn();
+    console.log(`[stageD] ${label} OK in ${Date.now() - t0}ms`);
+    return result;
+  } catch (e) {
+    console.warn(
+      `[stageD] ${label} FAILED in ${Date.now() - t0}ms:`,
+      e instanceof Error ? e.message : String(e),
+    );
+    throw e;
+  }
+}
+
 // ===========================================================================
 // STAGE A — Chargebee subs/invoices/transactions + BaseSheet + billing
 // ===========================================================================
@@ -432,10 +454,12 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   memSnap("D start");
 
   // 1. Active customer companies from HubSpot
-  const companiesMap = await fetchActiveHubspotCompanies().catch((e: Error) => {
-    errors.push(`HubSpot companies: ${e.message}`);
-    return new Map<string, HubspotCompanyRow>();
-  });
+  const companiesMap = await timed("companies", () => fetchActiveHubspotCompanies()).catch(
+    (e: Error) => {
+      errors.push(`HubSpot companies: ${e.message}`);
+      return new Map<string, HubspotCompanyRow>();
+    },
+  );
   memSnap("D after companies");
 
   // Build canonical map keyed by place_id
@@ -454,10 +478,12 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   }
 
   // 2. Deals per company
-  const dealsMap = await fetchDealsForCompanies(hubspotCompanyIds).catch((e: Error) => {
-    errors.push(`HubSpot deals: ${e.message}`);
-    return new Map<string, DealsForCompany>();
-  });
+  const dealsMap = await timed("deals", () => fetchDealsForCompanies(hubspotCompanyIds)).catch(
+    (e: Error) => {
+      errors.push(`HubSpot deals: ${e.message}`);
+      return new Map<string, DealsForCompany>();
+    },
+  );
   memSnap("D after deals");
   const dealsByHubspotCompanyId: Record<string, DealsForCompany> = {};
   for (const [cid, d] of dealsMap) dealsByHubspotCompanyId[cid] = d;
@@ -487,9 +513,11 @@ export async function runStageD(_today: number = todayMs()): Promise<{
     // hubspot_note_enrichment table.
 
     // Phase A: discover most-recent note_ids per company
-    const discovered = await fetchEnrichedNotesPerCompany(
-      hubspotCompanyIds,
-      new Map<string, CachedNoteEnrichment>(),
+    const discovered = await timed("notes", () =>
+      fetchEnrichedNotesPerCompany(
+        hubspotCompanyIds,
+        new Map<string, CachedNoteEnrichment>(),
+      ),
     );
     // Phase A also enriches everything that wasn't cached. We want to persist
     // the new enrichments. But the cache wasn't consulted — so we need to
@@ -513,21 +541,23 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   memSnap("D after notes");
 
   // 4. Calls per company (Phase 14B — Tier C: comms drift)
-  const callsMap = await fetchCallsForCompanies(hubspotCompanyIds).catch((e: Error) => {
-    errors.push(`HubSpot calls: ${e.message}`);
-    return new Map<string, CallsForCompany>();
-  });
+  const callsMap = await timed("calls", () => fetchCallsForCompanies(hubspotCompanyIds)).catch(
+    (e: Error) => {
+      errors.push(`HubSpot calls: ${e.message}`);
+      return new Map<string, CallsForCompany>();
+    },
+  );
   memSnap("D after calls");
   const callsByHubspotCompanyId: Record<string, CallsForCompany> = {};
   for (const [cid, c] of callsMap) callsByHubspotCompanyId[cid] = c;
 
   // 5. Contacts per company (Phase 14C — Tier E: buyer-side org chart)
-  const contactsMap = await fetchContactsForCompanies(hubspotCompanyIds).catch(
-    (e: Error) => {
-      errors.push(`HubSpot contacts: ${e.message}`);
-      return new Map<string, CompanyContact[]>();
-    },
-  );
+  const contactsMap = await timed("contacts", () =>
+    fetchContactsForCompanies(hubspotCompanyIds),
+  ).catch((e: Error) => {
+    errors.push(`HubSpot contacts: ${e.message}`);
+    return new Map<string, CompanyContact[]>();
+  });
   memSnap("D after contacts");
   const contactsByHubspotCompanyId: Record<string, CompanyContact[]> = {};
   for (const [cid, cs] of contactsMap) contactsByHubspotCompanyId[cid] = cs;
@@ -548,6 +578,13 @@ export async function runStageD(_today: number = todayMs()): Promise<{
       notesEnrichedCached,
     },
   };
+  console.log(
+    `[stageD] summary: ${Object.keys(companiesByPlaceId).length} companies, ` +
+      `deals=${Object.keys(dealsByHubspotCompanyId).length}, ` +
+      `notes=${Object.keys(notesByHubspotCompanyId).length}, ` +
+      `calls=${Object.keys(callsByHubspotCompanyId).length}, ` +
+      `contacts=${Object.keys(contactsByHubspotCompanyId).length}`,
+  );
   return { data, durationMs: Date.now() - started, errors };
 }
 

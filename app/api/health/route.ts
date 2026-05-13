@@ -121,6 +121,7 @@ export async function GET() {
       anthropicConfigured: !!process.env.ANTHROPIC_API_KEY,
       slackWebhookConfigured: !!process.env.SLACK_WEBHOOK_URL,
       hubspotConfigured: !!process.env.HUBSPOT_ACCESS_TOKEN,
+      metabaseConfigured: !!process.env.METABASE_API_KEY,
     },
   };
   return NextResponse.json(body, {

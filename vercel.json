@@ -81,7 +81,7 @@
     },
     "app/api/cron/refresh/stage-d/route.ts": {
       "memory": 2048,
-      "maxDuration": 90
+      "maxDuration": 300
     }
   }
 }

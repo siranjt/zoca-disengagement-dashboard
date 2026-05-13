@@ -4,7 +4,7 @@ import { runStageDAndStore } from "@/lib/refresh";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 /**
  * Stage D — HubSpot companies + deals + Fireflies note enrichment

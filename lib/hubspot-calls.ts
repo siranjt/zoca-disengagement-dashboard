@@ -45,6 +45,9 @@ export async function fetchCallsForCompanies(
     console.warn(`[hubspot-calls] associations error (skipping): ${msg}`);
     return out;
   }
+  console.log(
+    `[hubspot-calls] companies with calls: ${companyToCallIds.size}/${hubspotCompanyIds.length}`,
+  );
   if (companyToCallIds.size === 0) return out;
 
   // 2) collect unique call ids
@@ -52,6 +55,7 @@ export async function fetchCallsForCompanies(
   for (const ids of companyToCallIds.values()) {
     for (const id of ids) allCallIds.add(id);
   }
+  console.log(`[hubspot-calls] unique call IDs to fetch: ${allCallIds.size}`);
   if (allCallIds.size === 0) return out;
 
   // 3) batch search by id, filtering to last 30 days at the server.

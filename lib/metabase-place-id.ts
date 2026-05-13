@@ -112,6 +112,11 @@ export async function fetchPlaceIdsForEntities(
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!entityIds.length) return out;
+  if (!process.env.METABASE_API_KEY) {
+    console.warn(
+      "[metabase-place-id] METABASE_API_KEY not set — place_id join will silently no-op. Set env var on Vercel to enable.",
+    );
+  }
   if (!metabaseDatasetApiConfigured()) return out;
 
   const sql = `
@@ -150,5 +155,10 @@ export async function fetchPlaceIdsForEntities(
   console.log(
     `[metabase-place-id] resolved ${out.size}/${entityIds.length} entity_ids -> place_ids`,
   );
+  if (out.size === 0 && entityIds.length > 0) {
+    console.warn(
+      `[metabase-place-id] returned 0 place_ids for ${entityIds.length} entity_ids — check METABASE_API_KEY and the gbp.locations table.`,
+    );
+  }
   return out;
 }
