@@ -18,12 +18,20 @@ type Props = {
     entityId: string,
     meta: { customer_id: string | null; bizname: string | null },
   ) => void;
+  /** Phase 19 — entity_id -> snoozed_until ISO timestamp. */
+  snoozedSet?: Map<string, string>;
+  onSnooze?: (
+    entityId: string,
+    days: number,
+    meta: { customer_id: string | null; bizname: string | null },
+  ) => void;
+  onUnsnooze?: (entityId: string) => void;
 };
 
-type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all";
+type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
 type SortKey = "urgency" | "plan" | "lasttouch";
 
-const FILTER_KEYS: FilterKey[] = ["pinned", "act", "improving", "quiet", "all"];
+const FILTER_KEYS: FilterKey[] = ["pinned", "act", "improving", "quiet", "all", "snoozed"];
 const SORT_KEYS: SortKey[] = ["urgency", "plan", "lasttouch"];
 function isFilterKey(v: string): v is FilterKey {
   return (FILTER_KEYS as string[]).includes(v);
@@ -34,7 +42,7 @@ function isSortKey(v: string): v is SortKey {
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned }: Props) {
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
@@ -102,6 +110,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   // Bucketing logic
   // ---------------------------------------------------------------------------
   const baseBuckets = useMemo(() => {
+    // Phase 19: default filters HIDE snoozed customers. A snoozed customer
+    // is only visible on the dedicated 'snoozed' filter. This keeps the
+    // triage list focused on what the AM actually wants to act on.
+    const isSnoozed = (entityId: string): boolean =>
+      !!snoozedSet && snoozedSet.has(entityId);
+
     // Phase 17.B.2: align "Need to call today" lane with the "Need to call"
     // KPI tile (which counts strictly RED). Previously this bucket included
     // YELLOW capped at top-N, which caused a visible mismatch ("10 to act on"
@@ -109,39 +123,64 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     const act = customers
       .filter(
         (c) =>
-          !c.signals_v2.pre_launch && c.signals_v2.stoplight === "RED",
+          !c.signals_v2.pre_launch &&
+          c.signals_v2.stoplight === "RED" &&
+          !isSnoozed(c.entity_id),
       )
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
 
     const improving = customers
-      .filter((c) => c.signals_v2.stoplight === "GREEN" && c.signals_v2.composite < 20)
+      .filter(
+        (c) =>
+          c.signals_v2.stoplight === "GREEN" &&
+          c.signals_v2.composite < 20 &&
+          !isSnoozed(c.entity_id),
+      )
       .sort((a, b) => a.signals_v2.composite - b.signals_v2.composite)
       .slice(0, 15);
 
     const quiet30 = customers
       .filter(
         (c) =>
-          c.metrics.days_since_in >= 30 ||
-          (c.metrics.last_any_iso === null && c.signals_v2.tier !== "HEALTHY"),
+          (c.metrics.days_since_in >= 30 ||
+            (c.metrics.last_any_iso === null &&
+              c.signals_v2.tier !== "HEALTHY")) &&
+          !isSnoozed(c.entity_id),
       )
       .sort((a, b) => b.metrics.days_since_in - a.metrics.days_since_in)
       .slice(0, 20);
 
     // 'all' bucket: the full book sorted by composite desc; pre-launch
     // customers retained (the AM still wants to see them, they just don't
-    // appear in 'Act today').
-    const all = [...customers].sort(
-      (a, b) => b.signals_v2.composite - a.signals_v2.composite,
-    );
+    // appear in 'Act today'). Snoozed are hidden from 'all' too — they
+    // belong on the snoozed lane.
+    const all = [...customers]
+      .filter((c) => !isSnoozed(c.entity_id))
+      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
 
     const pinned = pinnedSet
       ? customers
-          .filter((c) => pinnedSet.has(c.entity_id))
+          .filter(
+            (c) => pinnedSet.has(c.entity_id) && !isSnoozed(c.entity_id),
+          )
           .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
       : [];
 
-    return { pinned, act, improving, quiet: quiet30, all };
-  }, [customers, pinnedSet]);
+    // Snoozed lane — ordered by soonest-expiring first so the AM sees what's
+    // about to come back into rotation. Falls back to composite when timestamps
+    // are missing.
+    const snoozed = snoozedSet
+      ? customers
+          .filter((c) => snoozedSet.has(c.entity_id))
+          .sort((a, b) => {
+            const au = snoozedSet.get(a.entity_id) || "";
+            const bu = snoozedSet.get(b.entity_id) || "";
+            return au.localeCompare(bu);
+          })
+      : [];
+
+    return { pinned, act, improving, quiet: quiet30, all, snoozed };
+  }, [customers, pinnedSet, snoozedSet]);
 
   const filterCounts = {
     pinned: baseBuckets.pinned.length,
@@ -149,6 +188,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     improving: baseBuckets.improving.length,
     quiet: baseBuckets.quiet.length,
     all: baseBuckets.all.length,
+    snoozed: baseBuckets.snoozed.length,
   };
 
   // If the user is on the "pinned" filter and their pinned count drops to
@@ -157,7 +197,10 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     if (filter === "pinned" && filterCounts.pinned === 0) {
       setFilter("act");
     }
-  }, [filter, filterCounts.pinned]);
+    if (filter === "snoozed" && filterCounts.snoozed === 0) {
+      setFilter("act");
+    }
+  }, [filter, filterCounts.pinned, filterCounts.snoozed]);
 
   // Apply search + sort to current filter's customers
   const filtered = useMemo(() => {
@@ -181,6 +224,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       default:
         if (filter === "improving") {
           sorted.sort((a, b) => a.signals_v2.composite - b.signals_v2.composite);
+        } else if (filter === "snoozed" && snoozedSet) {
+          sorted.sort((a, b) => {
+            const au = snoozedSet.get(a.entity_id) || "";
+            const bu = snoozedSet.get(b.entity_id) || "";
+            return au.localeCompare(bu);
+          });
         } else {
           sorted.sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
         }
@@ -215,6 +264,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     if (filter === "quiet") {
       if (heroCount === 0) return "No one's been quiet for 30+ days";
       return `${heroCount} customer${heroCount === 1 ? "" : "s"} you haven't heard from in 30+ days`;
+    }
+    if (filter === "snoozed") {
+      if (heroCount === 0) {
+        return "No snoozed customers. Snooze a customer to come back to them later.";
+      }
+      return `You have ${heroCount} snoozed customer${heroCount === 1 ? "" : "s"}`;
     }
     // 'all' filter
     if (query.trim()) {
@@ -300,6 +355,14 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           active={filter === "all"}
           onClick={() => setFilter("all")}
         />
+        {filterCounts.snoozed > 0 && (
+          <FilterChip
+            label="\ud83d\udcA4 Snoozed"
+            count={filterCounts.snoozed}
+            active={filter === "snoozed"}
+            onClick={() => setFilter("snoozed")}
+          />
+        )}
 
         {amName && (
           <SavedViewsRow
@@ -381,6 +444,18 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                   : undefined
               }
               amName={amName}
+              isSnoozed={snoozedSet?.has(c.entity_id) ?? false}
+              snoozedUntil={snoozedSet?.get(c.entity_id) ?? null}
+              onSnooze={
+                onSnooze
+                  ? (days: number) =>
+                      onSnooze(c.entity_id, days, {
+                        customer_id: c.customer_id ?? null,
+                        bizname: c.company ?? null,
+                      })
+                  : undefined
+              }
+              onUnsnooze={onUnsnooze ? () => onUnsnooze(c.entity_id) : undefined}
             />
           ))}
         </div>
@@ -487,6 +562,10 @@ function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boole
     all: {
       title: "Your book is empty.",
       body: "No customers in your book — either you're brand new or your accounts haven't loaded.",
+    },
+    snoozed: {
+      title: "No snoozed customers.",
+      body: "Snooze a customer to come back to them later. They'll reappear in your book when the snooze expires.",
     },
   };
   const m = messages[filter];

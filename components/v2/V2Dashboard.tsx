@@ -179,6 +179,155 @@ export default function V2Dashboard() {
     [selectedAm, pinnedSet],
   );
 
+  // Phase 19: per-AM snoozed customer map (entity_id -> snoozed_until ISO).
+  // Persisted in Postgres via /api/v2/snooze. Optimistic toggles with revert
+  // on error, mirroring the pinnedSet pattern above.
+  const [snoozedSet, setSnoozedSet] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!selectedAm) {
+      setSnoozedSet(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/v2/snooze?am=${encodeURIComponent(selectedAm)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          ok: boolean;
+          snoozed?: { entity_id: string; snoozed_until: string }[];
+        };
+        if (cancelled || !json.ok) return;
+        const m = new Map<string, string>();
+        for (const row of json.snoozed || []) m.set(row.entity_id, row.snoozed_until);
+        setSnoozedSet(m);
+      } catch {
+        /* ignore — snooze set defaults to empty */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAm]);
+
+  const handleSnooze = useCallback(
+    (
+      entityId: string,
+      days: number,
+      meta: { customer_id: string | null; bizname: string | null },
+    ) => {
+      const am = selectedAm;
+      if (!am) return;
+      const optimisticUntil = new Date(
+        Date.now() + days * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const prevValue = snoozedSet.get(entityId);
+      setSnoozedSet((prev) => {
+        const next = new Map(prev);
+        next.set(entityId, optimisticUntil);
+        return next;
+      });
+      (async () => {
+        try {
+          const res = await fetch("/api/v2/snooze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              am,
+              entity_id: entityId,
+              days,
+              customer_id: meta.customer_id,
+              bizname: meta.bizname,
+            }),
+          });
+          if (!res.ok) {
+            const txt = await res.text().catch(() => res.statusText);
+            setSnoozedSet((prev) => {
+              const next = new Map(prev);
+              if (prevValue) next.set(entityId, prevValue);
+              else next.delete(entityId);
+              return next;
+            });
+            if (typeof window !== "undefined") {
+              window.alert(`Couldn't snooze: ${res.status} ${txt.slice(0, 200)}`);
+            }
+            return;
+          }
+          const json = (await res.json()) as {
+            ok: boolean;
+            snoozed?: { snoozed_until: string };
+          };
+          if (json.ok && json.snoozed?.snoozed_until) {
+            setSnoozedSet((prev) => {
+              const next = new Map(prev);
+              next.set(entityId, json.snoozed!.snoozed_until);
+              return next;
+            });
+          }
+        } catch (e) {
+          setSnoozedSet((prev) => {
+            const next = new Map(prev);
+            if (prevValue) next.set(entityId, prevValue);
+            else next.delete(entityId);
+            return next;
+          });
+          if (typeof window !== "undefined") {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.alert(`Couldn't snooze: ${msg}`);
+          }
+        }
+      })();
+    },
+    [selectedAm, snoozedSet],
+  );
+
+  const handleUnsnooze = useCallback(
+    (entityId: string) => {
+      const am = selectedAm;
+      if (!am) return;
+      const prevValue = snoozedSet.get(entityId);
+      setSnoozedSet((prev) => {
+        const next = new Map(prev);
+        next.delete(entityId);
+        return next;
+      });
+      (async () => {
+        try {
+          const res = await fetch(
+            `/api/v2/snooze?am=${encodeURIComponent(am)}&entity_id=${encodeURIComponent(entityId)}`,
+            { method: "DELETE" },
+          );
+          if (!res.ok) {
+            const txt = await res.text().catch(() => res.statusText);
+            setSnoozedSet((prev) => {
+              const next = new Map(prev);
+              if (prevValue) next.set(entityId, prevValue);
+              return next;
+            });
+            if (typeof window !== "undefined") {
+              window.alert(`Couldn't unsnooze: ${res.status} ${txt.slice(0, 200)}`);
+            }
+          }
+        } catch (e) {
+          setSnoozedSet((prev) => {
+            const next = new Map(prev);
+            if (prevValue) next.set(entityId, prevValue);
+            return next;
+          });
+          if (typeof window !== "undefined") {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.alert(`Couldn't unsnooze: ${msg}`);
+          }
+        }
+      })();
+    },
+    [selectedAm, snoozedSet],
+  );
+
   const amCustomers = useMemo<ScoredCustomerV2[]>(() => {
     if (snapshot.status !== "ready" || !selectedAm) return [];
     return snapshot.snapshot.customers.filter((c) => c.am_name === selectedAm);
@@ -314,6 +463,9 @@ export default function V2Dashboard() {
             generatedAt={snapshot.snapshot.generatedAt}
             pinnedSet={pinnedSet}
             onTogglePinned={handleTogglePinned}
+            snoozedSet={snoozedSet}
+            onSnooze={handleSnooze}
+            onUnsnooze={handleUnsnooze}
           />
         )}
         {snapshot.status === "ready" && view === "pod" && (

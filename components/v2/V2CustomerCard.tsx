@@ -18,6 +18,11 @@ type Props = {
   onTogglePinned?: () => void;
   /** Phase 18.B — selected AM threaded from V2Dashboard for per-AM notes. */
   amName?: string;
+  /** Phase 19 — snooze state + handlers threaded from V2Dashboard. */
+  isSnoozed?: boolean;
+  snoozedUntil?: string | null;
+  onSnooze?: (days: number) => void;
+  onUnsnooze?: () => void;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -34,7 +39,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze }: Props) {
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
   const { signals_v2: s, metrics } = customer;
@@ -251,15 +256,18 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
     return (
       <article
         role="article"
-        aria-label={`${customer.company} — Keep an eye on${recentlyContacted ? " (contacted recently)" : ""}`}
+        aria-label={`${customer.company} — Keep an eye on${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
         className="zoca-fade-in"
         style={{
-          background: "#ffffff",
-          border: "1px solid rgba(245, 158, 11, 0.28)",
+          background: isSnoozed ? "rgba(254, 243, 199, 0.55)" : "#ffffff",
+          border: isSnoozed
+            ? "1px solid rgba(245, 158, 11, 0.40)"
+            : "1px solid rgba(245, 158, 11, 0.28)",
           borderRadius: "12px",
           padding: "12px 16px",
           boxShadow: "0 1px 3px rgba(11,5,29,0.04)",
           transition: "box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease",
+          opacity: isSnoozed ? 0.92 : 1,
         }}
       >
         <div className="flex items-start gap-3">
@@ -302,24 +310,27 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             {onTogglePinned && (
               <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
             )}
-            <button
-              type="button"
-              className="zoca-btn zoca-btn-ghost"
-              style={{ fontSize: "11px", padding: "5px 12px" }}
-              onClick={() => setActionState({ kind: "selecting" })}
-              aria-label="Schedule check-in"
-            >
-              Schedule check-in
-            </button>
-            <button
-              type="button"
-              className="zoca-btn zoca-btn-ghost"
-              style={{ fontSize: "10.5px", padding: "4px 10px" }}
-              onClick={() => setActionState({ kind: "selecting" })}
-              aria-label="Snooze 7 days"
-            >
-              Snooze 7d
-            </button>
+            {isSnoozed && snoozedUntil && onUnsnooze ? (
+              <SnoozedBanner
+                snoozedUntil={snoozedUntil}
+                onUnsnooze={onUnsnooze}
+              />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="zoca-btn zoca-btn-ghost"
+                  style={{ fontSize: "11px", padding: "5px 12px" }}
+                  onClick={() => setActionState({ kind: "selecting" })}
+                  aria-label="Schedule check-in"
+                >
+                  Schedule check-in
+                </button>
+                {onSnooze ? (
+                  <SnoozeMenu size="xs" onPick={(days) => onSnooze(days)} />
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         {actionState.kind === "selecting" && (
@@ -385,13 +396,19 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
   return (
     <article
       role="article"
-      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}`}
+      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
       className="zoca-card group"
       style={{
-        borderColor: "rgba(255, 86, 187, 0.22)",
-        background:
-          "linear-gradient(180deg, rgba(255, 86, 187, 0.03) 0%, #ffffff 100%)",
-        boxShadow: "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
+        borderColor: isSnoozed
+          ? "rgba(245, 158, 11, 0.35)"
+          : "rgba(255, 86, 187, 0.22)",
+        background: isSnoozed
+          ? "linear-gradient(180deg, rgba(254, 243, 199, 0.55) 0%, #ffffff 100%)"
+          : "linear-gradient(180deg, rgba(255, 86, 187, 0.03) 0%, #ffffff 100%)",
+        boxShadow: isSnoozed
+          ? "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(245, 158, 11, 0.18)"
+          : "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
+        opacity: isSnoozed ? 0.95 : 1,
       }}
     >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">
@@ -529,7 +546,12 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           {onTogglePinned && (
             <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} />
           )}
-          {actionState.kind === "done" ? (
+          {isSnoozed && snoozedUntil && onUnsnooze ? (
+            <SnoozedBanner
+              snoozedUntil={snoozedUntil}
+              onUnsnooze={onUnsnooze}
+            />
+          ) : actionState.kind === "done" ? (
             <div
               className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]"
               aria-live="polite"
@@ -737,6 +759,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                 >
                   ↗ Escalate
                 </button>
+              )}
+              {onSnooze && (
+                <SnoozeMenu onPick={(days) => onSnooze(days)} />
               )}
             </div>
           )}
@@ -993,6 +1018,117 @@ function PinButton({
     >
       <i className="ti ti-pin" style={{ fontSize: "15px" }} />
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 19: SnoozeMenu — outline button that pops a small panel with day
+// presets. Renders inline; closes on selection or outside click via the
+// `useEffect` guard inside the component. Caller is responsible for the
+// optimistic API call.
+// ---------------------------------------------------------------------------
+
+function SnoozeMenu({ onPick, size = "sm" }: { onPick: (days: number) => void; size?: "sm" | "xs" }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const fontSize = size === "xs" ? "10.5px" : "11px";
+  const padding = size === "xs" ? "4px 10px" : "5px 12px";
+  const presets: { label: string; days: number }[] = [
+    { label: "1 day", days: 1 },
+    { label: "3 days", days: 3 },
+    { label: "7 days", days: 7 },
+    { label: "14 days", days: 14 },
+    { label: "30 days", days: 30 },
+  ];
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        className="zoca-btn zoca-btn-ghost"
+        style={{ fontSize, padding }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Snooze customer"
+        title="Hide this customer from your triage view for N days"
+      >
+        Snooze ▾
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 rounded-zoca border border-zoca-border bg-white py-1 shadow-zoca-sm"
+          style={{ minWidth: 110 }}
+        >
+          {presets.map((p) => (
+            <button
+              key={p.days}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(p.days);
+              }}
+              className="block w-full px-3 py-1 text-left text-[11.5px] text-zoca-text hover:bg-zoca-bg-soft"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SnoozedBanner({
+  snoozedUntil,
+  onUnsnooze,
+}: {
+  snoozedUntil: string;
+  onUnsnooze: () => void;
+}) {
+  const dt = new Date(snoozedUntil);
+  const label = isNaN(dt.getTime())
+    ? snoozedUntil
+    : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div
+        className="rounded-zoca-pill px-2.5 py-1 text-[11px] font-medium"
+        style={{
+          background: "rgba(245, 158, 11, 0.10)",
+          color: "#92400e",
+          border: "1px solid rgba(245, 158, 11, 0.30)",
+        }}
+        aria-live="polite"
+      >
+        💤 Snoozed until {label}
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onUnsnooze();
+        }}
+        className="zoca-btn zoca-btn-ghost"
+        style={{ fontSize: "10.5px", padding: "4px 10px" }}
+        aria-label="Unsnooze customer"
+      >
+        Unsnooze
+      </button>
+    </div>
   );
 }
 
