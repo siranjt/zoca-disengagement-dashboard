@@ -412,8 +412,16 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   // Build canonical map keyed by place_id
   const companiesByPlaceId: Record<string, HubspotCompanyByPlaceId> = {};
   const hubspotCompanyIds: string[] = [];
+  // Phase 13.3 — diagnostic for AM-drift bug. If a company has an owner_id
+  // but the ownersMap doesn't have a corresponding entry, log it. Helps
+  // identify whether ownersMap is missing pages or the owner_id points to
+  // a deactivated user.
+  let unresolvedOwnerCount = 0;
   for (const [placeId, c] of companiesMap) {
     const ownerInfo = c.hubspot_owner_id ? ownersMap.get(c.hubspot_owner_id) : undefined;
+    if (c.hubspot_owner_id && !ownerInfo) {
+      unresolvedOwnerCount += 1;
+    }
     companiesByPlaceId[placeId] = {
       place_id: placeId,
       hubspot_company_id: c.id,
@@ -426,6 +434,13 @@ export async function runStageD(_today: number = todayMs()): Promise<{
       business_category: c.business_category,
     };
     hubspotCompanyIds.push(c.id);
+  }
+  if (unresolvedOwnerCount > 0) {
+    console.warn(
+      `[stageD] ${unresolvedOwnerCount} companies have hubspot_owner_id ` +
+      `that doesn't resolve in ownersMap (size=${ownersMap.size}). ` +
+      `This breaks AM drift detection — check fetchHubspotOwners pagination.`
+    );
   }
 
   // 2. Deals per company

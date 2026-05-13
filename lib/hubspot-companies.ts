@@ -46,9 +46,12 @@ const PROPS = [
 
 function parseIcp(v: string | undefined): HubspotCompanyRow["icp_tier"] {
   if (!v) return null;
-  if (v === "tier_1" || v === "Tier 1") return "Tier 1";
-  if (v === "tier_2" || v === "Tier 2") return "Tier 2";
-  if (v === "tier_3" || v === "Tier 3") return "Tier 3";
+  // Normalize: lowercase, strip spaces/underscores/hyphens. Handles
+  // "TIER_1", "tier_1", "Tier 1", "tier-1", "1" — all → "tier1"
+  const k = v.trim().toLowerCase().replace(/[\s_\-]/g, "");
+  if (k === "tier1" || k === "1") return "Tier 1";
+  if (k === "tier2" || k === "2") return "Tier 2";
+  if (k === "tier3" || k === "3") return "Tier 3";
   return null;
 }
 
@@ -124,7 +127,8 @@ export async function fetchHubspotOwners(): Promise<Map<string, { email: string;
     paging?: { next?: { after: string } };
   };
   let after: string | undefined;
-  for (let page = 0; page < 20; page += 1) {
+  // Phase 13.3 — raised cap from 20 → 100 pages (handles teams up to 10K owners).
+  for (let page = 0; page < 100; page += 1) {
     const path = `/crm/v3/owners${after ? `?after=${after}&limit=100` : "?limit=100"}`;
     const resp = await hubspotFetch<OwnersResp>(path, { timeoutMs: 8_000 });
     if (!resp?.results) break;
