@@ -47,7 +47,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
       <div className="flex items-center gap-5 flex-wrap text-[12px] text-zoca-text">
         <span>
           <span className="zoca-micro-label">Showing</span>{" "}
-          <strong className="ml-1.5 font-semibold">
+          <strong className="ml-1.5 font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
             <AnimatedNumber value={showing ?? 0} /> / <AnimatedNumber value={total ?? 0} />
           </strong>
         </span>

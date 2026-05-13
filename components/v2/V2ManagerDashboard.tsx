@@ -773,7 +773,7 @@ function V2ManagerDashboardInner() {
                   >
                     <AnimatedNumber value={kpis.mrrAtRisk} duration={900} format={formatMoney} />
                   </div>
-                  <div className="mt-1 text-[12px] text-zoca-text-2">
+                  <div className="mt-1 text-[12px] text-zoca-text-2" style={{ fontVariantNumeric: "tabular-nums" }}>
                     {kpis.RED} RED customer{kpis.RED === 1 ? "" : "s"} ·{" "}
                     {kpis.amsWithAction} AM{kpis.amsWithAction === 1 ? "" : "s"} with action ·{" "}
                     {kpis.podsRepresented} pod{kpis.podsRepresented === 1 ? "" : "s"} affected

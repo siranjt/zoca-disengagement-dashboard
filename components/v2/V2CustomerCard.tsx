@@ -265,7 +265,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             {customer.company || customer.entity_id.slice(0, 8)}
           </span>
         </BiznameLink>
-        <span className="text-[11px] text-zoca-text-2" style={{ flexShrink: 0 }}>
+        <span className="text-[11px] text-zoca-text-2" style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
           {planText}
           {podText}
         </span>
@@ -342,7 +342,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                   {customer.company || customer.entity_id.slice(0, 8)}
                 </h3>
               </BiznameLink>
-              <span className="text-[11px] text-zoca-text-2">
+              <span className="text-[11px] text-zoca-text-2" style={{ fontVariantNumeric: "tabular-nums" }}>
                 {planText}
                 {podText}
               </span>
@@ -574,7 +574,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               </span>
             )}
           </div>
-          <div className="mt-1 text-[11px] text-zoca-text-2">
+          <div className="mt-1 text-[11px] text-zoca-text-2" style={{ fontVariantNumeric: "tabular-nums" }}>
             {planText}
             {podText}
             {customer.am_name && (
@@ -597,7 +597,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                   style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
                   title={`Email ${customer.company || "customer"} — opens your mail client with a pre-filled draft`}
                 >
-                  <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px" }} />
+                  <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px", lineHeight: 1 }} />
                   {customer.email}
                 </a>
               )}
@@ -608,7 +608,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                   style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
                   title={`Call ${customer.company || "customer"}`}
                 >
-                  <i className="ti ti-phone" aria-hidden style={{ fontSize: "11px" }} />
+                  <i className="ti ti-phone" aria-hidden style={{ fontSize: "11px", lineHeight: 1 }} />
                   {customer.phone}
                 </a>
               )}
@@ -620,7 +620,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           </p>
           {/* Modifier flag chips */}
           {(s.flag_performance || s.flag_tickets) && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {s.flag_performance && (
                 <FlagChip
                   label={customer.performance?.flag_reasons?.[0] || "Performance flag"}
@@ -648,7 +648,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         </div>
 
         {/* Right side: action button (state machine) */}
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-1.5">
           {onTogglePinned && (
             <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
           )}
@@ -898,7 +898,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
 
       {/* HubSpot "last call" summary — Fireflies-derived sentiment + topics (Phase 13) */}
       {customer.hubspot?.last_call && (
-        <div className="border-t border-zoca-border px-4 py-2 text-[11px] text-zoca-text-2 md:px-5">
+        <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-2 md:px-5">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="font-medium text-zoca-text-2">📞 Last call</span>
             <span title={customer.hubspot.last_call.date}>
@@ -948,7 +948,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
       )}
 
       {/* Performance signals (expand-on-demand; auto-expanded for RED) */}
-      <div className="border-t border-zoca-border px-4 py-2 md:px-5">
+      <div className="border-t border-zoca-border px-4 py-2.5 md:px-5">
 {customer.performance ? (
           <>
             <button
@@ -1129,7 +1129,7 @@ function SignalChipRow({
     active.push({ key: "billing", label: "Billing" });
   if (active.length === 0) return null;
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-wrap gap-1.5">
       {active.map((c) => (
         <button
           key={c.key}
@@ -1610,7 +1610,7 @@ function BiznameLink({ bizname, hubspotCompanyId, children }: BiznameLinkProps) 
       <i
         className="ti ti-external-link opacity-0 transition-opacity group-hover/biz:opacity-100"
         aria-hidden
-        style={{ fontSize: "12px", color: "var(--zoca-text-3, #94a3b8)" }}
+        style={{ fontSize: "12px", lineHeight: 1, color: "var(--zoca-text-3, #94a3b8)" }}
       />
     </a>
   );
@@ -1659,7 +1659,7 @@ function ContactsSection({ contacts, bizname, amName }: ContactsSectionProps) {
                     style={{ color: "var(--zoca-blue, #2563eb)", textDecoration: "none" }}
                     title={`Email ${c.name} — opens your mail client with a pre-filled draft`}
                   >
-                    <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px" }} />
+                    <i className="ti ti-mail" aria-hidden style={{ fontSize: "11px", lineHeight: 1 }} />
                     {c.email}
                   </a>
                 ) : (

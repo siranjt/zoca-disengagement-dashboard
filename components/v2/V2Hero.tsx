@@ -85,7 +85,7 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
       >
         {needsCall > 0 ? (
           <>
-            <AnimatedNumber value={needsCall} duration={900} /> customers need your attention today — surfaced from live billing, comms, app usage, and HubSpot signals.
+            <span style={{ fontVariantNumeric: "tabular-nums" }}><AnimatedNumber value={needsCall} duration={900} /></span> customers need your attention today — surfaced from live billing, comms, app usage, and HubSpot signals.
           </>
         ) : (
           "All clear today — no customers at critical risk. Use the filters below to review the full book."
@@ -93,13 +93,13 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> <AnimatedNumber value={totalCount} duration={900} /> active customers
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> <span style={{ fontVariantNumeric: "tabular-nums" }}><AnimatedNumber value={totalCount} duration={900} /></span> active customers
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> Live Chargebee + Metabase
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> Live Chargebee + Metabase
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> Claude-scored signals
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> Claude-scored signals
         </span>
       </div>
     </section>

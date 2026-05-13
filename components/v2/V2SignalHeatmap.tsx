@@ -244,7 +244,7 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
                     return (
                       <td
                         key={s.key}
-                        className="px-1.5 py-1 text-center"
+                        className="px-2 py-1.5 text-center"
                         title={cellTitle}
                       >
                         {v > 0 ? (

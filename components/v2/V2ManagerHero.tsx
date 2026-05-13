@@ -98,13 +98,13 @@ export function V2ManagerHero({
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> {ams} AMs
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> {ams} AMs
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> {pods} pods
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> {pods} pods
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> {totalCount} active customers
+          <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> {totalCount} active customers
         </span>
       </div>
     </section>

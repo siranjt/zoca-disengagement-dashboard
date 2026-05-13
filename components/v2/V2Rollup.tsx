@@ -421,7 +421,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 onClick={() => setPodFilter(p)}
                 aria-pressed={active}
                 aria-label={`Filter to ${p}`}
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition focus:outline-none"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition focus:outline-none"
                 style={
                   active
                     ? {
@@ -486,7 +486,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         <div>
           <div className="zoca-micro-label">RED</div>
           <div
-            className="mt-0.5 font-extrabold tabular-nums"
+            className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-pink)" }}
           >
             {totals.RED}
@@ -495,7 +495,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         <div>
           <div className="zoca-micro-label">YELLOW</div>
           <div
-            className="mt-0.5 font-extrabold tabular-nums"
+            className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-amber)" }}
           >
             {totals.YELLOW}
@@ -504,7 +504,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         <div>
           <div className="zoca-micro-label">GREEN</div>
           <div
-            className="mt-0.5 font-extrabold tabular-nums"
+            className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-green)" }}
           >
             {totals.GREEN}
@@ -522,7 +522,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         <div title="MRR carried by customers currently RED — the dollars actively at risk this week">
           <div className="zoca-micro-label">MRR at risk</div>
           <div
-            className="mt-0.5 font-extrabold tabular-nums"
+            className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-pink)" }}
           >
             {formatMoney(totals.mrrAtRisk)}
