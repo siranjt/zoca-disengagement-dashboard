@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import ZocaLogo from "@/components/ZocaLogo";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import V2Header from "./V2Header";
+import V2ManagerHero from "./V2ManagerHero";
+import { ZocaLogo } from "./ZocaLogo";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import { POD_MAP } from "@/lib/config";
 import V2PodSummaryGrid from "./V2PodSummaryGrid";
@@ -13,7 +15,6 @@ import V2Sparkline from "./V2Sparkline";
 import ScopeStrip from "./ScopeStrip";
 import FreshnessBanner from "./FreshnessBanner";
 import V2AmActivityRollup from "./V2AmActivityRollup";
-import { RefreshButton } from "./RefreshButton";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -55,12 +56,12 @@ type SnapshotState =
   | { status: "ready"; snapshot: SnapshotV2 };
 
 const POD_COLOR_DOT: Record<string, string> = {
-  "Pod 1": "bg-violet-400",
-  "Pod 2": "bg-cyan-400",
-  "Pod 3": "bg-emerald-400",
-  "Pod 4": "bg-amber-400",
-  "Pod 5": "bg-pink-400",
-  Floating: "bg-slate-400",
+  "Pod 1": "bg-violet-500",
+  "Pod 2": "bg-cyan-500",
+  "Pod 3": "bg-emerald-500",
+  "Pod 4": "bg-amber-500",
+  "Pod 5": "bg-pink-500",
+  Floating: "bg-slate-500",
 };
 
 const DEFAULT_VIEWS: SavedView[] = [
@@ -646,81 +647,55 @@ export default function V2ManagerDashboard() {
   }, [kpis, compareKpis, compareDays]);
 
   return (
-    <div className="min-h-screen bg-zoca-body text-zoca-text-primary print:bg-white print:text-black">
+    <div data-theme="zoca-light" className="min-h-screen text-zoca-text print:bg-white print:text-black" style={{ background: "var(--zoca-bg-soft)" }}>
       {snapshot.status === "ready" && (
         <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
       )}
       <a
         href="#manager-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-zoca focus:border focus:border-zoca-pink-cta focus:bg-zoca-bg-2 focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-zoca-text-primary"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:border focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-zoca-text focus:bg-white focus:border-zoca-pink"
       >
         Skip to dashboard content
       </a>
 
-      <nav className="sticky top-0 z-50 border-b border-zoca-border bg-zoca-bg-nav backdrop-blur-xl print:hidden">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-4 py-3 md:gap-4 md:px-6">
-          <a
-            href="/v2"
-            className="flex items-center gap-2 text-zoca-light-purple-2"
-            aria-label="Customer Health home"
-          >
-            <ZocaLogo height={20} />
-            <span className="hidden text-[11px] font-medium uppercase tracking-wider text-zoca-text-soft sm:inline">
-              Customer Health · Manager
-            </span>
-          </a>
-          <div className="ml-auto flex items-center gap-2">
-            <a
-              href="/v2"
-              className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1.5 text-[12px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary"
-            >
-              ← AM view
-            </a>
-            <span className="text-[11px] text-zoca-text-soft" title={snapshotDate}>
-              {freshnessLabel}
-            </span>
-            <RefreshButton />
-          </div>
-        </div>
-      </nav>
+      <V2Header mode="manager" generatedAt={refIso} />
 
       {snapshot.status === "ready" && <ScopeStrip scope={snapshot.snapshot.scope} />}
 
-      <main id="manager-content" className="mx-auto max-w-[1400px] px-4 pb-24 pt-6 md:px-6">
-        <header className="mb-5">
-          <h1 className="font-display text-2xl font-bold text-zoca-text-primary">
-            Manager dashboard
-          </h1>
-          <p className="mt-1 text-sm text-zoca-text-muted">
-            Cross-AM and cross-pod view of customer health. Click a pod card to filter the
-            rollup; click a heatmap cell to drill into that pod-signal pair.
+      <V2ManagerHero
+        redCount={kpis?.RED}
+        customerCount={kpis?.total}
+        amCount={kpis?.amsWithAction}
+        podCount={kpis?.podsRepresented}
+      />
+
+      <main id="manager-content" className="mx-auto max-w-[1400px] px-4 pb-24 pt-2 md:px-6">
+        {snapshotDate && (
+          <p className="mb-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-zoca-text-2">
+            <span className="zoca-micro-label">Snapshot</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{snapshotDate}</span>
+            {isHistorical && (
+              <>
+                <span
+                  className="zoca-chip-amber"
+                  role="status"
+                >
+                  Historical view
+                  {historicalDaysAgo !== null
+                    ? ` · ${historicalDaysAgo} day${historicalDaysAgo === 1 ? "" : "s"} ago`
+                    : ""}
+                </span>
+                <button
+                  onClick={() => setCurrentDate("today")}
+                  className="text-[10px] font-semibold text-zoca-pink underline-offset-2 hover:underline focus:outline-none"
+                  aria-label="Return to latest snapshot"
+                >
+                  Reset to today
+                </button>
+              </>
+            )}
           </p>
-          {snapshotDate && (
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zoca-text-soft">
-              <span>Snapshot · {snapshotDate}</span>
-              {isHistorical && (
-                <>
-                  <span
-                    className="rounded-zoca-pill bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300"
-                    role="status"
-                  >
-                    Historical view
-                    {historicalDaysAgo !== null
-                      ? ` · ${historicalDaysAgo} day${historicalDaysAgo === 1 ? "" : "s"} ago`
-                      : ""}
-                  </span>
-                  <button
-                    onClick={() => setCurrentDate("today")}
-                    className="text-[10px] text-zoca-pink-cta underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
-                    aria-label="Return to latest snapshot"
-                  >
-                    Reset to today
-                  </button>
-                </>
-              )}
-            </p>
-          )}
-        </header>
+        )}
 
         <div className="sr-only" role="status" aria-live="polite">
           {selectedPod === "All" ? "Showing all pods" : `Filtered to ${selectedPod}`}
@@ -748,13 +723,23 @@ export default function V2ManagerDashboard() {
         {snapshot.status === "error" && (
           <div
             role="alert"
-            className="rounded-zoca border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200"
+            className="rounded-2xl px-5 py-4 text-sm"
+            style={{
+              border: "1px solid rgba(255,86,187,0.32)",
+              background: "rgba(255,134,225,0.06)",
+              color: "var(--zoca-pink)",
+            }}
           >
             <p className="font-semibold">Couldn't load the snapshot.</p>
-            <p className="mt-1 text-[12px] text-rose-200/80">{snapshot.message}</p>
+            <p className="mt-1 text-[12px] text-zoca-text-2">{snapshot.message}</p>
             <button
               onClick={() => setCurrentDate("today")}
-              className="mt-3 rounded-zoca-pill border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-[12px] font-medium text-rose-200 transition hover:bg-rose-500/25"
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-semibold transition"
+              style={{
+                background: "transparent",
+                color: "var(--zoca-pink)",
+                border: "1px solid rgba(255,86,187,0.32)",
+              }}
             >
               Reset to today
             </button>
@@ -763,20 +748,29 @@ export default function V2ManagerDashboard() {
 
         {snapshot.status === "ready" && kpis && (
           <>
-            {/* Headline MRR-at-risk panel — exec-grade dollar number */}
+            {/* Headline MRR-at-risk panel — Zoca brand light card */}
             <section
               aria-label="MRR at risk headline"
-              className="mb-4 rounded-zoca border border-rose-500/30 bg-gradient-to-br from-rose-500/10 to-zoca-bg-2/30 px-5 py-4"
+              className="zoca-card mb-4 zoca-fade-in"
+              style={{ padding: "20px 22px" }}
             >
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <div className="text-[11px] uppercase tracking-wider text-rose-300/80">
+                  <div className="zoca-micro-label" style={{ color: "var(--zoca-pink)" }}>
                     MRR at risk this week
                   </div>
-                  <div className="mt-1 font-display text-4xl font-bold tabular-nums text-rose-300">
+                  <div
+                    className="mt-1 font-extrabold tabular-nums"
+                    style={{
+                      fontSize: "clamp(34px, 4vw, 44px)",
+                      lineHeight: 1.02,
+                      letterSpacing: "-0.035em",
+                      color: "var(--zoca-pink)",
+                    }}
+                  >
                     {formatMoney(kpis.mrrAtRisk)}
                   </div>
-                  <div className="mt-1 text-[12px] text-zoca-text-soft">
+                  <div className="mt-1 text-[12px] text-zoca-text-2">
                     {kpis.RED} RED customer{kpis.RED === 1 ? "" : "s"} ·{" "}
                     {kpis.amsWithAction} AM{kpis.amsWithAction === 1 ? "" : "s"} with action ·{" "}
                     {kpis.podsRepresented} pod{kpis.podsRepresented === 1 ? "" : "s"} affected
@@ -784,7 +778,7 @@ export default function V2ManagerDashboard() {
                 </div>
                 {compareKpis && (
                   <div className="flex flex-col items-end gap-1 text-right">
-                    <span className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+                    <span className="zoca-micro-label">
                       vs {compareDays}d ago
                     </span>
                     <DeltaBadge
@@ -796,12 +790,12 @@ export default function V2ManagerDashboard() {
                 )}
               </div>
               {tierTrend.length > 1 && (
-                <div className="mt-3 text-rose-300/70" title={`RED-count trend last ${tierTrend.length} days (proxy for MRR-at-risk)`}>
+                <div className="mt-3" title={`RED-count trend last ${tierTrend.length} days (proxy for MRR-at-risk)`}>
                   <V2Sparkline
                     values={tierTrend.map((r) => r.total_high_risk)}
                     width={300}
                     height={28}
-                    color="rgb(251 113 133)"
+                    color="var(--zoca-pink)"
                     gradient
                     label="MRR-at-risk trend"
                   />
@@ -811,15 +805,20 @@ export default function V2ManagerDashboard() {
 
             <section
               aria-label="Top-line KPIs"
-              className="sticky top-[60px] z-40 -mx-4 mb-6 border-y border-zoca-border-2 bg-zoca-body/90 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6 print:static print:border-none print:bg-transparent print:p-0"
+              className="mb-6 mx-0 px-0 print:static print:border-none print:bg-transparent print:p-0"
             >
-              <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div
+                className="grid gap-3"
+                style={{
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                }}
+              >
                 <Kpi
                   label="Customers"
                   value={String(kpis.total)}
                   sub={kpis.preLaunch > 0 ? `${kpis.preLaunch} \ud83d\ude80 pre-launch` : undefined}
                   sparkValues={tierTrend.map((r) => r.total_customers)}
-                  sparkColor="rgb(148 163 184)"
+                  sparkColor="var(--zoca-text-3)"
                 />
                 <Kpi
                   label="RED"
@@ -830,7 +829,7 @@ export default function V2ManagerDashboard() {
                   deltaUnit="vs prev"
                   deltaSemantic="lowerIsBetter"
                   sparkValues={tierTrend.map((r) => r.total_high_risk)}
-                  sparkColor="rgb(251 113 133)"
+                  sparkColor="var(--zoca-pink)"
                 />
                 <Kpi
                   label="YELLOW"
@@ -840,7 +839,7 @@ export default function V2ManagerDashboard() {
                   deltaUnit="vs prev"
                   deltaSemantic="neutral"
                   sparkValues={tierTrend.map((r) => r.total_watch)}
-                  sparkColor="rgb(252 211 77)"
+                  sparkColor="var(--zoca-amber)"
                 />
                 <Kpi
                   label="GREEN"
@@ -850,7 +849,7 @@ export default function V2ManagerDashboard() {
                   deltaUnit="vs prev"
                   deltaSemantic="higherIsBetter"
                   sparkValues={tierTrend.map((r) => r.total_healthy)}
-                  sparkColor="rgb(110 231 183)"
+                  sparkColor="var(--zoca-green)"
                 />
                 <Kpi
                   label="MRR @ risk"
@@ -872,7 +871,7 @@ export default function V2ManagerDashboard() {
                 />
               </div>
               {compareSummary && (
-                <p className="mt-2 text-center text-[11px] text-zoca-text-soft sm:text-left">
+                <p className="mt-2 text-[11px] text-zoca-text-2 text-center sm:text-left">
                   {compareSummary}
                 </p>
               )}
@@ -881,7 +880,8 @@ export default function V2ManagerDashboard() {
             {compareError && (
               <div
                 role="alert"
-                className="mb-4 rounded-zoca border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-200"
+                className="zoca-chip-amber mb-4 px-3 py-2"
+                style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "none" }}
               >
                 Couldn't load comparison snapshot ({compareError}) — deltas disabled.
               </div>
@@ -890,14 +890,18 @@ export default function V2ManagerDashboard() {
             {topMovers.length > 0 && (
               <section
                 aria-label="Top AMs by action items today"
-                className="mb-7 rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30 p-4"
+                className="zoca-card mb-7 zoca-fade-in"
+                style={{ padding: "18px 20px" }}
               >
                 <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <h3 className="font-display text-base font-bold text-zoca-text-primary">
+                    <h3
+                      className="font-extrabold text-zoca-text"
+                      style={{ fontSize: "17px", letterSpacing: "-0.015em" }}
+                    >
                       Where to focus today
                     </h3>
-                    <p className="mt-0.5 text-[11px] text-zoca-text-soft">
+                    <p className="mt-0.5 text-[11px] text-zoca-text-2">
                       Top {topMovers.length} AM{topMovers.length === 1 ? "" : "s"} by{" "}
                       {moverMode === "trajectory"
                         ? "performance-flagged count"
@@ -908,16 +912,25 @@ export default function V2ManagerDashboard() {
                         : ""}
                     </p>
                   </div>
-                  <div className="flex rounded-zoca border border-zoca-border bg-zoca-bg-1/60 p-0.5" role="tablist" aria-label="Top movers sort mode">
+                  <div
+                    className="inline-flex items-center gap-1 p-1 rounded-lg"
+                    style={{
+                      background: "var(--zoca-bg-soft)",
+                      border: "1px solid var(--zoca-border)",
+                    }}
+                    role="tablist"
+                    aria-label="Top movers sort mode"
+                  >
                     <button
                       onClick={() => setMoverMode("red")}
                       role="tab"
                       aria-selected={moverMode === "red"}
-                      className={`rounded-zoca-pill px-2.5 py-1 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                      className="px-3 py-1 rounded-md text-[11px] transition"
+                      style={
                         moverMode === "red"
-                          ? "bg-zoca-bg-2/80 text-zoca-text-primary"
-                          : "text-zoca-text-soft hover:text-zoca-text-primary"
-                      }`}
+                          ? { background: "var(--zoca-text)", color: "#ffffff", fontWeight: 600 }
+                          : { background: "transparent", color: "var(--zoca-text-2)", fontWeight: 500 }
+                      }
                     >
                       By RED
                     </button>
@@ -925,51 +938,67 @@ export default function V2ManagerDashboard() {
                       onClick={() => setMoverMode("trajectory")}
                       role="tab"
                       aria-selected={moverMode === "trajectory"}
-                      className={`rounded-zoca-pill px-2.5 py-1 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+                      className="px-3 py-1 rounded-md text-[11px] transition"
+                      style={
                         moverMode === "trajectory"
-                          ? "bg-zoca-bg-2/80 text-zoca-text-primary"
-                          : "text-zoca-text-soft hover:text-zoca-text-primary"
-                      }`}
+                          ? { background: "var(--zoca-text)", color: "#ffffff", fontWeight: 600 }
+                          : { background: "transparent", color: "var(--zoca-text-2)", fontWeight: 500 }
+                      }
                     >
                       By trajectory {"\u26D1"}
                     </button>
                   </div>
                 </div>
-                <ul className="divide-y divide-zoca-border">
+                <ul className="divide-y" style={{ borderColor: "var(--zoca-border)" }}>
                   {topMovers.map((m, i) => (
-                    <li key={m.am} className="flex items-center gap-3 py-2 text-[13px]">
-                      <span className="w-5 text-center text-[11px] font-bold text-zoca-text-soft tabular-nums">
+                    <li
+                      key={m.am}
+                      className="flex items-center gap-3 py-2 text-[13px] -mx-2 px-2 rounded-md transition"
+                      style={{ borderColor: "var(--zoca-border)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(20,110,245,0.04)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <span className="w-5 text-center text-[11px] font-bold text-zoca-text-2 tabular-nums">
                         #{i + 1}
                       </span>
                       <button
                         onClick={() => handleJumpToAm(m.am)}
-                        className="font-medium text-zoca-text-primary underline-offset-4 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                        className="font-medium text-zoca-text underline-offset-4 hover:underline focus:outline-none"
+                        style={{ color: "var(--zoca-text)" }}
                         aria-label={`Open ${m.am}'s book`}
                         title={`Open ${m.am}'s book`}
                       >
                         {m.am}
                       </button>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-zoca-text-soft">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-zoca-text-2">
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${POD_COLOR_DOT[m.pod] || "bg-slate-400"}`}
+                          className={`h-1.5 w-1.5 rounded-full ${POD_COLOR_DOT[m.pod] || "bg-slate-500"}`}
                           aria-hidden
                         />
                         {m.pod}
                       </span>
                       {moverMode === "trajectory" ? (
                         <span
-                          className="ml-auto inline-flex items-center gap-1 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300 tabular-nums"
+                          className="zoca-chip-amber ml-auto tabular-nums"
+                          style={{ textTransform: "none", letterSpacing: "0.02em" }}
                           title={`${m.flagged} of ${m.total} customers have performance trajectory flagged`}
                         >
                           {"\u26D1"} {m.flagged} flagged
-                          <span className="font-normal text-zoca-text-soft">
+                          <span className="font-normal opacity-70 ml-1">
                             ({((m.flagged / Math.max(m.total, 1)) * 100).toFixed(0)}%)
                           </span>
                         </span>
                       ) : (
-                        <span className="ml-auto inline-flex items-center gap-1 rounded-zoca-pill bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-300 tabular-nums">
+                        <span
+                          className="zoca-chip-pink ml-auto tabular-nums"
+                          style={{ textTransform: "none", letterSpacing: "0.02em" }}
+                        >
                           {m.red} RED
-                          <span className="font-normal text-zoca-text-soft">
+                          <span className="font-normal opacity-70 ml-1">
                             ({m.pctRed.toFixed(0)}%)
                           </span>
                         </span>
@@ -979,20 +1008,22 @@ export default function V2ManagerDashboard() {
                       )}
                       {amTrends[m.am]?.length > 1 && (
                         <span
-                          className="hidden text-rose-300 md:inline"
+                          className="hidden md:inline"
+                          style={{ color: "var(--zoca-pink)" }}
                           title={`${m.am} RED-count trend, last ${amTrends[m.am].length} days`}
                         >
                           <V2Sparkline
                             values={amTrends[m.am].map((p) => p.red)}
                             width={60}
                             height={18}
-                            color="rgb(251 113 133)"
+                            color="var(--zoca-pink)"
                             label={`${m.am} RED-count trend`}
                           />
                         </span>
                       )}
                       <span
-                        className="hidden text-[11px] text-rose-300 tabular-nums sm:inline"
+                        className="hidden text-[11px] tabular-nums sm:inline font-semibold"
+                        style={{ color: "var(--zoca-pink)" }}
                         title="MRR at risk in this AM's book"
                       >
                         {formatMoney(m.mrrAtRisk)} @ risk
@@ -1029,17 +1060,21 @@ export default function V2ManagerDashboard() {
 
             <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h3 className="font-display text-base font-bold text-zoca-text-primary">
+                <h3
+                  className="font-extrabold text-zoca-text"
+                  style={{ fontSize: "17px", letterSpacing: "-0.015em" }}
+                >
                   Full AM rollup
                 </h3>
-                <p className="mt-0.5 text-[11px] text-zoca-text-soft">
+                <p className="mt-0.5 text-[11px] text-zoca-text-2">
                   {selectedPod === "All"
                     ? "All AMs across all pods."
                     : `Filtered to ${selectedPod}. `}
                   {selectedPod !== "All" && (
                     <button
                       onClick={() => setSelectedPod("All")}
-                      className="underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                      className="font-semibold underline-offset-2 hover:underline focus:outline-none"
+                      style={{ color: "var(--zoca-pink)" }}
                     >
                       Show all pods
                     </button>
@@ -1059,10 +1094,13 @@ export default function V2ManagerDashboard() {
         )}
       </main>
 
-      <footer className="border-t border-zoca-border py-8 text-center print:hidden">
-        <div className="flex flex-col items-center gap-2 opacity-70">
-          <ZocaLogo height={18} />
-          <p className="text-xs text-zoca-text-soft">
+      <footer
+        className="py-8 text-center print:hidden"
+        style={{ borderTop: "1px solid var(--zoca-border)" }}
+      >
+        <div className="flex flex-col items-center gap-2 opacity-80">
+          <ZocaLogo height={18} color="var(--zoca-text)" />
+          <p className="text-xs text-zoca-text-2">
             Customer Health · v2 manager view · refreshed daily at 22:00 UTC
           </p>
         </div>
@@ -1092,24 +1130,30 @@ function Kpi({
   sparkValues?: number[];
   sparkColor?: string;
 }) {
-  const valueClass =
+  const valueColor =
     tone === "rose"
-      ? "text-rose-400"
+      ? "var(--zoca-pink)"
       : tone === "amber"
-        ? "text-amber-400"
+        ? "var(--zoca-amber)"
         : tone === "emerald"
-          ? "text-emerald-400"
-          : "text-zoca-text-primary";
+          ? "var(--zoca-green)"
+          : "var(--zoca-text)";
   return (
-    <div className="rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/40 px-4 py-3 print:border-zinc-300 print:bg-white">
-      <div className="text-[11px] uppercase tracking-wider text-zoca-text-soft print:text-zinc-600">
-        {label}
-      </div>
-      <div className={`mt-0.5 font-display text-2xl font-bold tabular-nums ${valueClass}`}>
+    <div className="zoca-card print:border-zinc-300 print:bg-white">
+      <div className="zoca-micro-label print:text-zinc-600">{label}</div>
+      <div
+        className="mt-1 font-extrabold tabular-nums"
+        style={{
+          fontSize: "26px",
+          lineHeight: 1.05,
+          letterSpacing: "-0.025em",
+          color: valueColor,
+        }}
+      >
         {value}
       </div>
       {sub && (
-        <div className="mt-0.5 text-[10px] text-zoca-text-soft print:text-zinc-600">{sub}</div>
+        <div className="mt-0.5 text-[10px] text-zoca-text-2 print:text-zinc-600">{sub}</div>
       )}
       {delta !== null && delta !== undefined && (
         <div className="mt-1">
@@ -1125,9 +1169,9 @@ function Kpi({
         <div className="mt-2 print:hidden" aria-hidden={false}>
           <V2Sparkline
             values={sparkValues}
-            width={120}
+            width={140}
             height={22}
-            color={sparkColor || "currentColor"}
+            color={sparkColor || valueColor}
             label={`${label} trend, last ${sparkValues.length} days`}
           />
         </div>
@@ -1150,7 +1194,12 @@ function DeltaBadge({
   if (delta === 0) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 rounded-zoca-pill bg-zoca-bg-3/40 px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-soft"
+        className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+        style={{
+          background: "var(--zoca-bg-soft)",
+          color: "var(--zoca-text-2)",
+          border: "1px solid var(--zoca-border)",
+        }}
         title="No change vs comparison"
       >
         ± 0 {unit && unit !== "vs prev" ? unit : ""}
@@ -1158,14 +1207,26 @@ function DeltaBadge({
     );
   }
   const positive = delta > 0;
-  let tone: string;
+  let bgStyle: React.CSSProperties;
   if (neutral) {
-    tone = "bg-zoca-bg-3/40 text-zoca-text-muted";
+    bgStyle = {
+      background: "var(--zoca-bg-soft)",
+      color: "var(--zoca-text-2)",
+      border: "1px solid var(--zoca-border)",
+    };
   } else {
     const isGood = lowerIsBetter ? !positive : positive;
-    tone = isGood
-      ? "bg-emerald-500/15 text-emerald-300"
-      : "bg-rose-500/15 text-rose-300";
+    bgStyle = isGood
+      ? {
+          background: "rgba(16,185,129,0.08)",
+          color: "#047857",
+          border: "1px solid rgba(16,185,129,0.22)",
+        }
+      : {
+          background: "rgba(255,134,225,0.12)",
+          color: "#c026d3",
+          border: "1px solid rgba(255,86,187,0.22)",
+        };
   }
   const arrow = positive ? "▲" : "▼";
   const abs = Math.abs(delta);
@@ -1173,7 +1234,8 @@ function DeltaBadge({
     unit === "$" ? `$${abs.toLocaleString()}` : unit === "vs prev" ? `${abs}` : `${abs} ${unit || ""}`.trim();
   return (
     <span
-      className={`inline-flex items-center gap-0.5 rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
+      className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+      style={bgStyle}
       title={`Change vs comparison snapshot: ${positive ? "+" : "-"}${abs}${unit ? ` ${unit === "vs prev" ? "" : unit}` : ""}`}
     >
       {arrow} {display}
@@ -1182,27 +1244,33 @@ function DeltaBadge({
 }
 
 function ManagerSkeleton() {
+  const tile =
+    "h-20 animate-pulse rounded-2xl border bg-white";
+  const tileBig =
+    "h-32 animate-pulse rounded-2xl border bg-white";
+  const tileXL =
+    "animate-pulse rounded-2xl border bg-white";
+  const borderStyle = { borderColor: "var(--zoca-border)" };
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div
+        className="grid gap-3"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+        }}
+      >
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-20 animate-pulse rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30"
-          />
+          <div key={i} className={tile} style={borderStyle} />
         ))}
       </div>
-      <div className="h-32 animate-pulse rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30" />
+      <div className={tileBig} style={borderStyle} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-32 animate-pulse rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30"
-          />
+          <div key={i} className={tileBig} style={borderStyle} />
         ))}
       </div>
-      <div className="h-48 animate-pulse rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30" />
-      <div className="h-96 animate-pulse rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30" />
+      <div className={`${tileXL} h-48`} style={borderStyle} />
+      <div className={`${tileXL} h-96`} style={borderStyle} />
     </div>
   );
 }

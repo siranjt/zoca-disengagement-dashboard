@@ -12,6 +12,9 @@ import { useState, useTransition } from "react";
  *
  * Compose-only: does NOT re-pull from Chargebee/HubSpot/Metabase. The daily
  * 22:00 UTC cron still owns the upstream stages.
+ *
+ * Phase 17.D — restyled to the Zoca brand light theme (pink outline pill
+ * matching V2RefreshBar's "Refresh live data" CTA).
  */
 export function RefreshButton() {
   const [status, setStatus] = useState<"idle" | "refreshing" | "error">("idle");
@@ -39,16 +42,31 @@ export function RefreshButton() {
     }
   }
 
+  const refreshing = status === "refreshing";
   return (
     <button
       onClick={handleClick}
-      disabled={status === "refreshing"}
-      className="inline-flex items-center gap-1.5 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1 text-[11px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={refreshing}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+      style={{
+        background: "transparent",
+        color: "var(--zoca-pink)",
+        border: "1px solid rgba(255,86,187,0.32)",
+        letterSpacing: "-0.005em",
+      }}
+      onMouseEnter={(e) => {
+        if (!refreshing) {
+          e.currentTarget.style.background = "rgba(255,134,225,0.06)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
       title={errorMsg || "Re-run compose to refresh the snapshot from current stage data"}
     >
       {status === "refreshing" ? (
         <>
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
           Refreshing…
         </>
       ) : status === "error" ? (

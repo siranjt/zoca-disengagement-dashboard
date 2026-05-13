@@ -1,16 +1,30 @@
 "use client";
 import { ZocaLogo } from "./ZocaLogo";
 import { AmPickerPill } from "./AmPickerPill";
+import { RefreshButton } from "./RefreshButton";
 import type { V2View } from "./V2Dashboard";
 
-type Props = {
+type AmProps = {
   generatedAt?: string | null;
+  mode?: "am";
   selectedAm: string;
   allAms: string[];
   onAmChange: (am: string) => void;
   view: V2View;
   setView: (view: V2View) => void;
 };
+
+type ManagerProps = {
+  generatedAt?: string | null;
+  mode: "manager";
+  selectedAm?: never;
+  allAms?: never;
+  onAmChange?: never;
+  view?: never;
+  setView?: never;
+};
+
+type Props = AmProps | ManagerProps;
 
 function relativeAge(generatedAt: string | null | undefined): string {
   if (!generatedAt) return "—";
@@ -26,25 +40,22 @@ function relativeAge(generatedAt: string | null | undefined): string {
 }
 
 /**
- * Phase 17.B.1 + 17.C — Consolidated top nav.
+ * Phase 17.B.1 + 17.C + 17.D — Consolidated top nav.
  *
- * SINGLE sticky bar holding the entire global chrome:
- *   left:  ZOCA logo + "| Customer Health" + AM picker pill
- *   right: view tabs (My customers / Pod view / Leadership)
- *          + Manager link
- *          + Live status pill
- *
- * Replaces the previous V2TopBar entirely. No second nav bar renders
- * anywhere on the page.
+ * SINGLE sticky bar holding the entire global chrome.
+ *   mode="am":
+ *     left:  ZOCA logo + "| Customer Health" + AM picker pill
+ *     right: view tabs (My customers / Pod view / Leadership)
+ *            + Manager link + Live status pill
+ *   mode="manager" (Phase 17.D):
+ *     left:  ZOCA logo + "| Customer Health · Manager"
+ *     right: "← AM view" link + Refresh button + Live status pill
+ *            (no AM picker, no view tabs — this is rollup-level)
  */
-export function V2Header({
-  generatedAt,
-  selectedAm,
-  allAms,
-  onAmChange,
-  view,
-  setView,
-}: Props) {
+export function V2Header(props: Props) {
+  const { generatedAt, mode } = props;
+  const isManager = mode === "manager";
+
   return (
     <nav
       className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3"
@@ -53,7 +64,7 @@ export function V2Header({
         borderColor: "var(--zoca-border)",
       }}
     >
-      {/* Left side — branding + AM picker */}
+      {/* Left side — branding + (AM picker for AM mode, page name for manager mode) */}
       <div className="flex items-center gap-3 flex-wrap">
         <a
           href="/v2"
@@ -66,57 +77,83 @@ export function V2Header({
             className="text-zoca-text text-[13px] font-medium"
             style={{ letterSpacing: "-0.005em" }}
           >
-            Customer Health
+            {isManager ? "Customer Health · Manager" : "Customer Health"}
           </span>
         </a>
 
-        <AmPickerPill
-          selectedAm={selectedAm}
-          allAms={allAms}
-          onChange={onAmChange}
-        />
+        {!isManager && (
+          <AmPickerPill
+            selectedAm={props.selectedAm}
+            allAms={props.allAms}
+            onChange={props.onAmChange}
+          />
+        )}
       </div>
 
-      {/* Right side — view tabs, manager link, live status */}
+      {/* Right side — view tabs / manager link / live status */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div
-          className="inline-flex items-center gap-1 p-1 rounded-lg"
-          style={{
-            background: "var(--zoca-bg-soft)",
-            border: "1px solid var(--zoca-border)",
-          }}
-        >
-          <ViewTab
-            label="My customers"
-            active={view === "am"}
-            onClick={() => setView("am")}
-          />
-          <ViewTab
-            label="Pod view"
-            active={view === "pod"}
-            onClick={() => setView("pod")}
-          />
-          <ViewTab
-            label="Leadership"
-            active={view === "leadership"}
-            onClick={() => setView("leadership")}
-          />
-        </div>
+        {!isManager && (
+          <>
+            <div
+              className="inline-flex items-center gap-1 p-1 rounded-lg"
+              style={{
+                background: "var(--zoca-bg-soft)",
+                border: "1px solid var(--zoca-border)",
+              }}
+            >
+              <ViewTab
+                label="My customers"
+                active={props.view === "am"}
+                onClick={() => props.setView("am")}
+              />
+              <ViewTab
+                label="Pod view"
+                active={props.view === "pod"}
+                onClick={() => props.setView("pod")}
+              />
+              <ViewTab
+                label="Leadership"
+                active={props.view === "leadership"}
+                onClick={() => props.setView("leadership")}
+              />
+            </div>
 
-        <a
-          href="/v2/manager"
-          className="text-[11px] font-medium text-zoca-text transition"
-          style={{ textDecoration: "none" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--zoca-blue)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--zoca-text)";
-          }}
-          aria-label="Open manager dashboard"
-        >
-          Manager <span className="text-[10px]">→</span>
-        </a>
+            <a
+              href="/v2/manager"
+              className="text-[11px] font-medium text-zoca-text transition"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--zoca-blue)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--zoca-text)";
+              }}
+              aria-label="Open manager dashboard"
+            >
+              Manager <span className="text-[10px]">→</span>
+            </a>
+          </>
+        )}
+
+        {isManager && (
+          <>
+            <a
+              href="/v2"
+              className="text-[11px] font-medium text-zoca-text transition"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--zoca-blue)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--zoca-text)";
+              }}
+              aria-label="Back to AM view"
+            >
+              <span className="text-[10px]">←</span> AM view
+            </a>
+            <RefreshButton />
+          </>
+        )}
 
         <div className="flex items-center gap-2 text-[11px] text-zoca-text-2">
           <span className="zoca-pulse-dot-green" />

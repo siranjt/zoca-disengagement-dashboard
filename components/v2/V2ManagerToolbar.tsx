@@ -206,23 +206,29 @@ export default function V2ManagerToolbar({
 
   return (
     <div
-      className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/30 px-3 py-2 print:hidden"
+      className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-2.5 print:hidden"
+      style={{
+        background: "#ffffff",
+        border: "1px solid var(--zoca-border)",
+        boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
+      }}
       role="toolbar"
       aria-label="Manager view controls"
     >
       {/* Date picker */}
       <div className="flex items-center gap-1.5">
-        <label
-          htmlFor="manager-date"
-          className="text-[11px] uppercase tracking-wider text-zoca-text-soft"
-        >
+        <label htmlFor="manager-date" className="zoca-micro-label">
           Snapshot
         </label>
         <select
           id="manager-date"
           value={currentDate}
           onChange={(e) => onDateChange(e.target.value)}
-          className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-2.5 py-1 text-[12px] text-zoca-text-primary focus:border-zoca-border-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          className="rounded-full px-2.5 py-1 text-[12px] text-zoca-text focus:outline-none"
+          style={{
+            background: "var(--zoca-bg-soft)",
+            border: "1px solid var(--zoca-border)",
+          }}
           aria-label="Snapshot date"
         >
           <option value="today">Today (latest)</option>
@@ -249,13 +255,29 @@ export default function V2ManagerToolbar({
               disabled={t.disabled}
               aria-pressed={active}
               title={t.disabled ? `No snapshot available for ${t.label}` : `Jump to ${t.label}`}
-              className={`rounded-zoca-pill border px-2 py-0.5 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 ${
+              className="rounded-full px-3 py-1 text-[11px] transition focus:outline-none"
+              style={
                 active
-                  ? "border-zoca-pink-cta bg-zoca-pink-cta/20 text-zoca-text-primary"
+                  ? {
+                      background: "var(--zoca-text)",
+                      color: "#ffffff",
+                      border: "1px solid var(--zoca-text)",
+                      fontWeight: 600,
+                    }
                   : t.disabled
-                    ? "cursor-not-allowed border-zoca-border bg-zoca-bg-2/20 text-zoca-text-soft/50"
-                    : "border-zoca-border-2 bg-zoca-bg-2/60 text-zoca-text-soft hover:border-zoca-border-3 hover:text-zoca-text-primary"
-              }`}
+                    ? {
+                        cursor: "not-allowed",
+                        background: "var(--zoca-bg-soft)",
+                        color: "var(--zoca-text-3)",
+                        border: "1px solid var(--zoca-border)",
+                      }
+                    : {
+                        background: "transparent",
+                        color: "var(--zoca-text-2)",
+                        border: "1px solid var(--zoca-border)",
+                        fontWeight: 500,
+                      }
+              }
             >
               {t.label}
             </button>
@@ -265,17 +287,18 @@ export default function V2ManagerToolbar({
 
       {/* Compare */}
       <div className="flex items-center gap-1.5">
-        <label
-          htmlFor="manager-compare"
-          className="text-[11px] uppercase tracking-wider text-zoca-text-soft"
-        >
+        <label htmlFor="manager-compare" className="zoca-micro-label">
           Compare
         </label>
         <select
           id="manager-compare"
           value={compareDays}
           onChange={(e) => onCompareDaysChange(Number(e.target.value))}
-          className="rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-2.5 py-1 text-[12px] text-zoca-text-primary focus:border-zoca-border-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          className="rounded-full px-2.5 py-1 text-[12px] text-zoca-text focus:outline-none"
+          style={{
+            background: "var(--zoca-bg-soft)",
+            border: "1px solid var(--zoca-border)",
+          }}
           aria-label="Compare to N days ago"
         >
           {COMPARE_OPTIONS.map((o) => (
@@ -286,12 +309,13 @@ export default function V2ManagerToolbar({
         </select>
         {comparisonLoading && (
           <span
-            className="inline-flex items-center gap-1 text-[11px] text-zoca-text-soft"
+            className="inline-flex items-center gap-1 text-[11px] text-zoca-text-2"
             role="status"
             aria-live="polite"
           >
             <span
-              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-zoca-pink-cta/60"
+              className="zoca-pulse-dot-pink inline-block"
+              style={{ width: "8px", height: "8px" }}
               aria-hidden
             />
             Loading…
@@ -305,30 +329,40 @@ export default function V2ManagerToolbar({
           onClick={() => setViewsOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={viewsOpen}
-          className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1 text-[12px] text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] transition focus:outline-none"
+          style={{
+            background: "var(--zoca-bg-soft)",
+            border: "1px solid var(--zoca-border)",
+            color: "var(--zoca-text-2)",
+          }}
         >
-          <span aria-hidden>★</span>
+          <span aria-hidden style={{ color: "var(--zoca-pink)" }}>★</span>
           {currentViewName ? (
-            <span className="max-w-[140px] truncate text-zoca-text-primary">
+            <span className="max-w-[140px] truncate" style={{ color: "var(--zoca-text)" }}>
               {currentViewName}
             </span>
           ) : (
             <span>Saved views</span>
           )}
-          <span className="text-[9px] text-zoca-text-soft" aria-hidden>
+          <span className="text-[9px] text-zoca-text-3" aria-hidden>
             ▾
           </span>
         </button>
         {viewsOpen && (
           <div
             role="menu"
-            className="absolute right-0 top-full z-40 mt-1.5 w-72 overflow-hidden rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/95 shadow-zoca-md backdrop-blur-xl"
+            className="absolute right-0 top-full z-40 mt-1.5 w-72 overflow-hidden rounded-2xl"
+            style={{
+              background: "#ffffff",
+              border: "1px solid var(--zoca-border)",
+              boxShadow: "0 12px 28px -8px rgba(11,5,29,0.10)",
+            }}
           >
-            <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-zoca-text-soft">
+            <div className="px-3 py-2 zoca-micro-label">
               Saved views
             </div>
             {savedViews.length === 0 && (
-              <div className="px-3 pb-2 text-[11px] text-zoca-text-soft">
+              <div className="px-3 pb-2 text-[11px] text-zoca-text-2">
                 No saved views yet. Click "Save current view" below.
               </div>
             )}
@@ -339,9 +373,11 @@ export default function V2ManagerToolbar({
                 return (
                   <li
                     key={v.name}
-                    className={`flex items-center justify-between gap-2 border-t border-zoca-border px-3 py-2 text-[12px] ${
-                      isCurrent ? "bg-zoca-pink-cta/10" : ""
-                    }`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-[12px]"
+                    style={{
+                      borderTop: "1px solid var(--zoca-border)",
+                      background: isCurrent ? "rgba(255,134,225,0.06)" : "transparent",
+                    }}
                   >
                     {isRenaming ? (
                       <form
@@ -359,12 +395,17 @@ export default function V2ManagerToolbar({
                           onKeyDown={(e) => {
                             if (e.key === "Escape") setRenamingName(null);
                           }}
-                          className="flex-1 rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-2 py-0.5 text-[11px] text-zoca-text-primary focus:border-zoca-pink-cta focus:outline-none"
+                          className="flex-1 rounded px-2 py-0.5 text-[11px] text-zoca-text focus:outline-none"
+                          style={{
+                            background: "var(--zoca-bg-soft)",
+                            border: "1px solid var(--zoca-border-2)",
+                          }}
                           aria-label="New view name"
                         />
                         <button
                           type="submit"
-                          className="text-[11px] text-zoca-pink-cta underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                          className="text-[11px] font-semibold underline-offset-2 hover:underline focus:outline-none"
+                          style={{ color: "var(--zoca-pink)" }}
                           aria-label="Save new name"
                         >
                           Save
@@ -372,7 +413,7 @@ export default function V2ManagerToolbar({
                         <button
                           type="button"
                           onClick={() => setRenamingName(null)}
-                          className="text-[11px] text-zoca-text-soft underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                          className="text-[11px] text-zoca-text-2 underline-offset-2 hover:underline focus:outline-none"
                           aria-label="Cancel rename"
                         >
                           Cancel
@@ -385,11 +426,11 @@ export default function V2ManagerToolbar({
                             onApplyView(v);
                             setViewsOpen(false);
                           }}
-                          className="flex-1 text-left text-zoca-text-primary underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                          className="flex-1 text-left text-zoca-text underline-offset-2 hover:underline focus:outline-none"
                           aria-label={`Apply view ${v.name}`}
                         >
                           <span className="font-medium">{v.name}</span>
-                          <span className="ml-1 text-[10px] text-zoca-text-soft">
+                          <span className="ml-1 text-[10px] text-zoca-text-2">
                             {v.selectedPod === "All" ? "All pods" : v.selectedPod}
                             {v.currentDate !== "today" ? ` · ${v.currentDate}` : ""}
                             {v.compareDays > 0 ? ` · vs ${v.compareDays}d` : ""}
@@ -397,7 +438,7 @@ export default function V2ManagerToolbar({
                         </button>
                         <button
                           onClick={() => setRenamingName(v.name)}
-                          className="text-[11px] text-zoca-text-soft underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                          className="text-[11px] text-zoca-text-2 underline-offset-2 hover:underline focus:outline-none"
                           aria-label={`Rename view ${v.name}`}
                           title="Rename"
                         >
@@ -405,7 +446,8 @@ export default function V2ManagerToolbar({
                         </button>
                         <button
                           onClick={() => onDeleteView(v.name)}
-                          className="text-[12px] text-zoca-text-soft underline-offset-2 hover:text-rose-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                          className="text-[12px] text-zoca-text-2 underline-offset-2 hover:underline focus:outline-none"
+                          style={{ color: "var(--zoca-text-2)" }}
                           aria-label={`Delete view ${v.name}`}
                           title={`Delete view ${v.name}`}
                         >
@@ -417,7 +459,7 @@ export default function V2ManagerToolbar({
                 );
               })}
             </ul>
-            <div className="border-t border-zoca-border">
+            <div style={{ borderTop: "1px solid var(--zoca-border)" }}>
               {saveMode ? (
                 <form
                   className="flex items-center gap-1 px-3 py-2"
@@ -438,20 +480,29 @@ export default function V2ManagerToolbar({
                       if (e.key === "Escape") setSaveMode(false);
                     }}
                     placeholder="View name"
-                    className="flex-1 rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-2 py-1 text-[12px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-pink-cta focus:outline-none"
+                    className="flex-1 rounded px-2 py-1 text-[12px] text-zoca-text focus:outline-none"
+                    style={{
+                      background: "var(--zoca-bg-soft)",
+                      border: "1px solid var(--zoca-border-2)",
+                    }}
                     aria-label="New view name"
                     aria-invalid={!!saveError}
                   />
                   <button
                     type="submit"
-                    className="rounded-zoca-pill bg-zoca-pink-cta/20 px-2 py-0.5 text-[11px] font-medium text-zoca-pink-cta transition hover:bg-zoca-pink-cta/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                    className="rounded-full px-3 py-0.5 text-[11px] font-semibold transition focus:outline-none"
+                    style={{
+                      background: "rgba(255,134,225,0.10)",
+                      color: "var(--zoca-pink)",
+                      border: "1px solid rgba(255,86,187,0.22)",
+                    }}
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setSaveMode(false)}
-                    className="text-[11px] text-zoca-text-soft hover:text-zoca-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                    className="text-[11px] text-zoca-text-2 hover:text-zoca-text focus:outline-none"
                     aria-label="Cancel save"
                   >
                     Cancel
@@ -460,14 +511,25 @@ export default function V2ManagerToolbar({
               ) : (
                 <button
                   onClick={() => setSaveMode(true)}
-                  className="w-full px-3 py-2 text-left text-[12px] font-medium text-zoca-pink-cta transition hover:bg-zoca-pink-cta/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                  className="w-full px-3 py-2 text-left text-[12px] font-semibold transition focus:outline-none"
+                  style={{ color: "var(--zoca-pink)" }}
                   aria-label="Save current view"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,134,225,0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
                 >
                   + Save current view
                 </button>
               )}
               {saveError && (
-                <div className="px-3 pb-2 text-[11px] text-rose-300" role="alert">
+                <div
+                  className="px-3 pb-2 text-[11px]"
+                  style={{ color: "var(--zoca-pink)" }}
+                  role="alert"
+                >
                   {saveError}
                 </div>
               )}
