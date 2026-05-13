@@ -35,9 +35,12 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
   const seen = new Set<string>();
   const customerToEntities = new Map<string, Set<string>>();
 
-  // v2 — exclude "future" (yet-to-start contracts inflate AM book counts
-  // without representing live customers). Keep active / non_renewing / in_trial.
-  for (const status of ["active", "non_renewing", "in_trial"] as const) {
+  // v2 — include "future" so AMs can see upcoming signed customers.
+  // TODO: future subs hit the scoring engine with zero comms/usage/billing
+  // and look like worst-case churning customers; they peg HIGH/RED. Phase 8
+  // should add a 'pre-launch' state in scoring keyed off activated_at being
+  // null or in the future, distinct from the RED stoplight.
+  for (const status of ["active", "non_renewing", "in_trial", "future"] as const) {
     let offset: string | undefined;
     let page = 0;
     do {
