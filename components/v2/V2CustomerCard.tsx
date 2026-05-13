@@ -662,7 +662,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]"
               aria-live="polite"
             >
-              \u2713 Logged {actionState.choice === "connected" ? "as connected" : actionState.choice === "vm" ? "voicemail" : "no reach"}
+              ✓ Logged {actionState.choice === "connected" ? "as connected" : actionState.choice === "vm" ? "voicemail" : "no reach"}
               <button
                 type="button"
                 onClick={() => setActionState({ kind: "idle" })}
@@ -679,21 +679,21 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               </div>
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 <ActionChip
-                  label="\u2713 Connected"
+                  label="✓ Connected"
                   tone="emerald"
                   busy={false}
                   disabled={false}
                   onClick={() => setActionState({ kind: "tagging", choice: "connected", reason: "", followUp: false })}
                 />
                 <ActionChip
-                  label="\ud83d\udcde VM"
+                  label="📞 VM"
                   tone="amber"
                   busy={false}
                   disabled={false}
                   onClick={() => setActionState({ kind: "tagging", choice: "vm", reason: "", followUp: true })}
                 />
                 <ActionChip
-                  label="\u00d7 No reach"
+                  label="× No reach"
                   tone="rose"
                   busy={false}
                   disabled={false}
@@ -1135,7 +1135,7 @@ function SignalChipRow({
           key={c.key}
           type="button"
           onClick={() => onChipClick(c.key)}
-          className="v2-chip-clickable rounded-zoca-sm bg-rose-500/12 px-2 py-0.5 text-[10px] font-medium text-rose-700 ring-1 ring-rose-500/25"
+          className="v2-chip-clickable rounded-full bg-rose-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 ring-1 ring-rose-500/25"
           title={`Filter book to: ${c.label}`}
           aria-label={`Filter book to ${c.label}`}
         >

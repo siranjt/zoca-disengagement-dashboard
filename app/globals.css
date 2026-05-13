@@ -574,4 +574,6 @@ button:active:not(.no-press),
   background-size: 200% 200%, 200% 200%, 200% 200%;
   animation: v2-mesh-drift 24s ease-in-out infinite;
 }
-.v2-mesh-bg > * { position: relative; z-index: 1; }
+.v2-mesh-bg > *:not(.sr-only) { position: relative; z-index: 1; }
+/* Bug fix: preserve Tailwind .sr-only absolute positioning so the
+ * "Skip to dashboard content" a11y link stays visually hidden until focus. */
