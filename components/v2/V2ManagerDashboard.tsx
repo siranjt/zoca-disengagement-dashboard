@@ -11,6 +11,7 @@ import V2ManagerToolbar, { type SavedView, nearestAvailable } from "./V2ManagerT
 import V2StoplightMovement from "./V2StoplightMovement";
 import V2Sparkline from "./V2Sparkline";
 import ScopeStrip from "./ScopeStrip";
+import { RefreshButton } from "./RefreshButton";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -673,6 +674,7 @@ export default function V2ManagerDashboard() {
             <span className="text-[11px] text-zoca-text-soft" title={snapshotDate}>
               {freshnessLabel}
             </span>
+            <RefreshButton />
           </div>
         </div>
       </nav>

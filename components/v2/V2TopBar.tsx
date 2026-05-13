@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ZocaLogo from "@/components/ZocaLogo";
+import { RefreshButton } from "./RefreshButton";
 import { POD_MAP } from "@/lib/config";
 import type { V2View } from "./V2Dashboard";
 
@@ -99,12 +100,15 @@ export default function V2TopBar({
         </div>
 
         {/* Freshness */}
-        <div className="hidden items-center gap-1.5 text-[11px] text-zoca-text-soft md:flex">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full bg-green-400"
-            style={{ boxShadow: "0 0 8px rgba(74,222,128,0.7)" }}
-          />
-          {freshness}
+        <div className="hidden items-center gap-2 text-[11px] text-zoca-text-soft md:flex">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full bg-green-400"
+              style={{ boxShadow: "0 0 8px rgba(74,222,128,0.7)" }}
+            />
+            {freshness}
+          </div>
+          <RefreshButton />
         </div>
 
         {/* View switcher */}
