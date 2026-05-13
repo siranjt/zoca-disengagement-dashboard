@@ -24,6 +24,34 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
   const [customerTrends, setCustomerTrends] = useState<Record<string, CustomerTrendPoint[]>>({});
+  const [contactedRecently, setContactedRecently] = useState<Set<string>>(new Set());
+
+  // Fetch the set of entities this AM has contacted in the last 7 days so we
+  // can dim those cards and show a 'Contacted Xd ago' chip.
+  useEffect(() => {
+    if (!amName) {
+      setContactedRecently(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/v2/am/${encodeURIComponent(amName)}/contacted-recently?days=7`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as { entity_ids: string[] };
+        if (cancelled) return;
+        setContactedRecently(new Set(json.entity_ids || []));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [amName]);
 
   useEffect(() => {
     if (customers.length === 0) {
@@ -246,7 +274,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((c) => (
-            <V2CustomerCard key={c.entity_id} customer={c} trend={customerTrends[c.entity_id]} />
+            <V2CustomerCard
+              key={c.entity_id}
+              customer={c}
+              trend={customerTrends[c.entity_id]}
+              recentlyContacted={contactedRecently.has(c.entity_id)}
+            />
           ))}
         </div>
       )}

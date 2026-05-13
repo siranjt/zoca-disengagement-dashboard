@@ -261,7 +261,3 @@ export async function fetchPerformanceMetrics(): Promise<{
  * Compute the performance-trajectory modifier flag for a single entity.
  * Returns whether the flag is set + a human-readable reason list.
  */
-export function computePerformanceFlag(m: PerformanceMetrics | null): { flag: boolean; reasons: string[] } {
-  if (!m) return { flag: false, reasons: [] };
-  return { flag: m.flag, reasons: m.flag_reasons };
-}

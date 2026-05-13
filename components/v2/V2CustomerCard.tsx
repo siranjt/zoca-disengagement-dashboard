@@ -12,6 +12,7 @@ type CompositeTrendPoint = { date: string; composite: number };
 type Props = {
   customer: ScoredCustomerV2;
   trend?: CompositeTrendPoint[];
+  recentlyContacted?: boolean;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -28,11 +29,47 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-soft";
 
-function V2CustomerCardInner({ customer, trend }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
   const { signals_v2: s, metrics } = customer;
   const trajectoryBadge = computeTrend(s.trajectory_7d);
   const planText = customer.plan_amount > 0 ? `$${customer.plan_amount.toFixed(0)}/mo` : "";
   const podText = customer.pod ? ` · ${customer.pod}` : "";
+
+  // Feedback flow ("this signal is wrong" report)
+  type FeedbackState =
+    | { kind: "idle" }
+    | { kind: "open"; comment: string }
+    | { kind: "submitting" }
+    | { kind: "done" }
+    | { kind: "error"; message: string };
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>({ kind: "idle" });
+
+  async function submitFeedback(comment: string) {
+    setFeedbackState({ kind: "submitting" });
+    try {
+      const res = await fetch("/api/v2/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_id: customer.entity_id,
+          signal_name: "overall",
+          am_name: customer.am_name,
+          comment: comment.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => res.statusText);
+        setFeedbackState({ kind: "error", message: `${res.status}: ${txt.slice(0, 120)}` });
+        return;
+      }
+      setFeedbackState({ kind: "done" });
+    } catch (e) {
+      setFeedbackState({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
   // Auto-expand for RED stoplight OR YELLOW with performance flag so the
   // "why" is visible without an extra click on cards that need attention.
@@ -80,7 +117,7 @@ function V2CustomerCardInner({ customer, trend }: Props) {
   return (
     <article
       role="article"
-      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}`}
+      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}`}
       className="group rounded-zoca-lg border border-zoca-border bg-zoca-card transition-all duration-150 hover:border-zoca-border-3 hover:shadow-zoca-sm"
     >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">
@@ -103,6 +140,14 @@ function V2CustomerCardInner({ customer, trend }: Props) {
                 }
               >
                 🚀 Pre-launch
+              </span>
+            )}
+            {recentlyContacted && (
+              <span
+                className="rounded-zoca-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"
+                title="You've already logged a contact attempt against this customer in the last 7 days — avoid double-calling."
+              >
+                ✓ Contacted recently
               </span>
             )}
             {trajectoryBadge.label && (
@@ -142,6 +187,7 @@ function V2CustomerCardInner({ customer, trend }: Props) {
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-zoca-text-primary/95 md:text-sm">
             {renderReason(s.reason_one_line)}
+            <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
           </p>
           {/* Modifier flag chips */}
           {(s.flag_performance || s.flag_tickets) && (
@@ -438,6 +484,88 @@ function renderReason(text: string): React.ReactNode {
   );
 }
 
+function FeedbackButton({
+  state,
+  setState,
+  submit,
+}: {
+  state:
+    | { kind: "idle" }
+    | { kind: "open"; comment: string }
+    | { kind: "submitting" }
+    | { kind: "done" }
+    | { kind: "error"; message: string };
+  setState: React.Dispatch<React.SetStateAction<any>>;
+  submit: (comment: string) => Promise<void>;
+}) {
+  if (state.kind === "done") {
+    return (
+      <span
+        className="ml-2 inline-flex items-center rounded-zoca-pill bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300"
+        aria-live="polite"
+      >
+        ✓ Reported — thanks
+      </span>
+    );
+  }
+  if (state.kind === "open" || state.kind === "submitting" || state.kind === "error") {
+    const comment = state.kind === "open" ? state.comment : "";
+    return (
+      <span className="ml-2 inline-flex items-center gap-1 align-baseline">
+        <input
+          type="text"
+          autoFocus
+          placeholder="What's wrong? (optional)"
+          value={comment}
+          disabled={state.kind === "submitting"}
+          onChange={(e) =>
+            state.kind === "open" && setState({ kind: "open", comment: e.target.value })
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setState({ kind: "idle" });
+            if (e.key === "Enter") submit(comment);
+          }}
+          className="w-44 rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-2 py-0.5 text-[11px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-pink-cta focus:outline-none"
+          aria-label="Feedback comment"
+        />
+        <button
+          type="button"
+          onClick={() => submit(comment)}
+          disabled={state.kind === "submitting"}
+          className="text-[11px] text-zoca-pink-cta underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+          aria-label="Submit feedback"
+        >
+          {state.kind === "submitting" ? "Sending…" : "Send"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setState({ kind: "idle" })}
+          className="text-[11px] text-zoca-text-soft underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          aria-label="Cancel feedback"
+        >
+          cancel
+        </button>
+        {state.kind === "error" && (
+          <span className="text-[10px] text-rose-300" role="alert">
+            {state.message}
+          </span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setState({ kind: "open", comment: "" })}
+      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-soft transition hover:bg-zoca-bg-3/40 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
+      aria-label="This signal looks wrong — send feedback"
+      title="This signal looks wrong — let us know"
+    >
+      ✗ wrong?
+    </button>
+  );
+}
+
 type ActionChoice = "connected" | "vm" | "noreach";
 
 function ActionChip({
@@ -480,7 +608,8 @@ const V2CustomerCard = memo(V2CustomerCardInner, (prev, next) => {
     prev.customer.signals_v2.composite === next.customer.signals_v2.composite &&
     prev.customer.signals_v2.stoplight === next.customer.signals_v2.stoplight &&
     prev.customer.performance?.flag === next.customer.performance?.flag &&
-    prev.trend === next.trend
+    prev.trend === next.trend &&
+    prev.recentlyContacted === next.recentlyContacted
   );
 });
 
