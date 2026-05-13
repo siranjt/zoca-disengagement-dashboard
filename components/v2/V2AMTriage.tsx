@@ -14,7 +14,7 @@ type Props = {
   generatedAt: string;
 };
 
-type FilterKey = "act" | "improving" | "quiet";
+type FilterKey = "act" | "improving" | "quiet" | "all";
 type SortKey = "urgency" | "plan" | "lasttouch";
 
 const ACT_TODAY_TOP_N = 10;
@@ -84,13 +84,21 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       .sort((a, b) => b.metrics.days_since_in - a.metrics.days_since_in)
       .slice(0, 20);
 
-    return { act, improving, quiet: quiet30 };
+    // 'all' bucket: the full book sorted by composite desc; pre-launch
+    // customers retained (the AM still wants to see them, they just don't
+    // appear in 'Act today').
+    const all = [...customers].sort(
+      (a, b) => b.signals_v2.composite - a.signals_v2.composite,
+    );
+
+    return { act, improving, quiet: quiet30, all };
   }, [customers]);
 
   const filterCounts = {
     act: baseBuckets.act.length,
     improving: baseBuckets.improving.length,
     quiet: baseBuckets.quiet.length,
+    all: baseBuckets.all.length,
   };
 
   // Apply search + sort to current filter's customers
@@ -137,8 +145,15 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
       if (heroCount === 0) return "No one's clearly improving this week";
       return `${heroCount} customer${heroCount === 1 ? "" : "s"} doing well`;
     }
-    if (heroCount === 0) return "No one's been quiet for 30+ days";
-    return `${heroCount} customer${heroCount === 1 ? "" : "s"} you haven't heard from in 30+ days`;
+    if (filter === "quiet") {
+      if (heroCount === 0) return "No one's been quiet for 30+ days";
+      return `${heroCount} customer${heroCount === 1 ? "" : "s"} you haven't heard from in 30+ days`;
+    }
+    // 'all' filter
+    if (query.trim()) {
+      return `${heroCount} match${heroCount === 1 ? "" : "es"} for "${query.trim()}" in your book`;
+    }
+    return `${heroCount} customer${heroCount === 1 ? "" : "s"} in your book`;
   })();
 
   return (
@@ -183,6 +198,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
           count={filterCounts.quiet}
           active={filter === "quiet"}
           onClick={() => setFilter("quiet")}
+        />
+        <FilterChip
+          label="Full book"
+          count={filterCounts.all}
+          active={filter === "all"}
+          onClick={() => setFilter("all")}
         />
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -230,11 +251,17 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
         </div>
       )}
 
-      {/* Footer info */}
-      {customers.length > filtered.length && filtered.length > 0 && (
+      {/* Footer info — link to Full book view when we're showing a partial bucket */}
+      {customers.length > filtered.length && filtered.length > 0 && filter !== "all" && (
         <p className="mt-8 text-center text-[12px] text-zoca-text-soft">
           Showing {filtered.length} of {customers.length} in your book.{" "}
-          <span className="text-zoca-purple">Full book view — Phase 2.D</span>
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className="text-zoca-purple underline-offset-2 hover:text-zoca-pink-cta hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+          >
+            Open full book →
+          </button>
         </p>
       )}
 
@@ -304,6 +331,10 @@ function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boole
     quiet: {
       title: "No one's gone silent.",
       body: "Every customer in your book has been in touch within the last 30 days.",
+    },
+    all: {
+      title: "Your book is empty.",
+      body: "No customers in your book — either you're brand new or your accounts haven't loaded.",
     },
   };
   const m = messages[filter];
