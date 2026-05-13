@@ -220,8 +220,37 @@ export function composeHybridSignals(args: {
   tickets: TicketsMetrics | null;
   commsMetrics: CustomerMetrics;
   mixpanelHasData: boolean;
+  preLaunch?: boolean;
 }): CustomerSignalsV2 {
-  const { commsSignals, usageScore, billingScore, performance, tickets, commsMetrics, mixpanelHasData } = args;
+  const { commsSignals, usageScore, billingScore, performance, tickets, commsMetrics, mixpanelHasData, preLaunch } = args;
+
+  // Pre-launch: Chargebee sub status is "future" or activated_at is null/future.
+  // Skip normal churn-scoring entirely — these entities have legitimately zero
+  // comms/usage/billing because they haven't started yet. Return a neutral
+  // HEALTHY/GREEN state with all signal sub-scores zeroed.
+  if (preLaunch) {
+    return {
+      composite: 50,
+      tier: "HEALTHY",
+      stoplight: "GREEN",
+      sig_we_silent: 0,
+      sig_client_silent: 0,
+      sig_response_drop: 0,
+      sig_volume_collapse: 0,
+      sig_usage: 0,
+      sig_billing: 0,
+      flag_performance: false,
+      flag_tickets: false,
+      flag_count: 0,
+      trajectory_7d: "unknown",
+      composite_7d_ago: null,
+      reason_one_line: "Pre-launch — contract signed, not yet activated.",
+      suggested_action:
+        "Confirm onboarding kickoff before the activation date.",
+      notes: "pre_launch",
+      pre_launch: true,
+    };
+  }
 
   const composite = Math.round(
     SIG_WEIGHTS_V2.weSilent * commsSignals.sig_we_silent +
@@ -289,6 +318,7 @@ export function composeHybridSignals(args: {
     reason_one_line: reasonOneLine,
     suggested_action: suggestedAction,
     notes: notes.join("; "),
+    pre_launch: false,
   };
 }
 

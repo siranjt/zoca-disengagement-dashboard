@@ -356,6 +356,7 @@ export default function V2ManagerDashboard() {
     const actionAmsSet = new Set<string>();
     const podSet = new Set<string>();
     let flagged = 0;
+    let preLaunch = 0;
     for (const c of snapshot.snapshot.customers) {
       total += 1;
       const sl = c.signals_v2.stoplight;
@@ -370,6 +371,7 @@ export default function V2ManagerDashboard() {
       const pod = POD_MAP[c.am_name] || "Floating";
       podSet.add(pod);
       if (c.performance?.flag) flagged += 1;
+      if (c.signals_v2.pre_launch) preLaunch += 1;
     }
     return {
       total,
@@ -382,6 +384,7 @@ export default function V2ManagerDashboard() {
       amsWithAction: actionAmsSet.size,
       podsRepresented: podSet.size,
       flagged,
+      preLaunch,
     };
   }, [snapshot]);
 
@@ -758,6 +761,7 @@ export default function V2ManagerDashboard() {
                 <Kpi
                   label="Customers"
                   value={String(kpis.total)}
+                  sub={kpis.preLaunch > 0 ? `${kpis.preLaunch} \ud83d\ude80 pre-launch` : undefined}
                   sparkValues={tierTrend.map((r) => r.total_customers)}
                   sparkColor="rgb(148 163 184)"
                 />

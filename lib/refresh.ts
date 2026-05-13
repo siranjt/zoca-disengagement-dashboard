@@ -439,6 +439,16 @@ export async function composeSnapshot(
       Number(bs?.unresolved_issues_last_30_days || 0),
     );
 
+    // Detect pre-launch: Chargebee sub status is "future" OR activated_at
+    // is null/in-the-future. These customers haven't started using the
+    // product yet, so they shouldn't be scored as churning.
+    const nowMs = stageA.todayMs;
+    const activatedMs = meta?.activated_at ? Date.parse(meta.activated_at) : NaN;
+    const preLaunch =
+      meta?.sub_status === "future" ||
+      !meta?.activated_at ||
+      (Number.isFinite(activatedMs) && activatedMs > nowMs);
+
     // Compose hybrid signals
     const signalsV2 = composeHybridSignals({
       commsSignals: v1Signals,
@@ -449,6 +459,7 @@ export async function composeSnapshot(
       tickets,
       commsMetrics: cMetrics,
       mixpanelHasData: usage !== null,
+      preLaunch,
     });
 
     // Pod from AM

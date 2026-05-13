@@ -60,7 +60,13 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt }: Prop
   // ---------------------------------------------------------------------------
   const baseBuckets = useMemo(() => {
     const act = customers
-      .filter((c) => c.signals_v2.stoplight === "RED" || c.signals_v2.stoplight === "YELLOW")
+      // Exclude pre-launch customers: they're flagged as YELLOW by the WATCH
+      // lane sometimes but don't need outreach action — they haven't started.
+      .filter(
+        (c) =>
+          !c.signals_v2.pre_launch &&
+          (c.signals_v2.stoplight === "RED" || c.signals_v2.stoplight === "YELLOW"),
+      )
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
       .slice(0, ACT_TODAY_TOP_N);
 

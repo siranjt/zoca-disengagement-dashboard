@@ -93,6 +93,18 @@ function V2CustomerCardInner({ customer, trend }: Props) {
             <h3 className="text-[15px] font-semibold text-zoca-text-primary md:text-base">
               {customer.company || customer.entity_id.slice(0, 8)}
             </h3>
+            {s.pre_launch && (
+              <span
+                className="rounded-zoca-pill bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300"
+                title={
+                  customer.activated_at
+                    ? `Pre-launch — contract signed, activation scheduled ${new Date(customer.activated_at).toLocaleDateString()}.`
+                    : "Pre-launch — contract signed, not yet activated."
+                }
+              >
+                🚀 Pre-launch
+              </span>
+            )}
             {trajectoryBadge.label && (
               <span
                 className={`rounded-zoca-sm px-1.5 py-0.5 text-[10px] font-semibold ${trajectoryBadge.className}`}

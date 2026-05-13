@@ -240,6 +240,10 @@ export type CustomerSignalsV2 = {
   reason_one_line: string;
   suggested_action: string;
   notes: string;
+  // Pre-launch: Chargebee sub is "future" or activated_at hasn't passed.
+  // When true, the customer skips normal churn-scoring (would peg RED/HIGH
+  // due to zero comms/usage/billing) and gets a neutral GREEN/HEALTHY state.
+  pre_launch: boolean;
 };
 
 export type MatchSource = "customer_id" | "bizname" | "unmatched";
