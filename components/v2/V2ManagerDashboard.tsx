@@ -18,6 +18,9 @@ import V2AmActivityRollup from "./V2AmActivityRollup";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { AmLink } from "./AmLink";
 import { ToastProvider } from "./Toast";
+import { AmStoplightStack, type AmStoplightRow } from "./charts/AmStoplightStack";
+import { OutcomeBreakdownDonut } from "./charts/OutcomeBreakdownDonut";
+import { TopSignalsBar } from "./charts/TopSignalsBar";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -429,6 +432,37 @@ function V2ManagerDashboardInner() {
     }
     return m;
   }, [compareSnapshot]);
+
+  // Phase 23.B — full-team customer list + per-AM stoplight rollup for the
+  // three manager-view charts (AmStoplightStack, OutcomeBreakdownDonut,
+  // TopSignalsBar). Memoized off the same snapshot.
+  const allCustomers = useMemo(() => {
+    if (snapshot.status !== "ready") return [];
+    return snapshot.snapshot.customers;
+  }, [snapshot]);
+
+  const amStoplightRows: AmStoplightRow[] = useMemo(() => {
+    if (snapshot.status !== "ready") return [];
+    const byAm = new Map<string, { red: number; yellow: number; green: number }>();
+    for (const c of snapshot.snapshot.customers) {
+      if (!c.am_name) continue;
+      const entry =
+        byAm.get(c.am_name) || { red: 0, yellow: 0, green: 0 };
+      const sl = c.signals_v2.stoplight;
+      if (sl === "RED") entry.red += 1;
+      else if (sl === "YELLOW") entry.yellow += 1;
+      else entry.green += 1;
+      byAm.set(c.am_name, entry);
+    }
+    return Array.from(byAm.entries())
+      .map(([am, v]) => ({ am, red: v.red, yellow: v.yellow, green: v.green }))
+      .sort((a, b) => {
+        if (b.red !== a.red) return b.red - a.red;
+        const tA = a.red + a.yellow + a.green;
+        const tB = b.red + b.yellow + b.green;
+        return tB - tA;
+      });
+  }, [snapshot]);
 
   const topMovers = useMemo(() => {
     if (snapshot.status !== "ready") return [];
@@ -879,6 +913,28 @@ function V2ManagerDashboardInner() {
                 </p>
               )}
             </section>
+
+            {/* Phase 23.B — manager chart row (per-AM stack + outcomes donut + top signals bar) */}
+            {amStoplightRows.length > 0 && (
+              <section
+                aria-label="Manager-view charts"
+                className="zoca-fade-in"
+                style={{ marginBottom: "28px" }}
+              >
+                <AmStoplightStack rows={amStoplightRows} />
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                    marginTop: "10px",
+                  }}
+                >
+                  <OutcomeBreakdownDonut daysBack={7} />
+                  <TopSignalsBar customers={allCustomers} />
+                </div>
+              </section>
+            )}
 
             {compareError && (
               <div
