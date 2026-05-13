@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useToast } from "./Toast";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { useMagnetic } from "@/lib/hooks/useMagnetic";
 
 type Props = {
   showing?: number;
@@ -14,6 +15,7 @@ type Props = {
 export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props) {
   const { showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
+  const magneticRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 70 });
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -71,6 +73,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
         )}
       </div>
       <button
+        ref={magneticRef}
         onClick={handleRefresh}
         disabled={refreshing}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold cursor-pointer transition disabled:opacity-50"

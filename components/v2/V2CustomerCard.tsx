@@ -14,6 +14,7 @@ import {
   buildHubspotCompanyUrl,
 } from "@/lib/contact-links";
 import type { SignalKey } from "@/lib/signal-taxonomy";
+import { useMagnetic } from "@/lib/hooks/useMagnetic";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -51,6 +52,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
 function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
+  const primaryCtaRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 80 });
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
   const { signals_v2: s, metrics } = customer;
@@ -846,6 +848,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           ) : (
             <div className="flex flex-col items-end gap-1">
               <button
+                ref={primaryCtaRef}
                 type="button"
                 aria-label={`Action: ${actionLabel(customer)}. Click to log how it went.`}
                 className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"

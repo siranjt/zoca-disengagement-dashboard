@@ -17,6 +17,7 @@ import { V2Hero } from "./V2Hero";
 import { V2RefreshBar } from "./V2RefreshBar";
 import { V2KpiTiles } from "./V2KpiTiles";
 import { ToastProvider, useToast } from "./Toast";
+import { CustomerCardSkeleton } from "./Skeleton";
 import {
   SIGNAL_LABELS,
   isSignalKey,
@@ -587,21 +588,13 @@ function V2DashboardInner() {
 function V2LoadingSkeleton() {
   return (
     <section className="mt-2" aria-busy="true" aria-live="polite">
-      <div className="mb-4 h-9 w-3/4 rounded-zoca-sm bg-zoca-bg-2/40 motion-safe:animate-pulse" />
+      <div className="mb-4 h-9 w-3/4 rounded-zoca-sm v2-skeleton" />
       <div className="mb-5 flex gap-2">
-        <div className="h-8 w-44 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
-        <div className="h-8 w-28 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
-        <div className="h-8 w-60 rounded-zoca-pill bg-zoca-bg-2/40 motion-safe:animate-pulse" />
+        <div className="h-8 w-44 rounded-zoca-pill v2-skeleton" />
+        <div className="h-8 w-28 rounded-zoca-pill v2-skeleton" />
+        <div className="h-8 w-60 rounded-zoca-pill v2-skeleton" />
       </div>
-      <div className="flex flex-col gap-3">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-[130px] rounded-zoca-lg border border-zoca-border bg-zoca-card motion-safe:animate-pulse"
-            style={{ opacity: 1 - i * 0.15 }}
-          />
-        ))}
-      </div>
+      <CustomerCardSkeleton />
     </section>
   );
 }

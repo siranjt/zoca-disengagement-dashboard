@@ -517,3 +517,29 @@ button:active:not(.no-press),
   animation: v2-snooze-exit 0.5s cubic-bezier(0.4, 0, 1, 1) forwards;
   pointer-events: none;
 }
+
+/* ---------------------------------------------------------------------------
+ * Phase 22.D — page polish.
+ *   - v2-skeleton: shimmer placeholder used during initial snapshot fetch
+ *   - v2-header-compact: sticky-header shrink past ~80px scroll
+ * ------------------------------------------------------------------------- */
+@keyframes v2-skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.v2-skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 100%);
+  background-size: 200% 100%;
+  animation: v2-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.v2-header-compact {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.v2-header-compact .v2-header-status {
+  font-size: 10px !important;
+}

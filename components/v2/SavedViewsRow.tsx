@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "./Toast";
+import { useMagnetic } from "@/lib/hooks/useMagnetic";
 
 /**
  * Phase 18.C: per-AM saved filter/search/sort combinations.
@@ -49,6 +50,7 @@ const [views, setViews] = useState<SavedView[]>([]);
   const [newViewName, setNewViewName] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const saveBtnRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 70 });
 
   useEffect(() => {
     if (!amName) return;
@@ -199,6 +201,7 @@ const [views, setViews] = useState<SavedView[]>([]);
         </span>
       ) : (
         <button
+          ref={saveBtnRef}
           onClick={() => {
             setSavingState("naming");
             setErrMsg(null);

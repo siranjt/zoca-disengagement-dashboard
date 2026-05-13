@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 type Props = {
   values: number[];
@@ -39,6 +39,24 @@ export default function V2Sparkline({
   className,
 }: Props) {
   const gradId = useId();
+  const lineRef = useRef<SVGPathElement | null>(null);
+  const [drawn, setDrawn] = useState(false);
+  const [pathLength, setPathLength] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Measure the actual rendered path length so the dash math is exact
+    // (falls back to a generous 1000 if getTotalLength is unavailable).
+    if (lineRef.current && typeof lineRef.current.getTotalLength === "function") {
+      try {
+        const len = lineRef.current.getTotalLength();
+        if (Number.isFinite(len) && len > 0) setPathLength(len);
+      } catch {
+        /* ignore — falls back to default dasharray below */
+      }
+    }
+    const t = setTimeout(() => setDrawn(true), 50);
+    return () => clearTimeout(t);
+  }, [])
 
   // Filter NaN/non-finite values to prevent SVG path corruption
   const safeValues = values.filter((v) => Number.isFinite(v));
@@ -118,12 +136,18 @@ export default function V2Sparkline({
           />
         )}
         <path
+          ref={lineRef}
           d={linePath}
           fill="none"
           stroke={color}
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
+          style={{
+            strokeDasharray: pathLength != null ? `${pathLength}` : "1000",
+            strokeDashoffset: drawn ? 0 : pathLength != null ? pathLength : 1000,
+            transition: "stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
         />
         {showLastPoint && <circle cx={last.x} cy={last.y} r={1.8} fill={color} />}
       </svg>

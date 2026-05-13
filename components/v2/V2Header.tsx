@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { ZocaLogo } from "./ZocaLogo";
 import { AmPickerPill } from "./AmPickerPill";
 import { RefreshButton } from "./RefreshButton";
@@ -55,13 +56,24 @@ function relativeAge(generatedAt: string | null | undefined): string {
 export function V2Header(props: Props) {
   const { generatedAt, mode } = props;
   const isManager = mode === "manager";
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setCompact(window.scrollY > 80);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <nav
-      className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3"
+      className={`sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3 ${compact ? "v2-header-compact" : ""}`}
       style={{
         background: "rgba(255,255,255,0.85)",
         borderColor: "var(--zoca-border)",
+        transition: "padding 0.2s ease, box-shadow 0.2s ease",
       }}
     >
       {/* Left side — branding + (AM picker for AM mode, page name for manager mode) */}
@@ -155,7 +167,7 @@ export function V2Header(props: Props) {
           </>
         )}
 
-        <div className="flex items-center gap-2 text-[11px] text-zoca-text-2">
+        <div className="v2-header-status flex items-center gap-2 text-[11px] text-zoca-text-2" style={{ transition: "font-size 0.2s ease" }}>
           <span className="zoca-pulse-dot-green" />
           <span style={{ fontVariantNumeric: "tabular-nums" }}>
             Live · {relativeAge(generatedAt)}
