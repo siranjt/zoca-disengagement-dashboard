@@ -7,6 +7,11 @@ import { AnimatedNumber } from "./AnimatedNumber";
 import { EmptyState } from "./EmptyState";
 import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
 import { SavedViewsRow, type SavedViewConfig } from "./SavedViewsRow";
+import {
+  SIGNAL_LABELS,
+  customerHasSignal,
+  type SignalKey,
+} from "@/lib/signal-taxonomy";
 
 type CustomerTrendPoint = { date: string; composite: number };
 
@@ -28,6 +33,11 @@ type Props = {
     meta: { customer_id: string | null; bizname: string | null },
   ) => void;
   onUnsnooze?: (entityId: string) => void;
+  /** Phase 22.B.1 — active signal filter from V2Dashboard (URL-bound). */
+  signal?: SignalKey | null;
+  onSignalChange?: (key: SignalKey | null) => void;
+  /** Per-card chip click — toast + filter set are handled by the parent. */
+  onSignalChipClick?: (key: SignalKey) => void;
 };
 
 type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
@@ -44,7 +54,7 @@ function isSortKey(v: string): v is SortKey {
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze }: Props) {
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
@@ -240,8 +250,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     return sorted;
   }, [baseBuckets, filter, query, sort]);
 
+  // Phase 22.B.1 — narrow visible list to a single signal key when set.
+  // This is a POST-filter on the bucket/search/sort pipeline above, so it
+  // composes with whatever filter lane the AM is currently on.
+  const finalList = useMemo(() => {
+    if (!signal) return filtered;
+    return filtered.filter((c) => customerHasSignal(c, signal));
+  }, [filtered, signal]);
+
   // Hero — count + label
-  const heroCount = filtered.length;
+  const heroCount = finalList.length;
   const heroLabelRich = (() => {
     if (filter === "pinned") {
       if (query.trim()) {
@@ -424,12 +442,52 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
         </div>
       </div>
 
+      {/* Phase 22.B.1 — sticky signal filter banner */}
+      {signal && (
+        <div
+          role="status"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 14px",
+            background: "rgba(255,134,225,0.12)",
+            border: "1px solid rgba(255,86,187,0.22)",
+            color: "#c026d3",
+            borderRadius: "9999px",
+            fontSize: "12px",
+            fontWeight: 600,
+            marginBottom: "10px",
+            alignSelf: "flex-start",
+          }}
+        >
+          <i className="ti ti-filter" aria-hidden style={{ fontSize: "14px" }} />
+          <span>Filtered to: {SIGNAL_LABELS[signal]}</span>
+          <button
+            type="button"
+            onClick={() => onSignalChange?.(null)}
+            aria-label="Clear signal filter"
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "14px",
+              padding: "0 4px",
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Cards or empty state */}
-      {filtered.length === 0 ? (
+      {finalList.length === 0 ? (
         <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
         <div className="flex flex-col gap-3">
-          {filtered.map((c, i) => (
+          {finalList.map((c, i) => (
             <V2CustomerCard
               key={c.entity_id}
               customer={c}
@@ -459,15 +517,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                   : undefined
               }
               onUnsnooze={onUnsnooze ? () => onUnsnooze(c.entity_id) : undefined}
+              onSignalChipClick={onSignalChipClick}
             />
           ))}
         </div>
       )}
 
       {/* Footer info — link to Full book view when we're showing a partial bucket */}
-      {customers.length > filtered.length && filtered.length > 0 && filter !== "all" && (
+      {customers.length > finalList.length && finalList.length > 0 && filter !== "all" && (
         <p className="mt-8 text-center text-[12px] text-zoca-text-soft">
-          Showing {filtered.length} of {customers.length} in your book.{" "}
+          Showing {finalList.length} of {customers.length} in your book.{" "}
           <button
             type="button"
             onClick={() => setFilter("all")}

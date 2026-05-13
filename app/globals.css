@@ -465,3 +465,26 @@ button:active:not(.no-press),
   30% { opacity: 1; }
   100% { stroke-dashoffset: 0; opacity: 1; }
 }
+
+/* ---------------------------------------------------------------------------
+ * Phase 22.B.1 — clickable signal chips on V2CustomerCard.
+ * Append-only; no existing rules modified.
+ * ------------------------------------------------------------------------- */
+.v2-chip-clickable {
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  border: 0;
+  background: inherit;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+.v2-chip-clickable:hover {
+  transform: scale(1.04);
+  filter: brightness(1.08);
+}
+.v2-chip-clickable:focus-visible {
+  outline: 2px solid rgba(255, 86, 187, 0.45);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

@@ -17,6 +17,11 @@ import { V2Hero } from "./V2Hero";
 import { V2RefreshBar } from "./V2RefreshBar";
 import { V2KpiTiles } from "./V2KpiTiles";
 import { ToastProvider, useToast } from "./Toast";
+import {
+  SIGNAL_LABELS,
+  isSignalKey,
+  type SignalKey,
+} from "@/lib/signal-taxonomy";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -43,6 +48,8 @@ function V2DashboardInner() {
   // gets applied in the useEffect below — avoids "0 customers" flicker.
   const [selectedAm, setSelectedAm] = useState<string>(() => ACTIVE_AMS[0] as string);
   const [view, setView] = useState<V2View>("am");
+  // Phase 22.B.1 — active signal filter (bound to ?signal= URL param).
+  const [signal, setSignal] = useState<SignalKey | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -55,6 +62,8 @@ function V2DashboardInner() {
     const fromStorage = window.localStorage.getItem(STORAGE_AM_KEY);
     const defaultAm = fromQuery || fromStorage || (ACTIVE_AMS[0] as string);
     setSelectedAm(defaultAm);
+    const sigFromQuery = url.searchParams.get("signal");
+    if (isSignalKey(sigFromQuery)) setSignal(sigFromQuery);
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, []);
 
@@ -93,6 +102,41 @@ function V2DashboardInner() {
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
+
+  // Phase 22.B.1 — keep ?signal= in URL in sync with the signal state. We
+  // re-use the same window.history pattern as handleSelectAm above (we're
+  // not in App-Router-routing-aware territory here — this dashboard is a
+  // client island).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("signal");
+    const next = signal ?? null;
+    if (next === current) return;
+    if (next === null) url.searchParams.delete("signal");
+    else url.searchParams.set("signal", next);
+    window.history.replaceState({}, "", url.toString());
+  }, [signal]);
+
+  // Phase 22.B.1 — chip click handler. Toggles the active signal and
+  // surfaces a toast confirming the filter state. Passed down to
+  // V2CustomerCard via V2AMTriage so chip clicks route through here.
+  const handleSignalChipClick = useCallback(
+    (key: SignalKey) => {
+      setSignal((prev) => {
+        if (prev === key) {
+          showToast("Filter cleared", { type: "info", icon: "filter" });
+          return null;
+        }
+        showToast(`Filtered to: ${SIGNAL_LABELS[key]}`, {
+          type: "info",
+          icon: "filter",
+        });
+        return key;
+      });
+    },
+    [showToast],
+  );
 
   const handleDismissWelcome = useCallback(() => {
     setWelcomeDismissed(true);
@@ -476,6 +520,9 @@ function V2DashboardInner() {
             snoozedSet={snoozedSet}
             onSnooze={handleSnooze}
             onUnsnooze={handleUnsnooze}
+            signal={signal}
+            onSignalChange={setSignal}
+            onSignalChipClick={handleSignalChipClick}
           />
         )}
         {snapshot.status === "ready" && view === "pod" && (

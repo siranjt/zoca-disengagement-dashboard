@@ -12,6 +12,7 @@ import {
   buildTelLink,
   buildHubspotCompanyUrl,
 } from "@/lib/contact-links";
+import type { SignalKey } from "@/lib/signal-taxonomy";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -30,6 +31,8 @@ type Props = {
   onUnsnooze?: () => void;
   /** Phase 22.A — render index for staggered entrance animation. */
   index?: number;
+  /** Phase 22.B.1 — chip click handler for signal-based filtering. */
+  onSignalChipClick?: (key: SignalKey) => void;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -46,7 +49,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
   const { signals_v2: s, metrics } = customer;
@@ -577,6 +580,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               {s.flag_performance && (
                 <FlagChip
                   label={customer.performance?.flag_reasons?.[0] || "Performance flag"}
+                  onClick={onSignalChipClick ? () => onSignalChipClick("perf_flag") : undefined}
                 />
               )}
               {s.flag_tickets && (
@@ -591,6 +595,11 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                 />
               )}
             </div>
+          )}
+          {/* Phase 22.B.1 — clickable signal chips. RED variant only.
+              Each chip surfaces an active signal and triggers parent filter. */}
+          {onSignalChipClick && (
+            <SignalChipRow customer={customer} onChipClick={onSignalChipClick} />
           )}
         </div>
 
@@ -1027,11 +1036,68 @@ function StoplightDot({ light }: { light: Stoplight }) {
   );
 }
 
-function FlagChip({ label }: { label: string }) {
+function FlagChip({ label, onClick }: { label: string; onClick?: () => void }) {
+  const base =
+    "rounded-zoca-sm bg-amber-500/18 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-500/30";
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${base} v2-chip-clickable`}
+        title={`Filter to: ${label}`}
+        aria-label={`Filter to ${label}`}
+      >
+        {label}
+      </button>
+    );
+  }
+  return <span className={base}>{label}</span>;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 22.B.1 — SignalChipRow.
+// Renders a row of clickable chips, one per active signal on the customer.
+// Sits below the modifier flag chips on the RED-variant card body.
+// ---------------------------------------------------------------------------
+
+function SignalChipRow({
+  customer,
+  onChipClick,
+}: {
+  customer: ScoredCustomerV2;
+  onChipClick: (key: SignalKey) => void;
+}) {
+  const s = customer.signals_v2;
+  const active: { key: SignalKey; label: string }[] = [];
+  if ((s.sig_client_silent ?? 0) >= 65)
+    active.push({ key: "client_silent", label: "Client silent" });
+  if ((s.sig_we_silent ?? 0) >= 65)
+    active.push({ key: "we_silent", label: "We silent" });
+  if ((s.sig_response_drop ?? 0) >= 65)
+    active.push({ key: "resp_drop", label: "Resp drop" });
+  if ((s.sig_volume_collapse ?? 0) >= 55)
+    active.push({ key: "vol_collapse", label: "Vol collapse" });
+  if ((s.sig_usage ?? 0) >= 55)
+    active.push({ key: "usage_low", label: "Usage low" });
+  if ((s.sig_billing ?? 0) >= 40)
+    active.push({ key: "billing", label: "Billing" });
+  if (active.length === 0) return null;
   return (
-    <span className="rounded-zoca-sm bg-amber-500/18 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-500/30">
-      {label}
-    </span>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {active.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          onClick={() => onChipClick(c.key)}
+          className="v2-chip-clickable rounded-zoca-sm bg-rose-500/12 px-2 py-0.5 text-[10px] font-medium text-rose-700 ring-1 ring-rose-500/25"
+          title={`Filter book to: ${c.label}`}
+          aria-label={`Filter book to ${c.label}`}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
