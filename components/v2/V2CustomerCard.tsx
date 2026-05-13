@@ -28,6 +28,8 @@ type Props = {
   snoozedUntil?: string | null;
   onSnooze?: (days: number) => void;
   onUnsnooze?: () => void;
+  /** Phase 22.A — render index for staggered entrance animation. */
+  index?: number;
 };
 
 const STOPLIGHT_TITLE: Record<Stoplight, string> = {
@@ -44,7 +46,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze }: Props) {
+function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index }: Props) {
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
   const { signals_v2: s, metrics } = customer;
@@ -412,7 +414,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
     <article
       role="article"
       aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
-      className="zoca-card group"
+      className="zoca-card group v2-card-enter"
       style={{
         borderColor: isSnoozed
           ? "rgba(245, 158, 11, 0.35)"
@@ -424,6 +426,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           ? "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(245, 158, 11, 0.18)"
           : "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
         opacity: isSnoozed ? 0.95 : 1,
+        animationDelay: `${Math.min((index ?? 0) * 70, 600)}ms`,
       }}
     >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">

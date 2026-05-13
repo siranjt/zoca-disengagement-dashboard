@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useToast } from "./Toast";
 
 /**
  * Phase 18.C: per-AM saved filter/search/sort combinations.
@@ -39,7 +40,8 @@ export function SavedViewsRow({
   currentSort,
   onLoadView,
 }: Props) {
-  const [views, setViews] = useState<SavedView[]>([]);
+    const { showToast } = useToast();
+const [views, setViews] = useState<SavedView[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingState, setSavingState] = useState<
     "idle" | "naming" | "saving" | "error"
@@ -116,8 +118,9 @@ export function SavedViewsRow({
       if (!data.ok) throw new Error(data.error || "Delete failed");
     } catch (e) {
       setViews(prev);
-      alert(
+      showToast(
         `Delete failed: ${e instanceof Error ? e.message : String(e)}`,
+        { type: "error" },
       );
     }
   }

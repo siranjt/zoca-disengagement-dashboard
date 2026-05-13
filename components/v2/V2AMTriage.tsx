@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import V2CustomerCard from "./V2CustomerCard";
+import { AnimatedNumber } from "./AnimatedNumber";
+import { EmptyState } from "./EmptyState";
 import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
 import { SavedViewsRow, type SavedViewConfig } from "./SavedViewsRow";
 
@@ -310,7 +312,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           >
             Today, you have{" "}
             <span className="zoca-num-gradient" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {heroCount}
+              <AnimatedNumber value={heroCount} duration={900} />
             </span>{" "}
             customer{heroCount === 1 ? "" : "s"} to act on
           </h1>
@@ -427,10 +429,11 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
         <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
         <div className="flex flex-col gap-3">
-          {filtered.map((c) => (
+          {filtered.map((c, i) => (
             <V2CustomerCard
               key={c.entity_id}
               customer={c}
+              index={i}
               trend={customerTrends[c.entity_id]}
               recentlyContacted={contactedRecently.has(c.entity_id)}
               isPinned={pinnedSet?.has(c.entity_id) ?? false}
@@ -523,7 +526,7 @@ function FilterChip({
             : { background: "var(--zoca-bg-soft)", color: "var(--zoca-text-2)" }
         }
       >
-        {count}
+        <AnimatedNumber value={count} duration={900} />
       </span>
     </button>
   );
@@ -532,47 +535,45 @@ function FilterChip({
 function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boolean }) {
   if (hasQuery) {
     return (
-      <div className="rounded-zoca border border-dashed border-zoca-border-2 px-6 py-10 text-center">
-        <p className="font-display text-lg font-bold text-zoca-text-primary">
-          No customers match your search.
-        </p>
-        <p className="mt-2 text-sm text-zoca-text-muted">
-          Try a different name, or clear the search to see the full filter.
-        </p>
-      </div>
+      <EmptyState
+        variant="filter-empty"
+        title="No customers match your search."
+        subtitle="Try a different name, or clear the search to see the full filter."
+      />
     );
   }
-  const messages: Record<FilterKey, { title: string; body: string }> = {
+  const messages: Record<FilterKey, { title: string; body: string; variant: "all-clear" | "filter-empty" | "snoozed-none" | "pinned-none" }> = {
     pinned: {
       title: "Nothing pinned yet.",
       body: "Click the pin icon on any customer card to add it here.",
+      variant: "pinned-none",
     },
     act: {
       title: "You're caught up.",
       body: "No customers in your book need urgent attention right now. Nice work.",
+      variant: "all-clear",
     },
     improving: {
       title: "Nothing clearly improving yet.",
       body: "Trend data needs a few days of history. Check back later this week.",
+      variant: "filter-empty",
     },
     quiet: {
       title: "No one's gone silent.",
       body: "Every customer in your book has been in touch within the last 30 days.",
+      variant: "all-clear",
     },
     all: {
       title: "Your book is empty.",
       body: "No customers in your book — either you're brand new or your accounts haven't loaded.",
+      variant: "filter-empty",
     },
     snoozed: {
       title: "No snoozed customers.",
       body: "Snooze a customer to come back to them later. They'll reappear in your book when the snooze expires.",
+      variant: "snoozed-none",
     },
   };
   const m = messages[filter];
-  return (
-    <div className="rounded-zoca border border-dashed border-zoca-border-2 px-6 py-10 text-center">
-      <p className="font-display text-lg font-bold text-zoca-text-primary">{m.title}</p>
-      <p className="mt-2 text-sm text-zoca-text-muted">{m.body}</p>
-    </div>
-  );
+  return <EmptyState variant={m.variant} title={m.title} subtitle={m.body} />;
 }

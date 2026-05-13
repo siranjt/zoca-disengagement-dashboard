@@ -1,5 +1,7 @@
 "use client";
 
+import { AnimatedNumber } from "./AnimatedNumber";
+
 type Tile = {
   label: string;
   value: number | string;
@@ -68,7 +70,11 @@ export function V2KpiTiles({ tiles }: Props) {
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {tile.value}
+              {typeof tile.value === "number" ? (
+                <AnimatedNumber value={tile.value} duration={900} style={{ animationDelay: `${i * 80}ms` }} />
+              ) : (
+                tile.value
+              )}
             </div>
             <div className="text-[11px] text-zoca-text-2 mt-1.5">{tile.subtitle}</div>
           </a>

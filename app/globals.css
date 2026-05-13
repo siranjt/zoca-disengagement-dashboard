@@ -403,3 +403,65 @@ canvas { max-width: 100% !important; }
   color: var(--zoca-text);
   box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04);
 }
+
+/* ============================================================
+   Phase 22.A — foundation animations.
+   - .v2-card-enter: staggered fade-up entrance for customer cards
+   - button:active spring: scale(0.96) on press for tactile feel
+   - v2-toast-in / v2-toast-out: toast notification spring entry
+   - v2-bounce / v2-check: animated empty state circle + checkmark
+   ============================================================ */
+.v2-card-enter {
+  opacity: 0;
+  animation: v2-card-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes v2-card-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Global spring press. Opt-out via `.no-press` class on individual
+   buttons (e.g. the × on a toast doesn't need the scale). */
+button,
+.v2-button,
+.zoca-btn,
+.zoca-btn-outline {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+button:active:not(.no-press),
+.v2-button:active:not(.no-press),
+.zoca-btn:active:not(.no-press),
+.zoca-btn-outline:active:not(.no-press) {
+  transform: scale(0.96);
+}
+
+@keyframes v2-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes v2-toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes v2-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes v2-check {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  30% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}

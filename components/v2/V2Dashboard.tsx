@@ -16,6 +16,7 @@ import { V2Header } from "./V2Header";
 import { V2Hero } from "./V2Hero";
 import { V2RefreshBar } from "./V2RefreshBar";
 import { V2KpiTiles } from "./V2KpiTiles";
+import { ToastProvider, useToast } from "./Toast";
 
 const STORAGE_AM_KEY = "zoca_v2_selected_am";
 const STORAGE_WELCOME_DISMISSED = "zoca_v2_welcome_dismissed";
@@ -28,6 +29,15 @@ type SnapshotState =
 export type V2View = "am" | "pod" | "leadership";
 
 export default function V2Dashboard() {
+  return (
+    <ToastProvider>
+      <V2DashboardInner />
+    </ToastProvider>
+  );
+}
+
+function V2DashboardInner() {
+  const { showToast } = useToast();
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
   // Initialize to a stable default. Real value (URL > localStorage > default)
   // gets applied in the useEffect below — avoids "0 customers" flicker.
@@ -158,7 +168,7 @@ export default function V2Dashboard() {
               return next;
             });
             if (typeof window !== "undefined") {
-              window.alert(`Couldn't update pin: ${res.status} ${txt.slice(0, 200)}`);
+              showToast(`Couldn't update pin: ${res.status} ${txt.slice(0, 200)}`, { type: "error" });
             }
           }
         } catch (e) {
@@ -171,7 +181,7 @@ export default function V2Dashboard() {
           });
           if (typeof window !== "undefined") {
             const msg = e instanceof Error ? e.message : String(e);
-            window.alert(`Couldn't update pin: ${msg}`);
+            showToast(`Couldn't update pin: ${msg}`, { type: "error" });
           }
         }
       })();
@@ -253,7 +263,7 @@ export default function V2Dashboard() {
               return next;
             });
             if (typeof window !== "undefined") {
-              window.alert(`Couldn't snooze: ${res.status} ${txt.slice(0, 200)}`);
+              showToast(`Couldn't snooze: ${res.status} ${txt.slice(0, 200)}`, { type: "error" });
             }
             return;
           }
@@ -277,7 +287,7 @@ export default function V2Dashboard() {
           });
           if (typeof window !== "undefined") {
             const msg = e instanceof Error ? e.message : String(e);
-            window.alert(`Couldn't snooze: ${msg}`);
+            showToast(`Couldn't snooze: ${msg}`, { type: "error" });
           }
         }
       })();
@@ -309,7 +319,7 @@ export default function V2Dashboard() {
               return next;
             });
             if (typeof window !== "undefined") {
-              window.alert(`Couldn't unsnooze: ${res.status} ${txt.slice(0, 200)}`);
+              showToast(`Couldn't unsnooze: ${res.status} ${txt.slice(0, 200)}`, { type: "error" });
             }
           }
         } catch (e) {
@@ -320,7 +330,7 @@ export default function V2Dashboard() {
           });
           if (typeof window !== "undefined") {
             const msg = e instanceof Error ? e.message : String(e);
-            window.alert(`Couldn't unsnooze: ${msg}`);
+            showToast(`Couldn't unsnooze: ${msg}`, { type: "error" });
           }
         }
       })();

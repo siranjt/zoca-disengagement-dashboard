@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useToast } from "./Toast";
 
 type Props = {
   generatedAt?: string | null;
@@ -14,6 +15,7 @@ function relativeAge(ms: number): string {
 }
 
 export function FreshnessBanner({ generatedAt }: Props) {
+  const { showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
 
   if (!generatedAt) return null;
@@ -29,7 +31,7 @@ export function FreshnessBanner({ generatedAt }: Props) {
       if (!data.ok) throw new Error(data.error || "Refresh failed");
       window.location.reload();
     } catch (e) {
-      alert(`Refresh failed: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(`Refresh failed: ${e instanceof Error ? e.message : String(e)}`, { type: "error", duration: 5000 });
       setRefreshing(false);
     }
   }

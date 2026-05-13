@@ -1,5 +1,6 @@
 "use client";
 import { ZocaSparkle } from "./ZocaSparkle";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { formatPlannerTitle } from "@/lib/format";
 
 type Props = {
@@ -82,13 +83,17 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
           letterSpacing: "-0.005em",
         }}
       >
-        {needsCall > 0
-          ? `${needsCall} customers need your attention today — surfaced from live billing, comms, app usage, and HubSpot signals.`
-          : "All clear today — no customers at critical risk. Use the filters below to review the full book."}
+        {needsCall > 0 ? (
+          <>
+            <AnimatedNumber value={needsCall} duration={900} /> customers need your attention today — surfaced from live billing, comms, app usage, and HubSpot signals.
+          </>
+        ) : (
+          "All clear today — no customers at critical risk. Use the filters below to review the full book."
+        )}
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">
         <span className="inline-flex items-center gap-2">
-          <span className="text-zoca-pink text-sm">{"❋"}</span> {totalCount} active customers
+          <span className="text-zoca-pink text-sm">{"❋"}</span> <AnimatedNumber value={totalCount} duration={900} /> active customers
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="text-zoca-pink text-sm">{"❋"}</span> Live Chargebee + Metabase

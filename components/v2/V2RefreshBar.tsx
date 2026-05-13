@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { useToast } from "./Toast";
+import { AnimatedNumber } from "./AnimatedNumber";
 
 type Props = {
   showing?: number;
@@ -10,6 +12,7 @@ type Props = {
 };
 
 export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props) {
+  const { showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleRefresh() {
@@ -20,7 +23,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
       if (!data.ok) throw new Error(data.error || "Refresh failed");
       window.location.reload();
     } catch (e) {
-      alert(`Refresh failed: ${e instanceof Error ? e.message : String(e)}`);
+      showToast(`Refresh failed: ${e instanceof Error ? e.message : String(e)}`, { type: "error", duration: 5000 });
       setRefreshing(false);
     }
   }
@@ -43,7 +46,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
         <span>
           <span className="zoca-micro-label">Showing</span>{" "}
           <strong className="ml-1.5 font-semibold">
-            {showing ?? 0} / {total ?? 0}
+            <AnimatedNumber value={showing ?? 0} /> / <AnimatedNumber value={total ?? 0} />
           </strong>
         </span>
         <span className="text-zoca-text-3">·</span>

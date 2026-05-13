@@ -15,6 +15,7 @@ import V2Sparkline from "./V2Sparkline";
 import ScopeStrip from "./ScopeStrip";
 import FreshnessBanner from "./FreshnessBanner";
 import V2AmActivityRollup from "./V2AmActivityRollup";
+import { AnimatedNumber } from "./AnimatedNumber";
 
 const STORAGE_POD_KEY = "zoca_v2_manager_pod";
 const STORAGE_VIEWS_KEY = "zoca_v2_manager_views";
@@ -768,7 +769,7 @@ export default function V2ManagerDashboard() {
                       color: "var(--zoca-pink)",
                     }}
                   >
-                    {formatMoney(kpis.mrrAtRisk)}
+                    <AnimatedNumber value={kpis.mrrAtRisk} duration={900} format={formatMoney} />
                   </div>
                   <div className="mt-1 text-[12px] text-zoca-text-2">
                     {kpis.RED} RED customer{kpis.RED === 1 ? "" : "s"} ·{" "}
