@@ -18,6 +18,7 @@ import { V2RefreshBar } from "./V2RefreshBar";
 import { V2KpiTiles } from "./V2KpiTiles";
 import { ToastProvider, useToast } from "./Toast";
 import { CustomerCardSkeleton } from "./Skeleton";
+import { CursorGlow } from "./CursorGlow";
 import {
   SIGNAL_LABELS,
   isSignalKey,
@@ -456,9 +457,10 @@ function V2DashboardInner() {
   return (
     <div
       data-theme="zoca-light"
-      className="min-h-screen text-zoca-text"
+      className="min-h-screen text-zoca-text v2-mesh-bg"
       style={{ background: "var(--zoca-bg-soft)" }}
     >
+      <CursorGlow />
       <V2Header
         generatedAt={ready?.generatedAt}
         selectedAm={selectedAm}

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatedNumber } from "./AnimatedNumber";
-import { useMagnetic } from "@/lib/hooks/useMagnetic";
+import { useTilt } from "@/lib/hooks/useTilt";
 
 type Tile = {
   label: string;
@@ -38,11 +38,12 @@ export function V2KpiTiles({ tiles }: Props) {
 
 function KpiTile({ tile, index }: { tile: Tile; index: number }) {
   const isSelected = tile.selected;
-  // Magnetic pull on selected tile only — primary action affordance.
-  const magneticRef = useMagnetic<HTMLAnchorElement>({ strength: 0.15, radius: 80 });
+  // Phase 22.E — 3D tilt on all tiles. Replaces useMagnetic; the two
+  // effects fought on the selected tile (both setting el.style.transform).
+  const tiltRef = useTilt<HTMLAnchorElement>();
   return (
     <a
-      ref={isSelected ? magneticRef : undefined}
+      ref={tiltRef}
       href={tile.href || "#"}
       className="block bg-white rounded-2xl px-4 py-4 no-underline transition cursor-pointer"
       style={{
@@ -55,6 +56,8 @@ function KpiTile({ tile, index }: { tile: Tile; index: number }) {
         background: isSelected
           ? "linear-gradient(180deg, rgba(255,86,187,0.04), rgba(255,168,205,0.06)), #fff"
           : "#fff",
+        transformStyle: "preserve-3d",
+        willChange: "transform",
       }}
     >
       <div className="flex items-center justify-between mb-2.5">

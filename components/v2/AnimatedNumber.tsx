@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 
 type Props = {
@@ -14,6 +15,9 @@ type Props = {
  * Phase 22.A — drop-in animated number. Uses tabular-nums by default so
  * digits don't shift horizontally while the count climbs. Optional
  * `format` lets callers render currency / percentages / abbreviated K-M.
+ *
+ * Phase 22.E — when the target value changes by >10%, briefly pulse text
+ * color to brand pink. Makes AM switches feel responsive.
  */
 export function AnimatedNumber({
   value,
@@ -24,10 +28,29 @@ export function AnimatedNumber({
 }: Props) {
   const animated = useCountUp(value, { duration });
   const display = format ? format(animated) : animated.toLocaleString();
+  const [flash, setFlash] = useState(false);
+  const prevValueRef = useRef(value);
+
+  useEffect(() => {
+    const prev = prevValueRef.current;
+    if (prev > 0 && Math.abs(value - prev) / Math.max(prev, 1) > 0.1) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 300);
+      prevValueRef.current = value;
+      return () => clearTimeout(t);
+    }
+    prevValueRef.current = value;
+  }, [value]);
+
   return (
     <span
       className={className}
-      style={{ fontVariantNumeric: "tabular-nums", ...style }}
+      style={{
+        fontVariantNumeric: "tabular-nums",
+        transition: "color 0.3s ease",
+        color: flash ? "var(--zoca-pink)" : undefined,
+        ...style,
+      }}
     >
       {display}
     </span>
