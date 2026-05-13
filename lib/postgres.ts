@@ -144,19 +144,195 @@ export async function readTierTrend(days: number = 30): Promise<TierTrendRow[]> 
 export async function writeAmAction(row: AmActionRow): Promise<number | null> {
   const sql = getSql();
   if (!sql) return null;
+  // Best-effort idempotent ALTER — runs cheap and once.
+  try {
+    await sql`ALTER TABLE am_actions ADD COLUMN IF NOT EXISTS reason_code TEXT`;
+    await sql`ALTER TABLE am_actions ADD COLUMN IF NOT EXISTS follow_up_date DATE`;
+    await sql`ALTER TABLE am_actions ADD COLUMN IF NOT EXISTS escalated_to TEXT`;
+  } catch { /* ignore */ }
   const result = await sql`
-    INSERT INTO am_actions (am_name, entity_id, action_type, note, composite_at_action)
+    INSERT INTO am_actions (
+      am_name, entity_id, action_type, note, composite_at_action,
+      reason_code, follow_up_date, escalated_to
+    )
     VALUES (
       ${row.am_name},
       ${row.entity_id},
       ${row.action_type},
       ${row.note || null},
-      ${row.composite_at_action ?? null}
+      ${row.composite_at_action ?? null},
+      ${row.reason_code || null},
+      ${row.follow_up_date || null},
+      ${row.escalated_to || null}
     )
     RETURNING id
   `;
   return result[0]?.id as number;
 }
+
+// ---------------------------------------------------------------------------
+// Outcome tracking (Phase 9.5): given a Mark Contacted event, evaluate
+// whether the customer recovered N days later. Run from a daily cron.
+// ---------------------------------------------------------------------------
+
+let _outcomeTrackingReady = false;
+async function ensureOutcomeTrackingTable(): Promise<void> {
+  if (_outcomeTrackingReady) return;
+  const sql = getSql();
+  if (!sql) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS outcome_tracking (
+      action_id INT NOT NULL,
+      evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      days_after INT NOT NULL,
+      tier_at_action TEXT NOT NULL DEFAULT '',
+      tier_now TEXT NOT NULL DEFAULT '',
+      composite_at_action INT,
+      composite_now INT,
+      recovered BOOLEAN NOT NULL DEFAULT FALSE,
+      PRIMARY KEY (action_id, days_after)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_outcome_tracking_evaluated ON outcome_tracking (evaluated_at DESC)`;
+  _outcomeTrackingReady = true;
+}
+
+export async function writeOutcomeRow(row: {
+  action_id: number;
+  days_after: number;
+  tier_at_action: string;
+  tier_now: string;
+  composite_at_action: number | null;
+  composite_now: number | null;
+  recovered: boolean;
+}): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await ensureOutcomeTrackingTable();
+  await sql`
+    INSERT INTO outcome_tracking (
+      action_id, days_after, tier_at_action, tier_now,
+      composite_at_action, composite_now, recovered
+    )
+    VALUES (
+      ${row.action_id}, ${row.days_after}, ${row.tier_at_action}, ${row.tier_now},
+      ${row.composite_at_action}, ${row.composite_now}, ${row.recovered}
+    )
+    ON CONFLICT (action_id, days_after) DO UPDATE SET
+      evaluated_at = NOW(),
+      tier_now = EXCLUDED.tier_now,
+      composite_now = EXCLUDED.composite_now,
+      recovered = EXCLUDED.recovered
+  `;
+}
+
+/** Find action rows from N days ago that need outcome evaluation. */
+export async function readActionsNeedingOutcomeEval(daysAfter: number): Promise<AmActionRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  await ensureOutcomeTrackingTable();
+  // Actions created exactly N days ago that don't yet have an outcome row for this window
+  const rows = await sql`
+    SELECT a.id, a.am_name, a.entity_id, a.action_type, a.composite_at_action, a.created_at
+    FROM am_actions a
+    LEFT JOIN outcome_tracking o ON o.action_id = a.id AND o.days_after = ${daysAfter}
+    WHERE a.created_at::date = (CURRENT_DATE - (${daysAfter}::int * INTERVAL '1 day'))::date
+      AND a.action_type LIKE 'contacted_%'
+      AND o.action_id IS NULL
+  `;
+  return rows as AmActionRow[];
+}
+
+/** Aggregate recovery stats — per-AM recovery rate within window. */
+export async function readRecoveryStatsByAm(
+  daysAfter: number = 14,
+  windowDays: number = 90,
+): Promise<Array<{ am_name: string; total: number; recovered: number; rate: number }>> {
+  const sql = getSql();
+  if (!sql) return [];
+  await ensureOutcomeTrackingTable();
+  const rows = await sql`
+    SELECT
+      a.am_name,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE o.recovered)::int AS recovered
+    FROM outcome_tracking o
+    JOIN am_actions a ON a.id = o.action_id
+    WHERE o.days_after = ${daysAfter}
+      AND o.evaluated_at >= (NOW() - (${windowDays}::int * INTERVAL '1 day'))
+    GROUP BY a.am_name
+    ORDER BY a.am_name ASC
+  `;
+  return rows.map((r) => {
+    const row = r as { am_name: string; total: number; recovered: number };
+    return {
+      am_name: row.am_name,
+      total: row.total,
+      recovered: row.recovered,
+      rate: row.total ? (row.recovered / row.total) * 100 : 0,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Health check log (Phase 9.8): persist probe results + drive alerting
+// ---------------------------------------------------------------------------
+
+let _healthLogReady = false;
+async function ensureHealthLogTable(): Promise<void> {
+  if (_healthLogReady) return;
+  const sql = getSql();
+  if (!sql) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS health_check_log (
+      id SERIAL PRIMARY KEY,
+      checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ok BOOLEAN NOT NULL,
+      probes JSONB NOT NULL DEFAULT '{}'::jsonb,
+      error_count INT NOT NULL DEFAULT 0,
+      alerted BOOLEAN NOT NULL DEFAULT FALSE
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_health_check_log_checked_at ON health_check_log (checked_at DESC)`;
+  _healthLogReady = true;
+}
+
+export async function writeHealthCheck(row: {
+  ok: boolean;
+  probes: Record<string, unknown>;
+  error_count: number;
+  alerted: boolean;
+}): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await ensureHealthLogTable();
+  await sql`
+    INSERT INTO health_check_log (ok, probes, error_count, alerted)
+    VALUES (${row.ok}, ${JSON.stringify(row.probes)}::jsonb, ${row.error_count}, ${row.alerted})
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Follow-ups + escalation queries (Phase 9 workflow)
+// ---------------------------------------------------------------------------
+
+/** Pending follow-ups for an AM in the next N days. */
+export async function readPendingFollowUps(amName: string, daysAhead: number = 14): Promise<AmActionRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const rows = await sql`
+    SELECT id, am_name, entity_id, action_type, note, reason_code, follow_up_date, composite_at_action, created_at
+    FROM am_actions
+    WHERE am_name = ${amName}
+      AND follow_up_date IS NOT NULL
+      AND follow_up_date >= CURRENT_DATE
+      AND follow_up_date <= (CURRENT_DATE + (${daysAhead}::int * INTERVAL '1 day'))::date
+    ORDER BY follow_up_date ASC, created_at DESC
+  `;
+  return rows as AmActionRow[];
+}
+
+
 
 /** Recent actions across the book (for Pod Rollup "movers" + Wins panel). */
 export async function readRecentActions(daysBack: number = 7): Promise<AmActionRow[]> {

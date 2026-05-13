@@ -421,14 +421,52 @@ export type DashboardSnapshotRow = {
   refresh_duration_ms: number;
 };
 
+export type ContactReasonCode =
+  | "renewal"
+  | "performance"
+  | "billing"
+  | "complaint"
+  | "check_in"
+  | "onboarding"
+  | "other";
+
+export type AmActionType =
+  | "contacted_connected"
+  | "contacted_vm"
+  | "contacted_noreach"
+  | "escalated";
+
 export type AmActionRow = {
   id?: number;
   am_name: string;
   entity_id: string;
-  action_type: "contacted_connected" | "contacted_vm" | "contacted_noreach";
+  action_type: AmActionType;
   note?: string | null;
   composite_at_action?: number | null;
+  reason_code?: ContactReasonCode | null;
+  follow_up_date?: string | null;       // YYYY-MM-DD
+  escalated_to?: string | null;          // AM name of pod lead
   created_at?: string;
+};
+
+export type OutcomeTrackingRow = {
+  action_id: number;
+  evaluated_at?: string;
+  days_after: number;
+  tier_at_action: string;
+  tier_now: string;
+  composite_at_action: number | null;
+  composite_now: number | null;
+  recovered: boolean;
+};
+
+export type HealthCheckLogRow = {
+  id?: number;
+  checked_at?: string;
+  ok: boolean;
+  probes: Record<string, { ok: boolean; latencyMs: number; error?: string }>;
+  error_count: number;
+  alerted: boolean;
 };
 
 export type SignalFeedbackRow = {

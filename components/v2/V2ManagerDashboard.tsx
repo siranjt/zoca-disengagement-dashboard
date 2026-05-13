@@ -753,6 +753,52 @@ export default function V2ManagerDashboard() {
 
         {snapshot.status === "ready" && kpis && (
           <>
+            {/* Headline MRR-at-risk panel — exec-grade dollar number */}
+            <section
+              aria-label="MRR at risk headline"
+              className="mb-4 rounded-zoca border border-rose-500/30 bg-gradient-to-br from-rose-500/10 to-zoca-bg-2/30 px-5 py-4"
+            >
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-rose-300/80">
+                    MRR at risk this week
+                  </div>
+                  <div className="mt-1 font-display text-4xl font-bold tabular-nums text-rose-300">
+                    {formatMoney(kpis.mrrAtRisk)}
+                  </div>
+                  <div className="mt-1 text-[12px] text-zoca-text-soft">
+                    {kpis.RED} RED customer{kpis.RED === 1 ? "" : "s"} ·{" "}
+                    {kpis.amsWithAction} AM{kpis.amsWithAction === 1 ? "" : "s"} with action ·{" "}
+                    {kpis.podsRepresented} pod{kpis.podsRepresented === 1 ? "" : "s"} affected
+                  </div>
+                </div>
+                {compareKpis && (
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    <span className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+                      vs {compareDays}d ago
+                    </span>
+                    <DeltaBadge
+                      delta={Math.round(kpis.mrrAtRisk - compareKpis.mrrAtRisk)}
+                      unit="$"
+                      lowerIsBetter
+                    />
+                  </div>
+                )}
+              </div>
+              {tierTrend.length > 1 && (
+                <div className="mt-3 text-rose-300/70" title={`RED-count trend last ${tierTrend.length} days (proxy for MRR-at-risk)`}>
+                  <V2Sparkline
+                    values={tierTrend.map((r) => r.total_high_risk)}
+                    width={300}
+                    height={28}
+                    color="rgb(251 113 133)"
+                    gradient
+                    label="MRR-at-risk trend"
+                  />
+                </div>
+              )}
+            </section>
+
             <section
               aria-label="Top-line KPIs"
               className="sticky top-[60px] z-40 -mx-4 mb-6 border-y border-zoca-border-2 bg-zoca-body/90 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6 print:static print:border-none print:bg-transparent print:p-0"

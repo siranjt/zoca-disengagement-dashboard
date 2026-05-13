@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/prune",
       "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/outcome-backfill",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/health-alert",
+      "schedule": "15 3 * * *"
     }
   ],
   "functions": {
@@ -50,6 +58,22 @@
     "app/api/v2/snapshot/route.ts": {
       "memory": 1024,
       "maxDuration": 30
+    },
+    "app/api/cron/outcome-backfill/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/cron/health-alert/route.ts": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "app/api/v2/am/[amName]/monday-brief/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "app/api/v2/actions/escalate/route.ts": {
+      "memory": 512,
+      "maxDuration": 15
     }
   }
 }

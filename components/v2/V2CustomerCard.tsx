@@ -78,18 +78,34 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
     (s.stoplight === "YELLOW" && !!customer.performance?.flag);
   const [expanded, setExpanded] = useState<boolean>(autoExpand);
 
-  // Action-button state machine: idle -> selecting -> submitting -> done
+  // Action-button state machine:
+  //   idle -> selecting (3 channel chips)
+  //         -> tagging (channel chosen, capture reason + optional follow-up)
+  //         -> submitting -> done
+  //   idle -> escalating (capture note) -> submittingEscalation -> escalated
+  type ReasonCode = "renewal" | "performance" | "billing" | "complaint" | "check_in" | "onboarding" | "other";
   type ActionState =
     | { kind: "idle" }
     | { kind: "selecting" }
+    | { kind: "tagging"; choice: ActionChoice; reason: ReasonCode | ""; followUp: boolean }
     | { kind: "submitting"; choice: ActionChoice }
     | { kind: "done"; choice: ActionChoice; at: number }
+    | { kind: "escalating"; note: string }
+    | { kind: "submittingEscalation" }
+    | { kind: "escalated"; to: string | null }
     | { kind: "error"; message: string };
   const [actionState, setActionState] = useState<ActionState>({ kind: "idle" });
 
-  async function logAction(choice: ActionChoice) {
+  async function submitTaggedAction(choice: ActionChoice, reason: ReasonCode | "", followUp: boolean) {
     setActionState({ kind: "submitting", choice });
     try {
+      const followUpDate = followUp
+        ? (() => {
+            const d = new Date();
+            d.setDate(d.getDate() + 7);
+            return d.toISOString().slice(0, 10);
+          })()
+        : null;
       const res = await fetch("/api/v2/actions/contacted", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,6 +114,8 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
           entity_id: customer.entity_id,
           action_type: `contacted_${choice}`,
           composite_at_action: customer.signals_v2.composite,
+          reason_code: reason || null,
+          follow_up_date: followUpDate,
         }),
       });
       if (!res.ok) {
@@ -106,6 +124,34 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
         return;
       }
       setActionState({ kind: "done", choice, at: Date.now() });
+    } catch (e) {
+      setActionState({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  async function submitEscalation(note: string) {
+    setActionState({ kind: "submittingEscalation" });
+    try {
+      const res = await fetch("/api/v2/actions/escalate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          am_name: customer.am_name,
+          entity_id: customer.entity_id,
+          composite_at_action: customer.signals_v2.composite,
+          note: note.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => res.statusText);
+        setActionState({ kind: "error", message: `${res.status}: ${txt.slice(0, 200)}` });
+        return;
+      }
+      const json = (await res.json().catch(() => ({}))) as { escalated_to?: string };
+      setActionState({ kind: "escalated", to: json.escalated_to ?? null });
     } catch (e) {
       setActionState({
         kind: "error",
@@ -229,7 +275,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 Undo
               </button>
             </div>
-          ) : actionState.kind === "selecting" || actionState.kind === "submitting" ? (
+          ) : actionState.kind === "selecting" ? (
             <div className="flex flex-col items-end gap-1.5">
               <div className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
                 How did it go?
@@ -238,23 +284,23 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 <ActionChip
                   label="\u2713 Connected"
                   tone="emerald"
-                  busy={actionState.kind === "submitting" && actionState.choice === "connected"}
-                  disabled={actionState.kind === "submitting"}
-                  onClick={() => logAction("connected")}
+                  busy={false}
+                  disabled={false}
+                  onClick={() => setActionState({ kind: "tagging", choice: "connected", reason: "", followUp: false })}
                 />
                 <ActionChip
                   label="\ud83d\udcde VM"
                   tone="amber"
-                  busy={actionState.kind === "submitting" && actionState.choice === "vm"}
-                  disabled={actionState.kind === "submitting"}
-                  onClick={() => logAction("vm")}
+                  busy={false}
+                  disabled={false}
+                  onClick={() => setActionState({ kind: "tagging", choice: "vm", reason: "", followUp: true })}
                 />
                 <ActionChip
                   label="\u00d7 No reach"
                   tone="rose"
-                  busy={actionState.kind === "submitting" && actionState.choice === "noreach"}
-                  disabled={actionState.kind === "submitting"}
-                  onClick={() => logAction("noreach")}
+                  busy={false}
+                  disabled={false}
+                  onClick={() => setActionState({ kind: "tagging", choice: "noreach", reason: "", followUp: true })}
                 />
                 <button
                   type="button"
@@ -266,15 +312,164 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted }: Props) {
                 </button>
               </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              aria-label={`Action: ${actionLabel(customer)}. Click to log how it went.`}
-              className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
-              onClick={() => setActionState({ kind: "selecting" })}
+          ) : actionState.kind === "tagging" || actionState.kind === "submitting" ? (
+            <div className="flex max-w-[300px] flex-col items-end gap-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-zoca-text-soft">
+                {actionState.kind === "submitting" ? "Saving…" : "Tag the call"}
+              </div>
+              <div className="rounded-zoca border border-zoca-border-2 bg-zoca-bg-2/40 p-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-zoca-text-soft">Channel</span>
+                  <span className="font-medium text-zoca-text-primary">
+                    {actionState.kind === "tagging"
+                      ? actionState.choice === "connected"
+                        ? "✓ Connected"
+                        : actionState.choice === "vm"
+                          ? "📞 Voicemail"
+                          : "× No reach"
+                      : "…"}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <label htmlFor={`reason-${customer.entity_id}`} className="text-zoca-text-soft">
+                    Why
+                  </label>
+                  <select
+                    id={`reason-${customer.entity_id}`}
+                    value={actionState.kind === "tagging" ? actionState.reason : ""}
+                    onChange={(e) => {
+                      if (actionState.kind !== "tagging") return;
+                      setActionState({
+                        ...actionState,
+                        reason: e.target.value as ReasonCode | "",
+                      });
+                    }}
+                    disabled={actionState.kind === "submitting"}
+                    className="rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-1.5 py-0.5 text-[11px] text-zoca-text-primary focus:border-zoca-pink-cta focus:outline-none"
+                  >
+                    <option value="">(skip)</option>
+                    <option value="renewal">Renewal</option>
+                    <option value="performance">Performance</option>
+                    <option value="billing">Billing</option>
+                    <option value="complaint">Complaint</option>
+                    <option value="check_in">Check-in</option>
+                    <option value="onboarding">Onboarding</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <label className="mt-1.5 flex items-center gap-1.5 text-zoca-text-soft">
+                  <input
+                    type="checkbox"
+                    checked={actionState.kind === "tagging" ? actionState.followUp : false}
+                    onChange={(e) => {
+                      if (actionState.kind !== "tagging") return;
+                      setActionState({ ...actionState, followUp: e.target.checked });
+                    }}
+                    disabled={actionState.kind === "submitting"}
+                    className="h-3 w-3 cursor-pointer accent-zoca-pink-cta"
+                  />
+                  Remind me in 7 days
+                </label>
+                <div className="mt-2 flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActionState({ kind: "idle" })}
+                    disabled={actionState.kind === "submitting"}
+                    className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                  >
+                    cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (actionState.kind !== "tagging") return;
+                      submitTaggedAction(actionState.choice, actionState.reason, actionState.followUp);
+                    }}
+                    disabled={actionState.kind === "submitting"}
+                    className="rounded-zoca-pill bg-zoca-pink-cta/20 px-2 py-0.5 text-[11px] font-medium text-zoca-pink-cta transition hover:bg-zoca-pink-cta/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                  >
+                    {actionState.kind === "submitting" ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : actionState.kind === "escalating" || actionState.kind === "submittingEscalation" ? (
+            <div className="flex max-w-[300px] flex-col items-end gap-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-amber-300">
+                ↗ Escalate to pod lead
+              </div>
+              <div className="rounded-zoca border border-amber-400/30 bg-amber-500/10 p-2 text-[11px]">
+                <textarea
+                  rows={2}
+                  autoFocus
+                  placeholder="What's blocking you? (optional)"
+                  value={actionState.kind === "escalating" ? actionState.note : ""}
+                  disabled={actionState.kind === "submittingEscalation"}
+                  onChange={(e) => {
+                    if (actionState.kind !== "escalating") return;
+                    setActionState({ kind: "escalating", note: e.target.value });
+                  }}
+                  className="w-full rounded border border-zoca-border-3 bg-zoca-bg-1/80 px-1.5 py-1 text-[11px] text-zoca-text-primary placeholder:text-zoca-text-soft focus:border-zoca-pink-cta focus:outline-none"
+                />
+                <div className="mt-1 flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActionState({ kind: "idle" })}
+                    disabled={actionState.kind === "submittingEscalation"}
+                    className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-zoca-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                  >
+                    cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const note = actionState.kind === "escalating" ? actionState.note : "";
+                      submitEscalation(note);
+                    }}
+                    disabled={actionState.kind === "submittingEscalation"}
+                    className="rounded-zoca-pill bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-300 transition hover:bg-amber-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 disabled:opacity-50"
+                  >
+                    {actionState.kind === "submittingEscalation" ? "Sending…" : "Escalate"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : actionState.kind === "escalated" ? (
+            <div
+              className="max-w-[260px] rounded-zoca-lg border border-amber-400/30 bg-amber-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-amber-300 md:max-w-[300px] md:px-4 md:text-[13px]"
+              aria-live="polite"
             >
-              {actionLabel(customer)}
-            </button>
+              ↗ Escalated{actionState.to ? ` to ${actionState.to.split(" ")[0]}` : ""}
+              <button
+                type="button"
+                onClick={() => setActionState({ kind: "idle" })}
+                className="ml-2 text-[10px] font-normal text-amber-300/70 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
+              >
+                Undo
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                aria-label={`Action: ${actionLabel(customer)}. Click to log how it went.`}
+                className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
+                onClick={() => setActionState({ kind: "selecting" })}
+              >
+                {actionLabel(customer)}
+              </button>
+              {s.stoplight === "RED" && (
+                <button
+                  type="button"
+                  onClick={() => setActionState({ kind: "escalating", note: "" })}
+                  className="text-[10px] text-zoca-text-soft underline-offset-2 hover:text-amber-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40"
+                  aria-label="Escalate to pod lead"
+                  title="Stuck on this customer? Send to your pod lead."
+                >
+                  ↗ Escalate
+                </button>
+              )}
+            </div>
           )}
           {actionState.kind === "error" && (
             <div

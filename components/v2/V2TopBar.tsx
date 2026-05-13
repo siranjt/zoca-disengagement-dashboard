@@ -114,6 +114,14 @@ export default function V2TopBar({
           <ViewButton label="Leadership" active={view === "leadership"} onClick={() => onSetView("leadership")} />
         </div>
         <a
+          href="/v2/monday"
+          className="ml-2 hidden rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1.5 text-[12px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary md:inline-flex"
+          aria-label="Open Monday brief"
+          title="Monday brief — week-ahead view"
+        >
+          Monday →
+        </a>
+        <a
           href="/v2/manager"
           className="ml-2 hidden rounded-zoca-pill border border-zoca-border-2 bg-zoca-bg-2/60 px-3 py-1.5 text-[12px] font-medium text-zoca-text-soft transition hover:border-zoca-border-3 hover:text-zoca-text-primary md:inline-flex"
           aria-label="Open manager dashboard"

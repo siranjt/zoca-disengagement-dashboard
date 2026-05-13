@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
+import { readLatestSnapshotV2, readSnapshotByDate, readPendingFollowUps } from "@/lib/postgres";
+import type { ScoredCustomerV2 } from "@/lib/types";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/v2/am/:amName/monday-brief
+ *   → AM weekly briefing data: top RED to call, customers degraded since
+ *     last week, customers improving since last week, scheduled follow-ups
+ *     for the next 7 days.
+ */
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: { amName: string } },
+) {
+  const am = decodeURIComponent(ctx.params.amName);
+  try {
+    const [latest, followUps] = await Promise.all([
+      readLatestSnapshotV2(),
+      readPendingFollowUps(am, 7),
+    ]);
+    if (!latest) {
+      return NextResponse.json({ error: "no snapshot available" }, { status: 404 });
+    }
+
+    // Filter to this AM's book
+    const book = latest.customers.filter((c) => c.am_name === am);
+
+    // Top 5 RED needing call (sorted by composite desc, exclude pre-launch)
+    const topRed = book
+      .filter(
+        (c) =>
+          c.signals_v2.stoplight === "RED" &&
+          !c.signals_v2.pre_launch,
+      )
+      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
+      .slice(0, 5);
+
+    // Compare to 7d-ago snapshot for "degraded" / "improving" lists
+    const sevenDaysAgo = new Date(latest.generatedAt);
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+    const ymd = sevenDaysAgo.toISOString().slice(0, 10);
+    const prev = await readSnapshotByDate(ymd);
+    let degradedThisWeek: ScoredCustomerV2[] = [];
+    let improvedThisWeek: ScoredCustomerV2[] = [];
+    if (prev) {
+      const prevByEntity = new Map<string, string>();
+      for (const c of prev.customers) {
+        prevByEntity.set(c.entity_id, c.signals_v2.stoplight);
+      }
+      degradedThisWeek = book.filter((c) => {
+        const prevSl = prevByEntity.get(c.entity_id);
+        const curSl = c.signals_v2.stoplight;
+        // Worse direction: GREEN→YELLOW, GREEN→RED, YELLOW→RED
+        if (prevSl === "GREEN" && (curSl === "YELLOW" || curSl === "RED")) return true;
+        if (prevSl === "YELLOW" && curSl === "RED") return true;
+        return false;
+      });
+      improvedThisWeek = book.filter((c) => {
+        const prevSl = prevByEntity.get(c.entity_id);
+        const curSl = c.signals_v2.stoplight;
+        if (prevSl === "RED" && (curSl === "YELLOW" || curSl === "GREEN")) return true;
+        if (prevSl === "YELLOW" && curSl === "GREEN") return true;
+        return false;
+      });
+    }
+
+    // Aggregate book-level stats
+    const totals = book.reduce(
+      (acc, c) => {
+        const sl = c.signals_v2.stoplight;
+        if (sl === "RED") acc.RED += 1;
+        else if (sl === "YELLOW") acc.YELLOW += 1;
+        else acc.GREEN += 1;
+        if (c.signals_v2.pre_launch) acc.preLaunch += 1;
+        if (c.signals_v2.stoplight === "RED") acc.mrrAtRisk += c.plan_amount || 0;
+        return acc;
+      },
+      { RED: 0, YELLOW: 0, GREEN: 0, preLaunch: 0, mrrAtRisk: 0 },
+    );
+
+    return NextResponse.json(
+      {
+        am_name: am,
+        snapshot_date: latest.generatedAt.slice(0, 10),
+        compared_to: prev ? prev.generatedAt.slice(0, 10) : null,
+        book_size: book.length,
+        totals,
+        top_red: topRed,
+        degraded_this_week: degradedThisWeek,
+        improved_this_week: improvedThisWeek,
+        follow_ups: followUps,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
