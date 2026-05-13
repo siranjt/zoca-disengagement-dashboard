@@ -19,6 +19,10 @@ import { V2KpiTiles } from "./V2KpiTiles";
 import { ToastProvider, useToast } from "./Toast";
 import { CustomerCardSkeleton } from "./Skeleton";
 import { CursorGlow } from "./CursorGlow";
+// Phase 23.A — AM-view interactive charts (book health + signal mix + 30d RED trend).
+import { BookHealthDonut } from "./charts/BookHealthDonut";
+import { SignalMixPie } from "./charts/SignalMixPie";
+import { RedTrendLine } from "./charts/RedTrendLine";
 import {
   SIGNAL_LABELS,
   isSignalKey,
@@ -532,6 +536,32 @@ function V2DashboardInner() {
         {snapshot.status === "ready" && !selectedAm && <V2SelectAmPrompt />}
 
         {snapshot.status === "ready" && selectedAm && view === "am" && (
+          <>
+            {/*
+              Phase 23.A — interactive chart row, AM view only. Renders right
+              under the KPI tiles and above V2AMTriage. Click handlers route
+              into /v2 with filter/signal URL params so the existing chip /
+              filter-pill machinery picks up the navigation.
+            */}
+            <section style={{ padding: "0 0 16px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "10px",
+                  marginBottom: "10px",
+                }}
+              >
+                <BookHealthDonut
+                  redCount={redCountForAm}
+                  yellowCount={yellowCountForAm}
+                  greenCount={greenCountForAm}
+                  amName={selectedAm}
+                />
+                <SignalMixPie customers={amCustomers} amName={selectedAm} />
+              </div>
+              <RedTrendLine currentRed={redCountForAm} amName={selectedAm} />
+            </section>
           <V2AMTriage
             amName={selectedAm}
             pod={selectedPod}
@@ -548,6 +578,7 @@ function V2DashboardInner() {
             podFilter={podFilter}
             onPodFilterChange={setPodFilter}
           />
+          </>
         )}
         {snapshot.status === "ready" && view === "pod" && (
           <V2Rollup
