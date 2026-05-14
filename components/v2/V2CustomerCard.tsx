@@ -62,11 +62,6 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
 
   // ---------------------------------------------------------------------------
   // Phase 22.C — card-level animation state.
-  // `snoozing`: applied for 500ms when the snooze action fires, before the
-  //   parent unmounts the card via snoozedSet. Routes the snooze through
-  //   handleSnoozeWithAnimation so the API call fires at the animation peak.
-  // `popping`: short-lived flag on the pin transition (false → true) to
-  //   trigger the spring pop. Read by PinButton's icon className.
   // ---------------------------------------------------------------------------
   const [snoozing, setSnoozing] = useState(false);
   const [popping, setPopping] = useState(false);
@@ -85,10 +80,6 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
   async function handleSnoozeWithAnimation(days: number) {
     if (!onSnooze) return;
     setSnoozing(true);
-    // Fire the API call at the animation peak (~250ms in). The parent will
-    // move this customer into snoozedSet, which (for full red cards) flips
-    // the card to its snoozed shape OR (for triage views that filter
-    // snoozed out) unmounts it. The remaining ~250ms runs either way.
     await new Promise((r) => setTimeout(r, 250));
     onSnooze(days);
   }
@@ -129,18 +120,24 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
     }
   }
 
-  // Auto-expand for RED stoplight OR YELLOW with performance flag so the
-  // "why" is visible without an extra click on cards that need attention.
+  // ---------------------------------------------------------------------------
+  // Phase 26 — unified card. All three tiers now render the SAME rich body.
+  // Differences are confined to:
+  //   1) the wrapper `tierStyle` (border + bg tint)
+  //   2) the narrative pill tint
+  //   3) the primary CTA button style
+  //   4) auto-expand defaults
+  //   5) the signal chip row tone (and the GREEN positive chips)
+  //   6) whether the "Escalate" link appears (RED only)
+  // ---------------------------------------------------------------------------
+
+  // Auto-expand defaults per tier
   const autoExpand =
     s.stoplight === "RED" ||
     (s.stoplight === "YELLOW" && !!customer.performance?.flag);
   const [expanded, setExpanded] = useState<boolean>(autoExpand);
 
-  // Action-button state machine:
-  //   idle -> selecting (3 channel chips)
-  //         -> tagging (channel chosen, capture reason + optional follow-up)
-  //         -> submitting -> done
-  //   idle -> escalating (capture note) -> submittingEscalation -> escalated
+  // Action-button state machine
   type ReasonCode = "renewal" | "performance" | "billing" | "complaint" | "check_in" | "onboarding" | "other";
   type ActionState =
     | { kind: "idle" }
@@ -218,246 +215,17 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Phase 17.B.1 + 17.C — Tier-based rendering. Cards now have three shapes:
-  //   GREEN  = one-line collapsed (pulse dot + bizname + meta + trend)
-  //   YELLOW = compact card (lighter, "Schedule check-in" / "Snooze 7d")
-  //   RED    = full card with inline action buttons (existing flow below)
-  // -------------------------------------------------------------------------
-  if (s.stoplight === "GREEN") {
-    return (
-      <article
-        role="article"
-        aria-label={`${customer.company} — Doing fine`}
-        data-entity-id={customer.entity_id}
-        className={`zoca-fade-in${snoozing ? " v2-card-snoozing" : ""}`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "10px 16px",
-          background: "#ffffff",
-          border: "1px solid var(--zoca-border)",
-          borderRadius: "10px",
-          boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
-          transition: "background 0.15s ease, box-shadow 0.15s ease",
-        }}
-      >
-        <span
-          className="zoca-pulse-dot-green"
-          style={{ flexShrink: 0 }}
-          aria-hidden
-        />
-        <BiznameLink
-          bizname={customer.company || customer.entity_id.slice(0, 8)}
-          hubspotCompanyId={customer.hubspot?.hubspot_company_id}
-        >
-          <span
-            className="font-medium text-zoca-text"
-            style={{
-              fontSize: "13px",
-              maxWidth: "260px",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {customer.company || customer.entity_id.slice(0, 8)}
-          </span>
-        </BiznameLink>
-        <span className="text-[11px] text-zoca-text-2" style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-          {planText}
-          {podText}
-        </span>
-        <span style={{ marginLeft: "auto" }} className="flex items-center gap-3">
-          {trajectoryBadge.label && (
-            <span
-              className="text-[10px] font-semibold"
-              style={{
-                color:
-                  s.trajectory_7d === "improving"
-                    ? "var(--zoca-green)"
-                    : s.trajectory_7d === "worsening"
-                      ? "var(--zoca-pink)"
-                      : "var(--zoca-text-3)",
-              }}
-              title={trajectoryBadge.title}
-            >
-              {trajectoryBadge.label}
-            </span>
-          )}
-          {trend && trend.length > 1 && (
-            <V2Sparkline
-              values={trend.map((p) => p.composite)}
-              width={56}
-              height={14}
-              color="rgb(16, 185, 129)"
-              gradient
-              label="Composite score trend"
-            />
-          )}
-          {onTogglePinned && (
-            <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
-          )}
-        </span>
-      </article>
-    );
-  }
+  // ---------------------------------------------------------------------------
+  // Phase 26 — tier-specific style maps
+  // ---------------------------------------------------------------------------
 
-  if (s.stoplight === "YELLOW") {
-    return (
-      <article
-        role="article"
-        aria-label={`${customer.company} — Keep an eye on${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
-        data-entity-id={customer.entity_id}
-        className={`zoca-fade-in${snoozing ? " v2-card-snoozing" : ""}`}
-        style={{
-          background: isSnoozed ? "rgba(254, 243, 199, 0.55)" : "#ffffff",
-          border: isSnoozed
-            ? "1px solid rgba(245, 158, 11, 0.40)"
-            : "1px solid rgba(245, 158, 11, 0.28)",
-          borderRadius: "12px",
-          padding: "12px 16px",
-          boxShadow: "0 1px 3px rgba(11,5,29,0.04)",
-          transition: "box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease",
-          opacity: isSnoozed ? 0.92 : 1,
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <span
-            className="zoca-pulse-dot-amber"
-            aria-hidden
-            style={{ marginTop: "5px", flexShrink: 0 }}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <BiznameLink
-                bizname={customer.company || customer.entity_id.slice(0, 8)}
-                hubspotCompanyId={customer.hubspot?.hubspot_company_id}
-              >
-                <h3
-                  className="text-[14px] font-semibold text-zoca-text"
-                  style={{ margin: 0 }}
-                >
-                  {customer.company || customer.entity_id.slice(0, 8)}
-                </h3>
-              </BiznameLink>
-              <span className="text-[11px] text-zoca-text-2" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {planText}
-                {podText}
-              </span>
-              {recentlyContacted && (
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{
-                    background: "rgba(16, 185, 129, 0.10)",
-                    color: "#047857",
-                    border: "1px solid rgba(16, 185, 129, 0.24)",
-                  }}
-                  title="Contacted in the last 7 days"
-                >
-                  ✓ Contacted
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-zoca-text-2">
-              {renderReason(s.reason_one_line)}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {onTogglePinned && (
-              <PinButton isPinned={!!isPinned} onToggle={onTogglePinned} popping={popping} />
-            )}
-            {isSnoozed && snoozedUntil && onUnsnooze ? (
-              <SnoozedBanner
-                snoozedUntil={snoozedUntil}
-                onUnsnooze={onUnsnooze}
-              />
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="zoca-btn zoca-btn-ghost"
-                  style={{ fontSize: "11px", padding: "5px 12px" }}
-                  onClick={() => setActionState({ kind: "selecting" })}
-                  aria-label="Schedule check-in"
-                >
-                  Schedule check-in
-                </button>
-                {onSnooze ? (
-                  <SnoozeMenu size="xs" onPick={(days) => handleSnoozeWithAnimation(days)} />
-                ) : null}
-              </>
-            )}
-          </div>
-        </div>
-        {actionState.kind === "selecting" && (
-          <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
-            <ActionChip
-              label="✓ Connected"
-              tone="emerald"
-              busy={false}
-              disabled={false}
-              onClick={() =>
-                setActionState({
-                  kind: "tagging",
-                  choice: "connected",
-                  reason: "",
-                  followUp: false,
-                })
-              }
-            />
-            <ActionChip
-              label="📞 VM"
-              tone="amber"
-              busy={false}
-              disabled={false}
-              onClick={() =>
-                setActionState({
-                  kind: "tagging",
-                  choice: "vm",
-                  reason: "",
-                  followUp: true,
-                })
-              }
-            />
-            <ActionChip
-              label="× No reach"
-              tone="rose"
-              busy={false}
-              disabled={false}
-              onClick={() =>
-                setActionState({
-                  kind: "tagging",
-                  choice: "noreach",
-                  reason: "",
-                  followUp: true,
-                })
-              }
-            />
-            <button
-              type="button"
-              onClick={() => setActionState({ kind: "idle" })}
-              className="text-[10px] text-zoca-text-2 underline-offset-2 hover:underline"
-            >
-              cancel
-            </button>
-          </div>
-        )}
-      </article>
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // RED — full card render below (existing flow).
-  // -------------------------------------------------------------------------
-  return (
-    <article
-      role="article"
-      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
-      data-entity-id={customer.entity_id}
-      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}`}
-      style={{
+  const tierStyle: {
+    borderColor: string;
+    background: string;
+    boxShadow: string;
+  } = (() => {
+    if (s.stoplight === "RED") {
+      return {
         borderColor: isSnoozed
           ? "rgba(245, 158, 11, 0.35)"
           : "rgba(255, 86, 187, 0.22)",
@@ -467,6 +235,97 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         boxShadow: isSnoozed
           ? "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(245, 158, 11, 0.18)"
           : "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
+      };
+    }
+    if (s.stoplight === "YELLOW") {
+      return {
+        borderColor: isSnoozed
+          ? "rgba(245, 158, 11, 0.40)"
+          : "rgba(245, 158, 11, 0.28)",
+        background: isSnoozed
+          ? "linear-gradient(180deg, rgba(254, 243, 199, 0.55) 0%, #ffffff 100%)"
+          : "linear-gradient(180deg, rgba(254, 243, 199, 0.25) 0%, #ffffff 100%)",
+        boxShadow:
+          "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(245, 158, 11, 0.10)",
+      };
+    }
+    // GREEN
+    return {
+      borderColor: isSnoozed
+        ? "rgba(245, 158, 11, 0.35)"
+        : "rgba(16, 185, 129, 0.22)",
+      background: isSnoozed
+        ? "linear-gradient(180deg, rgba(254, 243, 199, 0.45) 0%, #ffffff 100%)"
+        : "linear-gradient(180deg, rgba(16, 185, 129, 0.03) 0%, #ffffff 100%)",
+      boxShadow:
+        "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(16, 185, 129, 0.08)",
+    };
+  })();
+
+  // Tier-tinted narrative pill (background + border)
+  const reasonPillStyle: React.CSSProperties = (() => {
+    if (s.stoplight === "RED") {
+      return {
+        background: "rgba(255, 86, 187, 0.06)",
+        border: "1px solid rgba(255, 86, 187, 0.18)",
+      };
+    }
+    if (s.stoplight === "YELLOW") {
+      return {
+        background: "rgba(245, 158, 11, 0.08)",
+        border: "1px solid rgba(245, 158, 11, 0.22)",
+      };
+    }
+    return {
+      background: "rgba(16, 185, 129, 0.06)",
+      border: "1px solid rgba(16, 185, 129, 0.18)",
+    };
+  })();
+
+  // Primary CTA button class per tier
+  const primaryCtaClass = (() => {
+    if (s.stoplight === "RED") {
+      return "max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]";
+    }
+    if (s.stoplight === "YELLOW") {
+      return "max-w-[260px] rounded-zoca-lg bg-amber-500/20 text-amber-700 hover:bg-amber-500/30 px-3.5 py-2 text-left text-[12px] font-semibold leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2 md:max-w-[300px] md:px-4 md:text-[13px]";
+    }
+    // GREEN
+    return "max-w-[260px] rounded-zoca-lg bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 px-3.5 py-2 text-left text-[12px] font-semibold leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 md:max-w-[300px] md:px-4 md:text-[13px]";
+  })();
+
+  // Fallback narrative text when reason_one_line is empty / "No action needed."
+  const narrativeText = (() => {
+    if (s.reason_one_line && s.reason_one_line.trim() !== "") {
+      return s.reason_one_line;
+    }
+    if (s.stoplight === "GREEN") {
+      return "All systems healthy — keep doing what you're doing.";
+    }
+    if (s.stoplight === "YELLOW") {
+      return "Watch this one — signal mix is mixed.";
+    }
+    return "";
+  })();
+
+  // Expand toggle label per tier (GREEN uses positive framing)
+  const expandToggleLabel = (collapsed: boolean) => {
+    if (s.stoplight === "GREEN") {
+      return collapsed ? "Show details" : "Hide";
+    }
+    return collapsed ? "Why?" : "Hide";
+  };
+
+  return (
+    <article
+      role="article"
+      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
+      data-entity-id={customer.entity_id}
+      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}`}
+      style={{
+        borderColor: tierStyle.borderColor,
+        background: tierStyle.background,
+        boxShadow: tierStyle.boxShadow,
         opacity: isSnoozed ? 0.95 : 1,
         animationDelay: `${Math.min((index ?? 0) * 70, 600)}ms`,
       }}
@@ -614,10 +473,16 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               )}
             </div>
           )}
-          <p className="mt-2 text-[13px] leading-relaxed text-zoca-text md:text-sm">
-            {renderReason(s.reason_one_line)}
-            <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
-          </p>
+          {/* Phase 26 — tier-tinted narrative pill (replaces bare <p>) */}
+          {narrativeText && (
+            <div
+              className="mt-2 rounded-zoca px-3 py-2 text-[13px] leading-relaxed text-zoca-text md:text-sm"
+              style={reasonPillStyle}
+            >
+              {renderReason(narrativeText)}
+              <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
+            </div>
+          )}
           {/* Modifier flag chips */}
           {(s.flag_performance || s.flag_tickets) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -640,10 +505,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               )}
             </div>
           )}
-          {/* Phase 22.B.1 — clickable signal chips. RED variant only.
-              Each chip surfaces an active signal and triggers parent filter. */}
+          {/* Phase 26 — signal chip row now renders on all tiers, tier-tinted */}
           {onSignalChipClick && (
-            <SignalChipRow customer={customer} onChipClick={onSignalChipClick} />
+            <SignalChipRow customer={customer} onChipClick={onSignalChipClick} tone={s.stoplight} />
           )}
         </div>
 
@@ -851,7 +715,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                 ref={primaryCtaRef}
                 type="button"
                 aria-label={`Action: ${actionLabel(customer)}. Click to log how it went.`}
-                className="max-w-[260px] rounded-zoca-lg bg-zoca-pink-cta px-3.5 py-2 text-left text-[12px] font-semibold leading-snug text-white shadow-zoca-sm transition hover:shadow-zoca-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zoca-bg-0 md:max-w-[300px] md:px-4 md:text-[13px]"
+                className={primaryCtaClass}
                 onClick={() => setActionState({ kind: "selecting" })}
               >
                 {actionLabel(customer)}
@@ -877,7 +741,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               role="alert"
               className="max-w-[260px] rounded-zoca-sm border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-right text-[10px] text-rose-200 md:max-w-[300px]"
             >
-              Couldn\u2019t log: {actionState.message}
+              Couldn’t log: {actionState.message}
               <button
                 type="button"
                 onClick={() => setActionState({ kind: "idle" })}
@@ -891,7 +755,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         </div>
       </div>
 
-      {/* Metrics summary line — enriched with channels, app tier, billing detail */}
+      {/* Metrics summary line — render on ALL tiers (Phase 26) */}
       <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-2 md:px-5">
         {renderMetricsSummary(customer)}
       </div>
@@ -947,9 +811,9 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
         </div>
       )}
 
-      {/* Performance signals (expand-on-demand; auto-expanded for RED) */}
+      {/* Performance signals + Notes + Contacts (expand-on-demand; per-tier auto-expand) */}
       <div className="border-t border-zoca-border px-4 py-2.5 md:px-5">
-{customer.performance ? (
+        {customer.performance ? (
           <>
             <button
               type="button"
@@ -960,7 +824,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               title={expanded ? "Hide performance signals" : "Show performance signals (why this customer is on this stoplight)"}
             >
               <span aria-hidden>{expanded ? "▾" : "▸"}</span>
-              {expanded ? "Hide" : "Why?"}
+              {expandToggleLabel(!expanded)}
               {customer.performance?.flag && !expanded && (
                 <span
                   className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/18 px-1.5 py-0.5 text-[10px] font-medium text-rose-700"
@@ -984,7 +848,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                     bizname={customer.company ?? null}
                   />
                 </div>
-                <V2PerformancePanel performance={customer.performance} />
+                <V2PerformancePanel performance={customer.performance} tier={s.stoplight} />
                 {customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 && (
                   <ContactsSection contacts={customer.hubspot.contacts} bizname={customer.company ?? undefined} amName={notesAmName} />
                 )}
@@ -992,9 +856,6 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             )}
           </>
         ) : customer.hubspot?.contacts && customer.hubspot.contacts.length > 0 ? (
-          // No performance data, but we have contacts — still expose the
-          // CONTACTS section behind a "Why?" toggle so the buyer-side org
-          // chart is reachable on every matched customer.
           <>
             <button
               type="button"
@@ -1005,11 +866,10 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               title={expanded ? "Hide contacts" : "Show contacts"}
             >
               <span aria-hidden>{expanded ? "▾" : "▸"}</span>
-              {expanded ? "Hide" : "Why?"}
+              {expandToggleLabel(!expanded)}
             </button>
             {expanded && (
               <div id={`contacts-${customer.entity_id}`}>
-                {/* Phase 18.B — private notes (AM-specific) */}
                 <div style={{ marginTop: "12px", marginBottom: "16px" }}>
                   <div className="zoca-micro-label" style={{ marginBottom: "8px" }}>
                     Notes (private)
@@ -1026,8 +886,6 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
             )}
           </>
         ) : (
-          // No performance data and no contacts — but every customer still
-          // gets a private-notes expand (Phase 18.B). Notes are universal.
           <>
             <button
               type="button"
@@ -1038,7 +896,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               title={expanded ? "Hide notes" : "Show notes"}
             >
               <span aria-hidden>{expanded ? "▾" : "▸"}</span>
-              {expanded ? "Hide" : "Why?"}
+              {expandToggleLabel(!expanded)}
             </button>
             {expanded && (
               <div id={`notes-${customer.entity_id}`}>
@@ -1101,48 +959,101 @@ function FlagChip({ label, onClick }: { label: string; onClick?: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 22.B.1 — SignalChipRow.
-// Renders a row of clickable chips, one per active signal on the customer.
-// Sits below the modifier flag chips on the RED-variant card body.
+// Phase 22.B.1 + Phase 26 — SignalChipRow.
+// Now tier-aware: RED/YELLOW render negative signal chips at the existing
+// thresholds in their respective tones, and GREEN renders positive chips
+// (ACTIVE COMMS / APP STRONG / LEADS UP / REVIEWS ON TRACK).
 // ---------------------------------------------------------------------------
+
+type ChipTone = "RED" | "YELLOW" | "GREEN";
 
 function SignalChipRow({
   customer,
   onChipClick,
+  tone,
 }: {
   customer: ScoredCustomerV2;
   onChipClick: (key: SignalKey) => void;
+  tone: ChipTone;
 }) {
   const s = customer.signals_v2;
-  const active: { key: SignalKey; label: string }[] = [];
+  const { metrics } = customer;
+
+  // Negative signals (used on RED + YELLOW)
+  const negativeActive: { key: SignalKey; label: string }[] = [];
   if ((s.sig_client_silent ?? 0) >= 65)
-    active.push({ key: "client_silent", label: "Client silent" });
+    negativeActive.push({ key: "client_silent", label: "Client silent" });
   if ((s.sig_we_silent ?? 0) >= 65)
-    active.push({ key: "we_silent", label: "We silent" });
+    negativeActive.push({ key: "we_silent", label: "We silent" });
   if ((s.sig_response_drop ?? 0) >= 65)
-    active.push({ key: "resp_drop", label: "Resp drop" });
+    negativeActive.push({ key: "resp_drop", label: "Resp drop" });
   if ((s.sig_volume_collapse ?? 0) >= 55)
-    active.push({ key: "vol_collapse", label: "Vol collapse" });
+    negativeActive.push({ key: "vol_collapse", label: "Vol collapse" });
   if ((s.sig_usage ?? 0) >= 55)
-    active.push({ key: "usage_low", label: "Usage low" });
+    negativeActive.push({ key: "usage_low", label: "Usage low" });
   if ((s.sig_billing ?? 0) >= 40)
-    active.push({ key: "billing", label: "Billing" });
-  if (active.length === 0) return null;
+    negativeActive.push({ key: "billing", label: "Billing" });
+
+  // Positive signals (used on GREEN when no negatives are active)
+  const positiveActive: { label: string }[] = [];
+  if (metrics.total_30d >= 8) {
+    positiveActive.push({ label: "Active comms" });
+  }
+  if (customer.usage?.engagement_tier === "Active") {
+    positiveActive.push({ label: "App strong" });
+  }
+  if (
+    customer.performance?.ytd_leads_change_pct !== null &&
+    customer.performance?.ytd_leads_change_pct !== undefined &&
+    customer.performance.ytd_leads_change_pct >= 20
+  ) {
+    positiveActive.push({ label: "Leads up" });
+  }
+  if (
+    customer.performance?.weeks_with_zero_reviews !== null &&
+    customer.performance?.weeks_with_zero_reviews !== undefined &&
+    customer.performance.weeks_with_zero_reviews <= 2
+  ) {
+    positiveActive.push({ label: "Reviews on track" });
+  }
+
+  // Choose what to render based on tone + activity
+  let chipsToRender: React.ReactNode[] = [];
+  if (tone === "GREEN") {
+    // GREEN: surface positives. If none, render nothing.
+    if (positiveActive.length === 0) return null;
+    chipsToRender = positiveActive.map((c, i) => (
+      <span
+        key={`pos-${i}`}
+        className="rounded-full bg-emerald-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700 ring-1 ring-emerald-500/25"
+        title={c.label}
+      >
+        {c.label}
+      </span>
+    ));
+  } else {
+    // RED / YELLOW: surface negatives.
+    if (negativeActive.length === 0) return null;
+    const chipClass =
+      tone === "RED"
+        ? "v2-chip-clickable rounded-full bg-rose-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 ring-1 ring-rose-500/25"
+        : "v2-chip-clickable rounded-full bg-amber-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 ring-1 ring-amber-500/25";
+    chipsToRender = negativeActive.map((c) => (
+      <button
+        key={c.key}
+        type="button"
+        onClick={() => onChipClick(c.key)}
+        className={chipClass}
+        title={`Filter book to: ${c.label}`}
+        aria-label={`Filter book to ${c.label}`}
+      >
+        {c.label}
+      </button>
+    ));
+  }
+
   return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {active.map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          onClick={() => onChipClick(c.key)}
-          className="v2-chip-clickable rounded-full bg-rose-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 ring-1 ring-rose-500/25"
-          title={`Filter book to: ${c.label}`}
-          aria-label={`Filter book to ${c.label}`}
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
+    <div className="mt-2 flex flex-wrap gap-1.5">{chipsToRender}</div>
   );
 }
 
@@ -1193,9 +1104,7 @@ function PinButton({
 
 // ---------------------------------------------------------------------------
 // Phase 19: SnoozeMenu — outline button that pops a small panel with day
-// presets. Renders inline; closes on selection or outside click via the
-// `useEffect` guard inside the component. Caller is responsible for the
-// optimistic API call.
+// presets.
 // ---------------------------------------------------------------------------
 
 function SnoozeMenu({ onPick, size = "sm" }: { onPick: (days: number) => void; size?: "sm" | "xs" }) {
@@ -1561,16 +1470,16 @@ function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>)
   if (!p.flag) return null;
   const parts: string[] = [];
   if (p.gbp_clicks_drop_pct !== null && p.gbp_clicks_drop_pct >= 25) {
-    parts.push(`GBP \u25BC${Math.round(p.gbp_clicks_drop_pct)}%`);
+    parts.push(`GBP ▼${Math.round(p.gbp_clicks_drop_pct)}%`);
   }
   if (p.weeks_with_zero_reviews !== null && p.weeks_with_zero_reviews >= 4) {
     parts.push(`${p.weeks_with_zero_reviews}wk zero`);
   }
   if (p.ytd_leads_change_pct !== null && p.ytd_leads_change_pct <= -20) {
-    parts.push(`YTD \u25BC${Math.abs(Math.round(p.ytd_leads_change_pct))}%`);
+    parts.push(`YTD ▼${Math.abs(Math.round(p.ytd_leads_change_pct))}%`);
   }
   if (!parts.length) return null;
-  return parts.slice(0, 2).join(" \u00B7 ");
+  return parts.slice(0, 2).join(" · ");
 }
 
 // ---------------------------------------------------------------------------
