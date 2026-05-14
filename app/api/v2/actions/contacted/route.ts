@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeAmAction } from "@/lib/postgres";
+import type { AmActionType, ContactReasonCode } from "@/lib/types";
+import { getApiUser, requireAmScope, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type ContactedBody = {
+  am_name?: string;
+  entity_id?: string;
+  action_type?: string;
+  note?: string;
+  composite_at_action?: number;
+  reason_code?: string;
+  follow_up_date?: string;
+};
 
 /**
  * POST /api/v2/actions/contacted
@@ -15,21 +27,41 @@ export const dynamic = "force-dynamic";
  * }
  *   → logs an AM action. Returns the new row id.
  *     Powers the one-click "Mark contacted" flow on each customer card.
+ *
+ * Phase 33.B — admin + manager bypass; AMs may only log against their own
+ * am_name. Scope check uses body.am_name.
  */
 export async function POST(req: NextRequest) {
-  let body: any;
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let body: ContactedBody | null = null;
   try {
-    body = await req.json();
+    body = (await req.json()) as ContactedBody;
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
-  const { am_name, entity_id, action_type, note, composite_at_action, reason_code, follow_up_date } = body || {};
+  const {
+    am_name,
+    entity_id,
+    action_type,
+    note,
+    composite_at_action,
+    reason_code,
+    follow_up_date,
+  } = body || {};
   if (!am_name || !entity_id || !action_type) {
     return NextResponse.json(
       { error: "am_name, entity_id, action_type required" },
       { status: 400 },
     );
   }
+
+  // Phase 33.B — AM-scope enforcement using body.am_name.
+  const scopeDenied = requireAmScope(user, am_name);
+  if (scopeDenied) return scopeDenied;
+
   if (!["contacted_connected", "contacted_vm", "contacted_noreach"].includes(action_type)) {
     return NextResponse.json(
       { error: "action_type must be one of contacted_connected/contacted_vm/contacted_noreach" },
@@ -49,14 +81,19 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  // Phase 33.B.3 — narrow action_type + reason_code from validated strings
+  // to their actual union types. TypeScript doesn't infer through .includes()
+  // runtime checks, so we cast after the validation gates above.
+  const validatedActionType = action_type as AmActionType;
+  const validatedReasonCode = (reason_code ?? null) as ContactReasonCode | null;
   try {
     const id = await writeAmAction({
       am_name,
       entity_id,
-      action_type,
+      action_type: validatedActionType,
       note: note ?? null,
       composite_at_action: composite_at_action ?? null,
-      reason_code: reason_code ?? null,
+      reason_code: validatedReasonCode,
       follow_up_date: follow_up_date ?? null,
     });
     return NextResponse.json({ ok: true, id });
