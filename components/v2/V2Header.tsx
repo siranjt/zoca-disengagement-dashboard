@@ -111,65 +111,27 @@ export function V2Header(props: Props) {
 
       {/* Right side — view tabs / manager link / live status */}
       <div className="flex items-center gap-3 flex-wrap">
-        {!isManager && (
-          <>
-            <div
-              className="inline-flex items-center gap-1 p-1 rounded-lg"
-              style={{
-                background: "var(--zoca-bg-soft)",
-                border: "1px solid var(--zoca-border)",
-              }}
-            >
-              <ViewTab
-                label="My customers"
-                active={props.view === "am"}
-                onClick={() => props.setView("am")}
-              />
-              <ViewTab
-                label="Pod view"
-                active={props.view === "pod"}
-                onClick={() => props.setView("pod")}
-              />
-              <ViewTab
-                label="Leadership"
-                active={props.view === "leadership"}
-                onClick={() => props.setView("leadership")}
-              />
-            </div>
-
-            <a
-              href="/v2/manager"
-              className="text-[11px] font-medium text-zoca-text transition"
-              style={{ textDecoration: "none" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--zoca-blue)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--zoca-text)";
-              }}
-              aria-label="Open manager dashboard"
-            >
-              Manager <span className="text-[10px]">→</span>
-            </a>
-          </>
-        )}
+        {/* Phase 33.A.6 — naming simplification restored:
+            • removed Pod view + Leadership tabs (re-introduced by Phase 33.A
+              agent rebuilding V2Header from the pre-simplification snapshot)
+            • two peer tabs: "AM's view" (/v2) + "Manager's view" (/v2/manager)
+            • Manager's view tab only visible to admins (AMs are locked to /v2)
+        */}
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-lg"
+          style={{
+            background: "var(--zoca-bg-soft)",
+            border: "1px solid var(--zoca-border)",
+          }}
+        >
+          <NavTab href="/v2" label="AM's view" active={!isManager} />
+          {isAdmin && (
+            <NavTab href="/v2/manager" label="Manager's view" active={isManager} />
+          )}
+        </div>
 
         {isManager && (
           <>
-            <a
-              href="/v2"
-              className="text-[11px] font-medium text-zoca-text transition"
-              style={{ textDecoration: "none" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--zoca-blue)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--zoca-text)";
-              }}
-              aria-label="Back to AM view"
-            >
-              <span className="text-[10px]">←</span> AM view
-            </a>
             <RefreshButton />
           </>
         )}
@@ -188,20 +150,23 @@ export function V2Header(props: Props) {
   );
 }
 
-function ViewTab({
+// Phase 33.A.6 — NavTab is the anchor-based replacement for the old ViewTab
+// (which was button + onClick). Tabs now drive navigation between /v2 and
+// /v2/manager rather than swapping internal view state, since "Pod view"
+// and "Leadership" no longer exist as panes within /v2.
+function NavTab({
+  href,
   label,
   active,
-  onClick,
 }: {
+  href: string;
   label: string;
   active: boolean;
-  onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
+    <a
+      href={href}
+      aria-current={active ? "page" : undefined}
       className="px-3 py-1 rounded-md text-[11px] transition"
       style={
         active
@@ -209,16 +174,18 @@ function ViewTab({
               background: "var(--zoca-text)",
               color: "#ffffff",
               fontWeight: 600,
+              textDecoration: "none",
             }
           : {
               background: "transparent",
               color: "var(--zoca-text-2)",
               fontWeight: 500,
+              textDecoration: "none",
             }
       }
     >
       {label}
-    </button>
+    </a>
   );
 }
 
