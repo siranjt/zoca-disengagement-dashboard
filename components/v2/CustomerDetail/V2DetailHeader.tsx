@@ -2,8 +2,8 @@
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
-import V2Sparkline from "@/components/v2/V2Sparkline";
 import { buildMailto, buildTelLink } from "@/lib/contact-links";
+import V2SnapshotTimeline from "./V2SnapshotTimeline";
 
 type TrendPoint = { date: string; composite: number };
 
@@ -28,12 +28,6 @@ const STOPLIGHT_BORDER: Record<Stoplight, string> = {
   RED: "border-rose-300/60",
   YELLOW: "border-amber-300/60",
   GREEN: "border-emerald-300/60",
-};
-
-const SPARK_COLOR: Record<Stoplight, string> = {
-  RED: "rgb(244 63 94)",     // rose-500
-  YELLOW: "rgb(245 158 11)", // amber-500
-  GREEN: "rgb(16 185 129)",  // emerald-500
 };
 
 function trajectoryArrow(t: ScoredCustomerV2["signals_v2"]["trajectory_7d"]): {
@@ -83,6 +77,10 @@ function V2DetailHeader({ customer, trend }: Props) {
     const d = daysSinceIso(customer.metrics?.last_out_iso ?? null);
     return d !== null && d <= 7;
   })();
+
+  // The trend prop is still accepted for backward compatibility with the
+  // existing client wrapper, but the rich timeline now drives the visual.
+  void trend;
 
   return (
     <section
@@ -226,23 +224,29 @@ function V2DetailHeader({ customer, trend }: Props) {
           >
             composite · 0–100
           </div>
-          {trend.length > 1 && (
-            <V2Sparkline
-              values={trend.map((p) => p.composite)}
-              width={300}
-              height={48}
-              color={SPARK_COLOR[s.stoplight]}
-              gradient
-              showLastPoint
-              label="Composite score over last 90 days"
-            />
-          )}
-          {trend.length > 0 && (
-            <div className="text-[10px] text-zoca-text-2 tabular-nums">
-              {trend.length} day{trend.length === 1 ? "" : "s"} of trend data
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* Phase 30 — Inline snapshot timeline (replaces the tiny sparkline). */}
+      <div className="mt-4 rounded-zoca-lg border border-zoca-border bg-white p-3 md:p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] uppercase tracking-wider text-zoca-text-2 font-semibold">
+            Composite over last 90 days
+          </span>
+          <a
+            href={`/v2/customer/${encodeURIComponent(customer.entity_id)}/timeline`}
+            className="text-[11px] font-medium text-zoca-pink-cta hover:underline"
+            title="Open the full-page timeline view"
+          >
+            Expand ↗
+          </a>
+        </div>
+        <V2SnapshotTimeline
+          entityId={customer.entity_id}
+          variant="inline"
+          days={90}
+          bizname={customer.company ?? undefined}
+        />
       </div>
     </section>
   );
