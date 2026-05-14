@@ -36,7 +36,6 @@ import { postSlack, slackConfigured, type SlackBlock } from "./slack";
 const POD_MAP: Record<string, string> = {
   "Sudha Goutami": "Pod 1",
   "Kanak sharma": "Pod 1",
-  "Santhosh V": "Pod 1",
   "Hubern C": "Pod 2",
   "Sakshi Mamgain": "Pod 2",
   "Bikash Mishra": "Pod 3",

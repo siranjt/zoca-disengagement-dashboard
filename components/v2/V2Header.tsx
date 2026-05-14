@@ -46,7 +46,7 @@ function relativeAge(generatedAt: string | null | undefined): string {
  * SINGLE sticky bar holding the entire global chrome.
  *   mode="am":
  *     left:  ZOCA logo + "| Customer Health" + AM picker pill
- *     right: view tabs (My customers / Pod view / Leadership)
+ *     right: view tab (AM's view)
  *            + Manager link + Live status pill
  *   mode="manager" (Phase 17.D):
  *     left:  ZOCA logo + "| Customer Health · Manager"
@@ -114,19 +114,9 @@ export function V2Header(props: Props) {
               }}
             >
               <ViewTab
-                label="My customers"
+                label="AM's view"
                 active={props.view === "am"}
                 onClick={() => props.setView("am")}
-              />
-              <ViewTab
-                label="Pod view"
-                active={props.view === "pod"}
-                onClick={() => props.setView("pod")}
-              />
-              <ViewTab
-                label="Leadership"
-                active={props.view === "leadership"}
-                onClick={() => props.setView("leadership")}
               />
             </div>
 

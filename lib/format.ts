@@ -22,5 +22,5 @@ export function formatPlannerTitle(amName: string | null | undefined, now: Date 
  * V2ManagerHero and the dashboard hero block.
  */
 export function formatManagerTitle(): string {
-  return "Team this week";
+  return "Manager's view";
 }

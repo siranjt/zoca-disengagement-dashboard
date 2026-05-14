@@ -78,18 +78,15 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
   const pod = selectedAm ? POD_MAP[selectedAm] || "Floating" : "";
   const initials = selectedAm ? initialsFor(selectedAm) : "??";
 
-  // Group AMs by pod for a cleaner dropdown.
-  const filtered = allAms.filter((am) =>
-    am.toLowerCase().includes(query.trim().toLowerCase()),
-  );
-  const grouped: Record<string, string[]> = {};
-  for (const am of filtered) {
-    const p = POD_MAP[am] || "Floating";
-    if (!grouped[p]) grouped[p] = [];
-    grouped[p].push(am);
-  }
-  const podOrder = ["Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
-  const podKeys = podOrder.filter((p) => grouped[p]);
+  // Flat alphabetical (A→Z) list. Pod info is still shown on the
+  // outer pill (POD_MAP lookup above) — the dropdown no longer groups
+  // by pod, just renders one row per AM in alphabetical order.
+  const filtered = allAms
+    .filter((am) =>
+      am.toLowerCase().includes(query.trim().toLowerCase()),
+    )
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
 
   return (
     <div className="relative">
@@ -203,86 +200,73 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
                   flex: 1,
                 }}
               >
-                {podKeys.length === 0 && (
+                {filtered.length === 0 && (
                   <div className="px-3 py-3 text-[12px] text-zoca-text-2">
                     No AMs match.
                   </div>
                 )}
-                {podKeys.map((p) => (
-                  <div key={p}>
-                    <div
-                      className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase"
+                {filtered.map((am) => {
+                  const isSelected = am === selectedAm;
+                  return (
+                    <button
+                      key={am}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        onChange(am);
+                        setOpen(false);
+                        setQuery("");
+                      }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[12px] transition"
                       style={{
-                        color: "var(--zoca-text-2)",
-                        letterSpacing: "0.12em",
+                        background: isSelected
+                          ? "var(--zoca-bg-tint)"
+                          : "transparent",
+                        color: "var(--zoca-text)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected)
+                          e.currentTarget.style.background =
+                            "var(--zoca-bg-soft)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected)
+                          e.currentTarget.style.background = "transparent";
                       }}
                     >
-                      {p}
-                    </div>
-                    {grouped[p].map((am) => {
-                      const isSelected = am === selectedAm;
-                      return (
-                        <button
-                          key={am}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={isSelected}
-                          onClick={() => {
-                            onChange(am);
-                            setOpen(false);
-                            setQuery("");
-                          }}
-                          className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[12px] transition"
+                      <span className="flex items-center gap-2">
+                        <span
                           style={{
-                            background: isSelected
-                              ? "var(--zoca-bg-tint)"
-                              : "transparent",
-                            color: "var(--zoca-text)",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background:
+                              "linear-gradient(135deg, var(--zoca-blue), var(--zoca-pink))",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "9px",
+                            fontWeight: 600,
+                            color: "white",
                           }}
-                          onMouseEnter={(e) => {
-                            if (!isSelected)
-                              e.currentTarget.style.background =
-                                "var(--zoca-bg-soft)";
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isSelected)
-                              e.currentTarget.style.background = "transparent";
-                          }}
+                          aria-hidden
                         >
-                          <span className="flex items-center gap-2">
-                            <span
-                              style={{
-                                width: "18px",
-                                height: "18px",
-                                borderRadius: "50%",
-                                background:
-                                  "linear-gradient(135deg, var(--zoca-blue), var(--zoca-pink))",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "9px",
-                                fontWeight: 600,
-                                color: "white",
-                              }}
-                              aria-hidden
-                            >
-                              {initialsFor(am)}
-                            </span>
-                            <span className="truncate">{am}</span>
-                          </span>
-                          {isSelected && (
-                            <span
-                              className="text-[10px]"
-                              style={{ color: "var(--zoca-pink)" }}
-                            >
-                              ✓
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                          {initialsFor(am)}
+                        </span>
+                        <span className="truncate">{am}</span>
+                      </span>
+                      {isSelected && (
+                        <span
+                          className="text-[10px]"
+                          style={{ color: "var(--zoca-pink)" }}
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </>,
