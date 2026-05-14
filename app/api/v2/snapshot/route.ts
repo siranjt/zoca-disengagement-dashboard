@@ -4,7 +4,7 @@ import { readLatestSnapshotV2 } from "@/lib/postgres";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 /**
  * GET /api/v2/snapshot

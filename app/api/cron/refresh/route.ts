@@ -4,7 +4,7 @@ import { composeSnapshot } from "@/lib/refresh";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 /**
  * Phase 2.0 — this route is now an alias for /api/cron/refresh/compose.

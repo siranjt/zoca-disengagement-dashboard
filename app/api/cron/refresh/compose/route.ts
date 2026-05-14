@@ -4,7 +4,7 @@ import { composeSnapshot } from "@/lib/refresh";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 /**
  * Compose — reads stages A, B, C for today's snapshot_date from

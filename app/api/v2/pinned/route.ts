@@ -3,7 +3,7 @@ import { listPinned, togglePinned } from "@/lib/pinned-customers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
+export const maxDuration = 30;
 
 /**
  * GET /api/v2/pinned?am=<am_name>

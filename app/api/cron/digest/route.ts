@@ -4,7 +4,7 @@ import { runDigestForAllAms, slackConfigured } from "@/lib/slack-digest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/digest

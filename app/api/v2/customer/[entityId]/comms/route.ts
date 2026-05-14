@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 // Metabase comms CSV fetch is slow (3-10s per channel × 5 channels). Bump the
 // function timeout so Vercel doesn't kill it. Pro tier supports up to 300s;
 // Hobby tier caps at 10s so this route will exceed on Hobby.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * GET /api/v2/customer/:entityId/comms?days=90

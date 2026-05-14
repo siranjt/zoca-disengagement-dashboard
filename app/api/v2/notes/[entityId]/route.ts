@@ -3,7 +3,7 @@ import { getNote, upsertNote } from "@/lib/customer-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
+export const maxDuration = 30;
 
 type Ctx = { params: { entityId: string } };
 

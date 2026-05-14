@@ -5,7 +5,7 @@ import { ACTIVE_AMS, POD_MAP } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 /**
  * GET /api/v2/manager/1on1
