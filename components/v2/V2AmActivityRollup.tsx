@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CoachingMetric } from "@/lib/coaching";
 
 type AmOutcomeStats = {
@@ -38,12 +39,14 @@ type Props = {
  *
  * Phase 17.D — light-themed to match the Zoca brand palette.
  * Phase 27   — optional coachingFilter prop narrows table to one AM.
+ * Phase 29   — adds a small "Prep 1:1 →" affordance per AM row.
  */
 export default function V2AmActivityRollup({
   daysBack = 7,
   coachingFilter = null,
   onClearCoachingFilter,
 }: Props) {
+  const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -168,6 +171,7 @@ export default function V2AmActivityRollup({
                   <th className="px-3 py-2 text-right font-medium">No reach</th>
                   <th className="px-3 py-2 text-right font-medium">Escalated</th>
                   <th className="px-3 py-2 text-right font-medium">Re-engaged</th>
+                  <th className="px-3 py-2 text-right font-medium">1:1</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,6 +217,40 @@ export default function V2AmActivityRollup({
                       style={{ color: "#047857" }}
                     >
                       {row.re_engaged}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(
+                            `/v2/manager/1on1/${encodeURIComponent(row.am_name)}`,
+                          );
+                        }}
+                        aria-label={`Prep 1:1 for ${row.am_name}`}
+                        title={`Prep 1:1 for ${row.am_name}`}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
+                        style={{
+                          background: "transparent",
+                          color: "var(--zoca-blue)",
+                          border: "1px solid var(--zoca-border)",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "rgba(20,110,245,0.08)";
+                          (e.currentTarget as HTMLElement).style.borderColor =
+                            "rgba(20,110,245,0.22)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background = "transparent";
+                          (e.currentTarget as HTMLElement).style.borderColor =
+                            "var(--zoca-border)";
+                        }}
+                      >
+                        <span>Prep 1:1</span>
+                        <span style={{ fontSize: "0.85em", opacity: 0.7 }}>→</span>
+                      </button>
                     </td>
                   </tr>
                 ))}

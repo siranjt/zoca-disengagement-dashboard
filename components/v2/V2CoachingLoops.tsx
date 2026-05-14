@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import type { CoachingRow, CoachingMetric } from "@/lib/coaching";
 
 type Mode = "manager" | "am";
@@ -117,6 +118,7 @@ function CoachingTable({
   rows: CoachingRow[];
   onMetricClick?: (amName: string, metric: CoachingMetric) => void;
 }) {
+  const router = useRouter();
   const explainerSummary = METRICS.map(
     (m) => `${m.label}: ${m.explainer}`,
   ).join("\n\n");
@@ -198,7 +200,42 @@ function CoachingTable({
                       }}
                     >
                       <td className="px-3 py-2 font-medium text-zoca-text">
-                        {row.am_name}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span>{row.am_name}</span>
+                          <button
+                            type="button"
+                            aria-label={`Prep 1:1 for ${row.am_name}`}
+                            title={`Prep 1:1 for ${row.am_name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/v2/manager/1on1/${encodeURIComponent(row.am_name)}`,
+                              );
+                            }}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold transition"
+                            style={{
+                              background: "transparent",
+                              color: "var(--zoca-blue)",
+                              border: "1px solid var(--zoca-border)",
+                              cursor: "pointer",
+                              lineHeight: 1,
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.background =
+                                "rgba(20,110,245,0.08)";
+                              (e.currentTarget as HTMLElement).style.borderColor =
+                                "rgba(20,110,245,0.22)";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.background =
+                                "transparent";
+                              (e.currentTarget as HTMLElement).style.borderColor =
+                                "var(--zoca-border)";
+                            }}
+                          >
+                            →
+                          </button>
+                        </span>
                       </td>
                       {METRICS.map((m) => {
                         const c = getCount(row, m.key);
