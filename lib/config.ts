@@ -246,6 +246,7 @@ export const EXCLUDED_ENTITIES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 export const ADMIN_EMAILS: string[] = [
   "success@zoca.com",
+  "siranjith.t@zoca.com",
 ];
 
 export type UserRole = "admin" | "am";
