@@ -3,7 +3,12 @@ import { composeSnapshot } from "@/lib/refresh";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Phase 31.v2.1 — bumped from 60 → 300 (Vercel Pro max). composeSnapshot
+// auto-runs missing stages A/B/C/D synchronously inside this function, and
+// Stage B's 5 sequential comms CSVs alone can take 30-45s. 60s budget
+// guaranteed a 504. 300s gives breathing room: A ~15s, B ~45s, C ~30s,
+// D ~30s, compose itself ~30s = ~150s worst case.
+export const maxDuration = 300;
 
 /**
  * Manual refresh — invoked from the V2 dashboard "Refresh" button.

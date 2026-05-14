@@ -135,8 +135,12 @@ export async function getCoachingPerAm(
     }
 
     // --- Query 1: distinct (am_name, entity_id) touched in last 7d ----------
+    // Phase 31.v2.1: cast entity_id to text on the column side. The live
+    // am_actions.entity_id is UUID (legacy schema), so the Set<string>
+    // comparison against snapshot's text entity_id would never match without
+    // this cast. SELECT-side cast keeps downstream code identical.
     const touched7Rows = (await sql`
-      SELECT DISTINCT am_name, entity_id
+      SELECT DISTINCT am_name, entity_id::text AS entity_id
       FROM am_actions
       WHERE created_at >= (NOW() - (7::int * INTERVAL '1 day'))
     `) as Array<{ am_name: string; entity_id: string }>;
@@ -160,17 +164,19 @@ export async function getCoachingPerAm(
       last_types: string[];
     }> = [];
     if (redEntityIds.length > 0 && redAmNames.length > 0) {
+      // Phase 31.v2.1: cast entity_id::text on both filter and select sides
+      // because the column is UUID in the live DB.
       last3Rows = (await sql`
         SELECT am_name, entity_id, last_types
         FROM (
           SELECT
             am_name,
-            entity_id,
+            entity_id::text AS entity_id,
             (ARRAY_AGG(action_type ORDER BY created_at DESC))[1:3] AS last_types,
             COUNT(*)::int AS n_total
           FROM am_actions
           WHERE am_name = ANY(${redAmNames}::text[])
-            AND entity_id = ANY(${redEntityIds}::text[])
+            AND entity_id::text = ANY(${redEntityIds}::text[])
             AND action_type LIKE 'contacted_%'
           GROUP BY am_name, entity_id
         ) sub
@@ -188,11 +194,15 @@ export async function getCoachingPerAm(
     // --- Query 3: snooze-and-ignore ----------------------------------------
     // Most recent elapsed snooze per (am, entity), and whether ANY am_action
     // was logged after that snooze ended.
+    // Phase 31.v2.1: snooze_tracking.entity_id is TEXT, am_actions.entity_id
+    // is UUID. The JOIN compares them directly without casts, which is the
+    // canonical "operator does not exist: uuid = text" trigger. Cast both
+    // sides to text so the JOIN works regardless of either column's type.
     const ignoredRows = (await sql`
       WITH latest_elapsed AS (
         SELECT DISTINCT ON (am_name, entity_id)
           am_name,
-          entity_id,
+          entity_id::text AS entity_id,
           snoozed_until
         FROM snooze_tracking
         WHERE snoozed_until < NOW()
@@ -202,7 +212,7 @@ export async function getCoachingPerAm(
       FROM latest_elapsed le
       LEFT JOIN am_actions a
         ON a.am_name = le.am_name
-       AND a.entity_id = le.entity_id
+       AND a.entity_id::text = le.entity_id
        AND a.created_at > le.snoozed_until
       WHERE a.id IS NULL
     `) as Array<{ am_name: string; entity_id: string }>;
