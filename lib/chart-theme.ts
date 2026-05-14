@@ -34,6 +34,9 @@ export const CHART_TOOLTIP_STYLE = {
   backgroundColor: "#0b051d",
   padding: 10,
   cornerRadius: 8,
-  titleFont: { size: 12, weight: "600" as const },
+  // Numeric weight (600) is what Chart.js's TypeScript types accept; the
+  // string "600" form renders identically at runtime but trips strict typing
+  // in callers that annotate ChartOptions<"line">. See Phase 30.1 hotfix.
+  titleFont: { size: 12, weight: 600 },
   bodyFont: { size: 12 },
 };
