@@ -62,3 +62,11 @@ export function buildHubspotCompanyUrl(companyId: string): string {
   }
   return `https://app.hubspot.com/contacts/${portal}/company/${companyId}`;
 }
+
+/**
+ * Phase 28 — Internal app URL for the per-customer detail page.
+ * Use this anywhere you need to deep-link to /v2/customer/[entityId].
+ */
+export function buildCustomerDetailUrl(entityId: string): string {
+  return `/v2/customer/${encodeURIComponent(entityId)}`;
+}

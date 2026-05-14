@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from "next/server";
+import { fetchCommsForEntity } from "@/lib/comms-for-entity";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+// Metabase comms CSV fetch is slow (3-10s per channel × 5 channels). Bump the
+// function timeout so Vercel doesn't kill it. Pro tier supports up to 300s;
+// Hobby tier caps at 10s so this route will exceed on Hobby.
+export const maxDuration = 60;
+
+/**
+ * GET /api/v2/customer/:entityId/comms?days=90
+ *   → live-fetches the 5 Metabase comms CSVs, filters to one entity, and
+ *     returns events newest-first. Soft-fails to events:[] on Metabase error.
+ */
+export async function GET(
+  req: NextRequest,
+  ctx: { params: { entityId: string } },
+) {
+  const { entityId } = ctx.params;
+  const url = new URL(req.url);
+  const daysRaw = Number(url.searchParams.get("days") || 90);
+  const days = Math.max(
+    1,
+    Math.min(180, Number.isFinite(daysRaw) ? Math.floor(daysRaw) : 90),
+  );
+  try {
+    const events = await fetchCommsForEntity(entityId, days);
+    return NextResponse.json(
+      {
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        entityId,
+        daysBack: days,
+        events,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: msg,
+        entityId,
+        daysBack: days,
+        events: [],
+      },
+      { status: 500 },
+    );
+  }
+}
