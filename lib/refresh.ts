@@ -16,6 +16,10 @@ import { fetchCallsForCompanies, type CallsForCompany } from "./hubspot-calls";
 import { fetchContactsForCompanies, type CompanyContact } from "./hubspot-contacts";
 import { fetchEnrichedNotesPerCompany, type LastCallSummary } from "./hubspot-notes";
 import { readNoteEnrichments, writeNoteEnrichments, type CachedNoteEnrichment } from "./postgres";
+import { fetchTicketsForCompanies } from "./hubspot-tickets";
+import { fetchLinearTicketsForCustomer, linearConfigured } from "./linear-tickets";
+import { sortTickets } from "./tickets-unified";
+import type { UnifiedTicket } from "./tickets-unified";
 import { readPipelineStage } from "./pipeline-state";
 import {
   writePipelineStage,
@@ -26,6 +30,7 @@ import {
   TIER_ORDER,
   EXCLUDED_ENTITIES,
   POD_MAP,
+  TICKETS_STALE_DAYS,
   pgConfigured,
 } from "./config";
 import type {
@@ -50,6 +55,117 @@ import type {
 import type { Tier, Stoplight } from "./config";
 
 const todayMs = () => Date.now();
+
+// ---------------------------------------------------------------------------
+// Phase 31 — tickets enrichment helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Budget for the combined HubSpot + Linear ticket fetches during compose.
+ * The Vercel compose function has its own maxDuration; once this elapses we
+ * stop enriching new customers and leave their `tickets.records` empty
+ * (preserving the BaseSheet counts in `open_tickets_30d` /
+ * `unresolved_issues_last_30_days`).
+ */
+const TICKETS_ENRICHMENT_BUDGET_MS = 60_000;
+
+/**
+ * Compute per-customer ticket rollups from the merged list of
+ * HubSpot + Linear records and patch them onto the customer's `tickets`
+ * metric in-place. The fields seeded by `computeTicketsFlag` are preserved.
+ */
+function rollupTickets(tickets: TicketsMetrics, records: UnifiedTicket[]): void {
+  const sorted = sortTickets(records);
+  const openOnly = sorted.filter((t) => !t.is_closed);
+  const closedLast30 = sorted.filter((t) => t.is_closed);
+  const byPriority = { URGENT: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNSET: 0 };
+  for (const t of openOnly) byPriority[t.priority] += 1;
+  const bySource = { hubspot: 0, linear: 0 };
+  for (const t of sorted) bySource[t.source] += 1;
+  tickets.records = sorted.slice(0, 20);
+  tickets.open_count = openOnly.length;
+  tickets.open_urgent_count = byPriority.URGENT;
+  tickets.open_stale_count = openOnly.filter((t) => t.age_days >= TICKETS_STALE_DAYS).length;
+  tickets.closed_last_30d_count = closedLast30.length;
+  tickets.by_priority = byPriority;
+  tickets.by_source = bySource;
+}
+
+/**
+ * Fetch HubSpot + Linear tickets for every scored customer with a HubSpot
+ * company id, batched + budgeted. Soft-fails on any error — partial coverage
+ * is acceptable.
+ */
+async function enrichTicketsRecords(
+  scored: ScoredCustomerV2[],
+): Promise<{ enriched: number; durationMs: number }> {
+  const started = Date.now();
+  let enriched = 0;
+
+  // 1) HubSpot — batched search across all known company ids.
+  const companyIdToEntityIds = new Map<string, string[]>();
+  for (const c of scored) {
+    const cid = c.hubspot?.hubspot_company_id;
+    if (!cid) continue;
+    const arr = companyIdToEntityIds.get(cid) ?? [];
+    arr.push(c.entity_id);
+    companyIdToEntityIds.set(cid, arr);
+  }
+  const hubspotCompanyIds = Array.from(companyIdToEntityIds.keys());
+
+  let hubspotMap: Map<string, UnifiedTicket[]> = new Map();
+  if (hubspotCompanyIds.length) {
+    try {
+      hubspotMap = await fetchTicketsForCompanies(hubspotCompanyIds);
+    } catch (e) {
+      console.warn(
+        `[tickets-enrich] HubSpot batch failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      hubspotMap = new Map();
+    }
+  }
+  if (Date.now() - started >= TICKETS_ENRICHMENT_BUDGET_MS) {
+    console.warn("[tickets-enrich] budget exhausted after HubSpot pass — skipping Linear");
+  }
+
+  // 2) Linear — per-customer resolver; relies on the 60s cache so we hit
+  // Linear once for the full label-scoped issue list and then loop.
+  const linearByEntity = new Map<string, UnifiedTicket[]>();
+  if (linearConfigured() && Date.now() - started < TICKETS_ENRICHMENT_BUDGET_MS) {
+    let budgetExhausted = false;
+    for (const c of scored) {
+      if (Date.now() - started >= TICKETS_ENRICHMENT_BUDGET_MS) {
+        budgetExhausted = true;
+        break;
+      }
+      try {
+        const linear = await fetchLinearTicketsForCustomer(c);
+        if (linear.length) linearByEntity.set(c.entity_id, linear);
+      } catch (e) {
+        console.warn(
+          `[tickets-enrich] Linear failed for ${c.entity_id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+    if (budgetExhausted) {
+      console.warn("[tickets-enrich] budget exhausted during Linear pass — partial coverage");
+    }
+  }
+
+  // 3) Merge + roll up per customer.
+  for (const c of scored) {
+    if (!c.tickets) continue;
+    const hubspotTickets = c.hubspot?.hubspot_company_id
+      ? (hubspotMap.get(c.hubspot.hubspot_company_id) ?? [])
+      : [];
+    const linearTickets = linearByEntity.get(c.entity_id) ?? [];
+    if (hubspotTickets.length === 0 && linearTickets.length === 0) continue;
+    rollupTickets(c.tickets, [...hubspotTickets, ...linearTickets]);
+    enriched += 1;
+  }
+
+  return { enriched, durationMs: Date.now() - started };
+}
 
 // ---------------------------------------------------------------------------
 // Stage data shapes — what gets serialized to Postgres pipeline_state.data
@@ -847,6 +963,29 @@ export async function composeSnapshot(
       `[compose] hubspot join: ${matchedByPlaceId} via place_id, ${matchedByBizname} via bizname, ${hubspotUnmatched} unmatched`,
     );
   }
+
+  // -------------------------------------------------------------------------
+  // 2.1 Phase 31 — Tickets enrichment (HubSpot + Linear)
+  //
+  // Runs AFTER the BaseSheet-derived counts are seeded so the Phase 31
+  // record fields are strictly additive. Soft-fails to no-op if either
+  // source is misconfigured or the time budget is exhausted; the existing
+  // open_tickets_30d / unresolved_issues_last_30_days counts are preserved.
+  // -------------------------------------------------------------------------
+  try {
+    const ticketsResult = await enrichTicketsRecords(scored);
+    console.log(
+      `[compose] tickets enrichment: enriched=${ticketsResult.enriched}/${scored.length} took ${ticketsResult.durationMs}ms`,
+    );
+    if (ticketsResult.enriched > 0) {
+      errors.push(`tickets enrichment ran on ${ticketsResult.enriched} customers`);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[compose] tickets enrichment failed: ${msg}`);
+    errors.push(`tickets enrichment: ${msg}`);
+  }
+  memSnap("compose after tickets enrichment");
 
   // Sort by composite desc, then comms volume desc
   scored.sort((a, b) => {

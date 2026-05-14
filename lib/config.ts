@@ -180,11 +180,20 @@ export const WATCH_LANE_FLAG_COUNT = 2;
 export const BILLING_YELLOW_OVERRIDE = 40;
 
 // ---------------------------------------------------------------------------
+// Phase 31 — Tickets enrichment thresholds
+// `is_stale` fires when an open ticket is older than TICKETS_STALE_DAYS days.
+// `closed_last_30d` retention window for the rolling closed-tickets view.
+// ---------------------------------------------------------------------------
+export const TICKETS_STALE_DAYS = 7;
+export const TICKETS_RECENT_CLOSED_DAYS = 30;
+
+// ---------------------------------------------------------------------------
 // v2 — Pods (per AM Transition Toolkit, hardcoded May 2026)
 // ---------------------------------------------------------------------------
 export const POD_MAP: Record<string, string> = {
   "Kanak sharma":   "Pod 1",
   "Sudha Goutami":  "Pod 1",
+  "Santhosh V":     "Pod 1",
   "Hubern C":       "Pod 2",
   "Sakshi Mamgain": "Pod 2",
   "Bikash Mishra":  "Pod 3",
@@ -201,7 +210,7 @@ export const POD_MAP: Record<string, string> = {
 // Active AM list (May 2026)
 export const ACTIVE_AMS = [
   "Sudha Goutami", "Sakshi Mamgain", "Hubern C", "Bikash Mishra", "Anu Srivastava",
-  "Kanak sharma", "Atharv Y", "Shruti Sinha", "Apurvaa Biswas",
+  "Kanak sharma", "Atharv Y", "Santhosh V", "Shruti Sinha", "Apurvaa Biswas",
   "Siddhi Shetty", "Nikita Singh", "Kripali Suri",
 ] as const;
 

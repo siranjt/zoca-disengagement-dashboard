@@ -3,7 +3,7 @@ import { getSql, readRecentActions, readSnapshotByDate } from "./postgres";
 import { getCoachingPerAm } from "./coaching";
 import type { CoachingRow } from "./coaching";
 import { callHaikuJson, llmConfigured } from "./llm";
-import { POD_MAP } from "./config";
+import { POD_MAP, TICKETS_STALE_DAYS } from "./config";
 import type { SnapshotV2, ScoredCustomerV2, AmActionRow } from "./types";
 
 /**
@@ -15,6 +15,9 @@ import type { SnapshotV2, ScoredCustomerV2, AmActionRow } from "./types";
  * against today's snapshot to surface "wins since last 1:1".
  *
  * Module-level `_ready` flag prevents repeat CREATE TABLE per process.
+ *
+ * Phase 31: new constructive talking-point rule fires when this AM's book
+ * contains customers with open tickets older than TICKETS_STALE_DAYS days.
  */
 
 export type OneOnOneActionItem = {
@@ -70,12 +73,33 @@ export type OneOnOneWin = {
   current_stoplight: "YELLOW" | "GREEN";
 };
 
+/**
+ * Phase 31 — per-customer summary of stale ticket exposure for the
+ * "stale tickets" constructive talking point.
+ */
+export type StaleTicketsCustomer = {
+  entity_id: string;
+  bizname: string;
+  age_days_oldest: number;
+  urgent: number;
+};
+
+/**
+ * Phase 31 — extra book-summary fields. Optional so callers built against
+ * earlier phases that don't compute these still type-check.
+ */
+export type OneOnOneBookSummaryExtended = {
+  customers_with_stale_tickets: StaleTicketsCustomer[];
+};
+
 export type OneOnOnePrepData = {
   am_name: string;
   pod: string | null;
   generated_at: string;
   last_one_on_one: OneOnOneLogRow | null;
   book_summary: OneOnOneBookSummary;
+  /** Phase 31 — additive extended summary, optional. */
+  book_summary_extended?: OneOnOneBookSummaryExtended;
   actions_last_7d: OneOnOneActionsRecap;
   wins_since_last_one_on_one: OneOnOneWin[];
   coaching: CoachingRow | null;
@@ -294,6 +318,38 @@ function bookSummaryFor(customers: ScoredCustomerV2[]): OneOnOneBookSummary {
   };
 }
 
+/**
+ * Phase 31 — derive the "stale tickets" customer list for this AM's book.
+ * A customer counts when `tickets.open_stale_count > 0`. The oldest open
+ * ticket's age and the count of urgent open tickets are surfaced so the
+ * talking-point template can quote real numbers.
+ */
+function staleTicketsCustomersFor(
+  customers: ScoredCustomerV2[],
+): StaleTicketsCustomer[] {
+  const out: StaleTicketsCustomer[] = [];
+  for (const c of customers) {
+    const t = c.tickets;
+    if (!t || !t.open_stale_count || t.open_stale_count <= 0) continue;
+    let oldest = 0;
+    for (const r of t.records || []) {
+      if (!r.is_closed && r.age_days > oldest) oldest = r.age_days;
+    }
+    out.push({
+      entity_id: c.entity_id,
+      bizname: c.company || c.entity_id.slice(0, 8),
+      age_days_oldest: oldest,
+      urgent: t.open_urgent_count ?? 0,
+    });
+  }
+  // Most-urgent + oldest first so slice(0, 3) surfaces the right items.
+  out.sort((a, b) => {
+    if (b.urgent !== a.urgent) return b.urgent - a.urgent;
+    return b.age_days_oldest - a.age_days_oldest;
+  });
+  return out;
+}
+
 function actionsRecapFor(
   actions: AmActionRow[],
   redCount: number,
@@ -384,6 +440,11 @@ export async function buildOneOnOnePrep(
   const customers = (snapshot.customers || []).filter((c) => c.am_name === amName);
   const book_summary = bookSummaryFor(customers);
 
+  // Phase 31 — derive the stale tickets list once per build.
+  const book_summary_extended: OneOnOneBookSummaryExtended = {
+    customers_with_stale_tickets: staleTicketsCustomersFor(customers),
+  };
+
   const last = await readLastOneOnOne(amName);
 
   // Action rate denominator is the current RED count, not all actions.
@@ -412,6 +473,7 @@ export async function buildOneOnOnePrep(
     generated_at,
     last_one_on_one: last,
     book_summary,
+    book_summary_extended,
     actions_last_7d,
     wins_since_last_one_on_one,
     coaching: coachingRow,
@@ -534,6 +596,28 @@ export function generateRuleBasedTalkingPoints(
         `${c} snooze${c === 1 ? "" : "s"} elapsed without follow-up`,
         `Snoozed customers came back into scope but haven't been re-touched. Suggest building a weekly snooze sweep into the cadence.`,
         { label: "Snooze ignored", value: String(c) },
+      ),
+    );
+  }
+
+  // Phase 31 — stale tickets rule. Fires when the AM has customers with open
+  // tickets older than TICKETS_STALE_DAYS days. Surfaces top 3 by urgency +
+  // age and counts urgent across the cohort for the supporting metric.
+  const stale = prep.book_summary_extended?.customers_with_stale_tickets ?? [];
+  if (stale.length > 0) {
+    const total = stale.length;
+    const sample = stale
+      .slice(0, 3)
+      .map((c) => `${c.bizname} (${c.urgent ? `${c.urgent} urgent, ` : ""}${c.age_days_oldest}d)`)
+      .join(", ");
+    const moreSuffix = total > 3 ? ` and ${total - 3} more` : "";
+    const urgentTotal = stale.reduce((sum, c) => sum + (c.urgent ?? 0), 0);
+    constructive.push(
+      makePoint(
+        "constructive",
+        `${total} customer${total === 1 ? " has" : "s have"} open tickets older than ${TICKETS_STALE_DAYS} days`,
+        `${sample}${moreSuffix}. Worth a status check with the AM on whether the customers are being kept in the loop.`,
+        { label: "P1 unresolved", value: String(urgentTotal) },
       ),
     );
   }
