@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
 import V2CustomerCard from "./V2CustomerCard";
 import { AnimatedNumber } from "./AnimatedNumber";
@@ -8,6 +8,9 @@ import { EmptyState } from "./EmptyState";
 import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
 import { SavedViewsRow, type SavedViewConfig } from "./SavedViewsRow";
 import V2CoachingLoops from "./V2CoachingLoops";
+import V2OnboardingTour from "./V2OnboardingTour";
+import V2KeyboardShortcutsOverlay from "./V2KeyboardShortcutsOverlay";
+import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import type { CoachingRow, CoachingMetric } from "@/lib/coaching";
 import {
   SIGNAL_LABELS,
@@ -50,10 +53,14 @@ type Props = {
   sortFromUrl?: SortKey | null;
 };
 
-type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
+// Phase 32.1 — added "watch" (YELLOW) + "healthy" (GREEN) so primary filter
+// pills mirror the KPI tile tiers exactly. "improving" and "quiet" remain in
+// the type for URL backward-compat + saved views but no longer have primary
+// chips on the bar.
+type FilterKey = "pinned" | "act" | "watch" | "healthy" | "improving" | "quiet" | "all" | "snoozed";
 type SortKey = "urgency" | "plan" | "lasttouch";
 
-const FILTER_KEYS: FilterKey[] = ["pinned", "act", "improving", "quiet", "all", "snoozed"];
+const FILTER_KEYS: FilterKey[] = ["pinned", "act", "watch", "healthy", "improving", "quiet", "all", "snoozed"];
 const SORT_KEYS: SortKey[] = ["urgency", "plan", "lasttouch"];
 function isFilterKey(v: string): v is FilterKey {
   return (FILTER_KEYS as string[]).includes(v);
@@ -80,6 +87,10 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   // Phase 27 — coaching loops for this AM
   const [coachingRow, setCoachingRow] = useState<CoachingRow | null>(null);
   const [coachingMetric, setCoachingMetric] = useState<CoachingMetric | null>(null);
+  // Phase 32 — keyboard navigation state.
+  const [focusedEntityId, setFocusedEntityId] = useState<string | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch the set of entities this AM has contacted in the last 7 days so we
   // can dim those cards and show a 'Contacted Xd ago' chip.
@@ -202,6 +213,29 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       )
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
 
+    // Phase 32.1 — new primary buckets that mirror the KPI-tile tiers exactly,
+    // so a click on WATCH/HEALTHY drills into the SAME cohort the KPI counted.
+    const watch = customers
+      .filter(
+        (c) =>
+          !c.signals_v2.pre_launch &&
+          c.signals_v2.stoplight === "YELLOW" &&
+          !isSnoozed(c.entity_id),
+      )
+      .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
+
+    const healthy = customers
+      .filter(
+        (c) =>
+          !c.signals_v2.pre_launch &&
+          c.signals_v2.stoplight === "GREEN" &&
+          !isSnoozed(c.entity_id),
+      )
+      .sort((a, b) => a.signals_v2.composite - b.signals_v2.composite);
+
+    // Pre-Phase-32.1 buckets — kept for URL/saved-view backward compat. No
+    // longer have primary chips on the bar. "improving" is the top-15 lowest-
+    // composite GREEN; "quiet" is comms-gap (≥30d since inbound), capped at 20.
     const improving = customers
       .filter(
         (c) =>
@@ -252,12 +286,14 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           })
       : [];
 
-    return { pinned, act, improving, quiet: quiet30, all, snoozed };
+    return { pinned, act, watch, healthy, improving, quiet: quiet30, all, snoozed };
   }, [customers, pinnedSet, snoozedSet]);
 
   const filterCounts = {
     pinned: baseBuckets.pinned.length,
     act: baseBuckets.act.length,
+    watch: baseBuckets.watch.length,
+    healthy: baseBuckets.healthy.length,
     improving: baseBuckets.improving.length,
     quiet: baseBuckets.quiet.length,
     all: baseBuckets.all.length,
@@ -386,6 +422,95 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     });
   });
 
+  // ---------------------------------------------------------------------------
+  // Phase 32 — Keyboard shortcuts. Cycle focused card, open detail, etc.
+  // ---------------------------------------------------------------------------
+  const focusedIndex = useMemo(() => {
+    if (!focusedEntityId) return -1;
+    return finalList.findIndex((c) => c.entity_id === focusedEntityId);
+  }, [finalList, focusedEntityId]);
+
+  // Keep focusedEntityId in-sync with the visible list. If the focused card
+  // disappears (filter change), reset to the first visible card.
+  useEffect(() => {
+    if (finalList.length === 0) {
+      if (focusedEntityId !== null) setFocusedEntityId(null);
+      return;
+    }
+    if (focusedIndex === -1) {
+      setFocusedEntityId(finalList[0]?.entity_id ?? null);
+    }
+  }, [finalList, focusedIndex, focusedEntityId]);
+
+  const cycleNext = useCallback(() => {
+    if (finalList.length === 0) return;
+    const next =
+      focusedIndex < 0 || focusedIndex >= finalList.length - 1
+        ? 0
+        : focusedIndex + 1;
+    const id = finalList[next]?.entity_id ?? null;
+    setFocusedEntityId(id);
+    if (id) scrollFocusedCardIntoView(id);
+  }, [finalList, focusedIndex]);
+
+  const cyclePrev = useCallback(() => {
+    if (finalList.length === 0) return;
+    const next =
+      focusedIndex <= 0 ? finalList.length - 1 : focusedIndex - 1;
+    const id = finalList[next]?.entity_id ?? null;
+    setFocusedEntityId(id);
+    if (id) scrollFocusedCardIntoView(id);
+  }, [finalList, focusedIndex]);
+
+  const openFocusedDetail = useCallback(() => {
+    if (!focusedEntityId) return;
+    const url = `/v2/customer/${encodeURIComponent(focusedEntityId)}`;
+    if (typeof window !== "undefined") window.location.assign(url);
+  }, [focusedEntityId]);
+
+  const clickFocusedSelector = useCallback(
+    (selector: string) => {
+      if (!focusedEntityId) return;
+      const card = document.querySelector(
+        `[data-entity-id="${cssEscapeId(focusedEntityId)}"]`,
+      );
+      if (!card) return;
+      const target = card.querySelector<HTMLElement>(selector);
+      target?.click();
+    },
+    [focusedEntityId],
+  );
+
+  const triggerRefresh = useCallback(() => {
+    const btn = document.querySelector<HTMLButtonElement>('[data-v2-refresh-button="1"]');
+    btn?.click();
+  }, []);
+
+  const focusSearch = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  const gotoManager = useCallback(() => {
+    if (typeof window !== "undefined") window.location.assign("/v2/manager");
+  }, []);
+  const gotoOneOnOne = useCallback(() => {
+    if (typeof window !== "undefined") window.location.assign("/v2/manager/1on1");
+  }, []);
+
+  useKeyboardShortcuts({
+    onHelp: () => setShortcutsOpen(true),
+    onEsc: () => setShortcutsOpen(false),
+    onCycleNext: cycleNext,
+    onCyclePrev: cyclePrev,
+    onOpenDetail: openFocusedDetail,
+    onClickPrimary: () => clickFocusedSelector('[data-primary-action="1"]'),
+    onClickSnooze: () => clickFocusedSelector('[data-snooze-menu="1"] button'),
+    onRefresh: triggerRefresh,
+    onFocusSearch: focusSearch,
+    onGotoManager: gotoManager,
+    onGotoOneOnOne: gotoOneOnOne,
+  });
+
   // Hero — count + label
   const heroCount = finalList.length;
   const heroLabelRich = (() => {
@@ -405,9 +530,17 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       if (heroCount === 0) return "All clear — nobody urgent in your book today";
       return null; // use rich rendering below
     }
+    if (filter === "watch") {
+      if (heroCount === 0) return "No customers in the watch tier — your YELLOW lane is clear";
+      return `${heroCount} customer${heroCount === 1 ? "" : "s"} to watch`;
+    }
+    if (filter === "healthy") {
+      if (heroCount === 0) return "No GREEN customers in your book yet";
+      return `${heroCount} customer${heroCount === 1 ? "" : "s"} doing fine`;
+    }
     if (filter === "improving") {
       if (heroCount === 0) return "No one's clearly improving this week";
-      return `${heroCount} customer${heroCount === 1 ? "" : "s"} doing well`;
+      return `${heroCount} customer${heroCount === 1 ? "" : "s"} with strongest momentum`;
     }
     if (filter === "quiet") {
       if (heroCount === 0) return "No one's been quiet for 30+ days";
@@ -492,6 +625,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
             onClick={() => setFilter("pinned")}
           />
         )}
+        {/* Phase 32.1 — primary chips now mirror KPI tiers exactly. Clicking
+            WATCH on the KPI tile drills into the SAME cohort the tile counted. */}
         <FilterChip
           label="Need to call today"
           count={filterCounts.act}
@@ -499,16 +634,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           onClick={() => setFilter("act")}
         />
         <FilterChip
-          label="Doing well"
-          count={filterCounts.improving}
-          active={filter === "improving"}
-          onClick={() => setFilter("improving")}
+          label="Watch"
+          count={filterCounts.watch}
+          active={filter === "watch"}
+          onClick={() => setFilter("watch")}
         />
         <FilterChip
-          label="Haven't talked to in 30+ days"
-          count={filterCounts.quiet}
-          active={filter === "quiet"}
-          onClick={() => setFilter("quiet")}
+          label="Healthy"
+          count={filterCounts.healthy}
+          active={filter === "healthy"}
+          onClick={() => setFilter("healthy")}
         />
         <FilterChip
           label="Full book"
@@ -516,6 +651,17 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           active={filter === "all"}
           onClick={() => setFilter("all")}
         />
+        {/* Secondary chips — useful sub-segments that don't add up to the book.
+            Kept as primary-row chips at 0.7 opacity to signal they're alternative
+            lenses, not tier counts. */}
+        {filterCounts.quiet > 0 && (
+          <FilterChip
+            label="Quiet 30+d"
+            count={filterCounts.quiet}
+            active={filter === "quiet"}
+            onClick={() => setFilter("quiet")}
+          />
+        )}
         {filterCounts.snoozed > 0 && (
           <FilterChip
             label="💤 Snoozed"
@@ -546,6 +692,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
               ⌕
             </span>
             <input
+              ref={searchInputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -714,39 +861,52 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
         <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
         <div ref={listRef} className="flex flex-col gap-3">
-          {finalList.map((c, i) => (
-            <V2CustomerCard
-              key={c.entity_id}
-              customer={c}
-              index={i}
-              trend={customerTrends[c.entity_id]}
-              recentlyContacted={contactedRecently.has(c.entity_id)}
-              isPinned={pinnedSet?.has(c.entity_id) ?? false}
-              onTogglePinned={
-                onTogglePinned
-                  ? () =>
-                      onTogglePinned(c.entity_id, {
-                        customer_id: c.customer_id ?? null,
-                        bizname: c.company ?? null,
-                      })
-                  : undefined
-              }
-              amName={amName}
-              isSnoozed={snoozedSet?.has(c.entity_id) ?? false}
-              snoozedUntil={snoozedSet?.get(c.entity_id) ?? null}
-              onSnooze={
-                onSnooze
-                  ? (days: number) =>
-                      onSnooze(c.entity_id, days, {
-                        customer_id: c.customer_id ?? null,
-                        bizname: c.company ?? null,
-                      })
-                  : undefined
-              }
-              onUnsnooze={onUnsnooze ? () => onUnsnooze(c.entity_id) : undefined}
-              onSignalChipClick={onSignalChipClick}
-            />
-          ))}
+          {finalList.map((c, i) => {
+            const isFocused = c.entity_id === focusedEntityId;
+            return (
+              <div
+                key={c.entity_id}
+                data-focused={isFocused ? "true" : undefined}
+                className={
+                  isFocused
+                    ? "rounded-zoca-lg ring-2 ring-zoca-pink-cta/30 transition"
+                    : "transition"
+                }
+                onClick={() => setFocusedEntityId(c.entity_id)}
+              >
+                <V2CustomerCard
+                  customer={c}
+                  index={i}
+                  trend={customerTrends[c.entity_id]}
+                  recentlyContacted={contactedRecently.has(c.entity_id)}
+                  isPinned={pinnedSet?.has(c.entity_id) ?? false}
+                  onTogglePinned={
+                    onTogglePinned
+                      ? () =>
+                          onTogglePinned(c.entity_id, {
+                            customer_id: c.customer_id ?? null,
+                            bizname: c.company ?? null,
+                          })
+                      : undefined
+                  }
+                  amName={amName}
+                  isSnoozed={snoozedSet?.has(c.entity_id) ?? false}
+                  snoozedUntil={snoozedSet?.get(c.entity_id) ?? null}
+                  onSnooze={
+                    onSnooze
+                      ? (days: number) =>
+                          onSnooze(c.entity_id, days, {
+                            customer_id: c.customer_id ?? null,
+                            bizname: c.company ?? null,
+                          })
+                      : undefined
+                  }
+                  onUnsnooze={onUnsnooze ? () => onUnsnooze(c.entity_id) : undefined}
+                  onSignalChipClick={onSignalChipClick}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -767,8 +927,36 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       <p className="mt-6 text-center text-[10px] text-zoca-text-soft">
         Generated at {new Date(generatedAt).toLocaleString()}
       </p>
+
+      {/* Phase 32 — onboarding tour (first-run only; ?force-tour=1 overrides) */}
+      {customers.length > 0 && <V2OnboardingTour />}
+
+      {/* Phase 32 — keyboard shortcuts cheat sheet */}
+      <V2KeyboardShortcutsOverlay
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
     </section>
   );
+}
+
+function scrollFocusedCardIntoView(entityId: string): void {
+  if (typeof window === "undefined") return;
+  const el = document.querySelector<HTMLElement>(
+    `[data-entity-id="${cssEscapeId(entityId)}"]`,
+  );
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  if (rect.top < 80 || rect.bottom > window.innerHeight - 40) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function cssEscapeId(value: string): string {
+  if (typeof window !== "undefined" && "CSS" in window && typeof (window as Window & { CSS?: { escape?: (s: string) => string } }).CSS?.escape === "function") {
+    return (window as Window & { CSS: { escape: (s: string) => string } }).CSS.escape(value);
+  }
+  return value.replace(/[^\-_a-zA-Z0-9]/g, (ch) => `\\${ch}`);
 }
 
 function FilterChip({
@@ -838,6 +1026,18 @@ function V2EmptyState({ filter, hasQuery }: { filter: FilterKey; hasQuery: boole
       title: "You're caught up.",
       body: "No customers in your book need urgent attention right now. Nice work.",
       variant: "all-clear",
+    },
+    // Phase 33.A.1 — added watch + healthy to match the FilterKey union extended
+    // in Phase 32.1 (was previously missing here, causing TS2739 build error).
+    watch: {
+      title: "No customers in the watch tier.",
+      body: "Your YELLOW lane is clear. Watch this space — customers can shift into it as signals change.",
+      variant: "all-clear",
+    },
+    healthy: {
+      title: "No GREEN customers yet.",
+      body: "Your healthy lane is empty. Either your book is new or every customer needs attention right now.",
+      variant: "filter-empty",
     },
     improving: {
       title: "Nothing clearly improving yet.",

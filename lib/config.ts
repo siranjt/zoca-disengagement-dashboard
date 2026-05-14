@@ -8,11 +8,13 @@ export const METABASE_ENDPOINTS = {
   phone:     "https://metabase.zoca.ai/public/question/60797a27-c546-450d-b00b-a51b7e490143.csv",
   video:     "https://metabase.zoca.ai/public/question/d95d9354-7c84-4a57-8af5-e700580c6ecb.csv",
   sms:       "https://metabase.zoca.ai/public/question/bbaad2fb-5f9d-4249-af59-c7812851437c.csv",
-  // Phase 31.v2 — single Metabase CSV maintained by the Zoca team. Replaces
-  // the HubSpot Service Hub + Linear GraphQL adapters that v1 used. The CSV
-  // already filters to "active states + closed/canceled in last 30 days".
+  // Phase 31.v2 — Metabase tickets CSV (active Linear + closed in last 30d)
   tickets:   "https://metabase.zoca.ai/public/question/a80bac40-c055-4867-a778-9ee1f29053ca.csv",
 } as const;
+
+// Phase 31.v2 — tickets enrichment constants (restored after Phase 33.A overwrite)
+export const TICKETS_STALE_DAYS = 7;
+export const TICKETS_MAX_RECORDS_PER_CUSTOMER = 20;
 
 // ---------------------------------------------------------------------------
 // v2 rework — new Metabase cards backing product-usage + performance signals
@@ -29,14 +31,6 @@ export const METABASE_V2_ENDPOINTS = {
 
 export const WINDOWS_DAYS = [7, 14, 30, 60, 90] as const;
 export const COMMS_RETAIN_DAYS = 120;
-
-// ---------------------------------------------------------------------------
-// Phase 31.v2 — tickets staleness threshold + per-customer record cap.
-// "Stale" applies only to open tickets (is_closed=false). The cap keeps the
-// snapshot payload bounded in customers with runaway ticket volume.
-// ---------------------------------------------------------------------------
-export const TICKETS_STALE_DAYS = 7;
-export const TICKETS_MAX_RECORDS_PER_CUSTOMER = 20;
 
 // ---------------------------------------------------------------------------
 // v1 composite weights (kept for backward compatibility with existing dashboard)
@@ -239,3 +233,34 @@ export const EXCLUDED_ENTITIES: Record<string, string> = {
   "e2ac8f53-d1d9-4bce-b61d-9b4d14d0c4cc": "Image Sun Tanning Center (orphan; customer_id links to Fortitude CrossFit)",
   "8643a977-6dc5-4fcc-a957-cbb37062eccc": "Hollywood Skin Atlanta Sugar Hill (orphan; customer_id links to Hollywood Skin Atlanta)",
 };
+
+// ---------------------------------------------------------------------------
+// Phase 33.A — Role-based access (Google OAuth via NextAuth)
+//
+// `ADMIN_EMAILS` is the hardcoded admin allowlist. Admin users get the AM
+// picker and can navigate to /v2/manager + /admin/*. Anyone else who passes
+// the domain check (zoca.ai / zoca.com) gets the "am" role and is locked
+// to their own book.
+//
+// To add an admin: edit this list. No DB migration required.
+// ---------------------------------------------------------------------------
+export const ADMIN_EMAILS: string[] = [
+  "success@zoca.com",
+];
+
+export type UserRole = "admin" | "am";
+
+/**
+ * Resolve an email to a role. Case-insensitive match against ADMIN_EMAILS.
+ * Returns "admin" if the email is in the allowlist, "am" otherwise.
+ * Callers are responsible for verifying the email's domain is allowed
+ * (that check lives in the NextAuth signIn callback).
+ */
+export function getRoleForEmail(email: string): UserRole {
+  const normalized = (email || "").trim().toLowerCase();
+  if (!normalized) return "am";
+  for (const adminEmail of ADMIN_EMAILS) {
+    if (adminEmail.trim().toLowerCase() === normalized) return "admin";
+  }
+  return "am";
+}

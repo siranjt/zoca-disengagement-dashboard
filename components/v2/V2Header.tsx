@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ZocaLogo } from "./ZocaLogo";
 import { AmPickerPill } from "./AmPickerPill";
 import { RefreshButton } from "./RefreshButton";
+import { V2UserMenu } from "./V2UserMenu";
 import type { V2View } from "./V2Dashboard";
 
 type AmProps = {
@@ -47,17 +48,22 @@ function relativeAge(generatedAt: string | null | undefined): string {
  * SINGLE sticky bar holding the entire global chrome.
  *   mode="am":
  *     left:  ZOCA logo + "| Customer Health" + AM picker pill
- *     right: tab group [AM's view | Manager's view] + Live status pill
- *   mode="manager":
+ *     right: view tabs (My customers / Pod view / Leadership)
+ *            + Manager link + Live status pill
+ *   mode="manager" (Phase 17.D):
  *     left:  ZOCA logo + "| Customer Health · Manager"
- *     right: tab group [AM's view | Manager's view] + Refresh + Live status pill
- *            (no AM picker — this is rollup-level)
+ *     right: "← AM view" link + Refresh button + Live status pill
+ *            (no AM picker, no view tabs — this is rollup-level)
  */
 export function V2Header(props: Props) {
   const { generatedAt, mode } = props;
   const isManager = mode === "manager";
+  const { data: session } = useSession();
+  // Phase 33.A — only admin users see the AM picker. AM-role users are
+  // locked to their own book (V2Dashboard handles the data filter; here we
+  // just hide the chrome).
+  const isAdmin = session?.user?.role === "admin";
   const [compact, setCompact] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     function onScroll() {
@@ -94,7 +100,7 @@ export function V2Header(props: Props) {
           </span>
         </a>
 
-        {!isManager && (
+        {!isManager && isAdmin && (
           <AmPickerPill
             selectedAm={props.selectedAm}
             allAms={props.allAms}
@@ -103,32 +109,70 @@ export function V2Header(props: Props) {
         )}
       </div>
 
-      {/* Right side — view tabs (AM / Manager) + live status */}
+      {/* Right side — view tabs / manager link / live status */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div
-          className="inline-flex items-center gap-1 p-1 rounded-lg"
-          style={{
-            background: "var(--zoca-bg-soft)",
-            border: "1px solid var(--zoca-border)",
-          }}
-        >
-          <ViewTab
-            label="AM's view"
-            active={!isManager}
-            onClick={() => {
-              if (isManager) router.push("/v2");
-            }}
-          />
-          <ViewTab
-            label="Manager's view"
-            active={isManager}
-            onClick={() => {
-              if (!isManager) router.push("/v2/manager");
-            }}
-          />
-        </div>
+        {!isManager && (
+          <>
+            <div
+              className="inline-flex items-center gap-1 p-1 rounded-lg"
+              style={{
+                background: "var(--zoca-bg-soft)",
+                border: "1px solid var(--zoca-border)",
+              }}
+            >
+              <ViewTab
+                label="My customers"
+                active={props.view === "am"}
+                onClick={() => props.setView("am")}
+              />
+              <ViewTab
+                label="Pod view"
+                active={props.view === "pod"}
+                onClick={() => props.setView("pod")}
+              />
+              <ViewTab
+                label="Leadership"
+                active={props.view === "leadership"}
+                onClick={() => props.setView("leadership")}
+              />
+            </div>
 
-        {isManager && <RefreshButton />}
+            <a
+              href="/v2/manager"
+              className="text-[11px] font-medium text-zoca-text transition"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--zoca-blue)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--zoca-text)";
+              }}
+              aria-label="Open manager dashboard"
+            >
+              Manager <span className="text-[10px]">→</span>
+            </a>
+          </>
+        )}
+
+        {isManager && (
+          <>
+            <a
+              href="/v2"
+              className="text-[11px] font-medium text-zoca-text transition"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--zoca-blue)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--zoca-text)";
+              }}
+              aria-label="Back to AM view"
+            >
+              <span className="text-[10px]">←</span> AM view
+            </a>
+            <RefreshButton />
+          </>
+        )}
 
         <div className="v2-header-status flex items-center gap-2 text-[11px] text-zoca-text-2" style={{ transition: "font-size 0.2s ease" }}>
           <span className="zoca-pulse-dot-green" />
@@ -136,6 +180,9 @@ export function V2Header(props: Props) {
             Live · {relativeAge(generatedAt)}
           </span>
         </div>
+
+        {/* Phase 33.A — signed-in user menu (avatar + role badge + sign out) */}
+        <V2UserMenu />
       </div>
     </nav>
   );
@@ -169,16 +216,6 @@ function ViewTab({
               fontWeight: 500,
             }
       }
-      onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.color = "var(--zoca-text)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.color = "var(--zoca-text-2)";
-        }
-      }}
     >
       {label}
     </button>

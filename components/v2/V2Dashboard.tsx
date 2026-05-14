@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import ZocaLogo from "@/components/ZocaLogo";
 import { ACTIVE_AMS, INCOMING_AMS, POD_MAP } from "@/lib/config";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
@@ -49,6 +50,12 @@ export default function V2Dashboard() {
 
 function V2DashboardInner() {
   const { showToast } = useToast();
+  // Phase 33.A — role-aware AM scoping. Admins keep the existing picker +
+  // localStorage flow; AM-role users are pinned to their own am_name.
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? null;
+  const sessionAmName = session?.user?.am_name ?? null;
+  const isAdmin = role === "admin";
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
   // Initialize to a stable default. Real value (URL > localStorage > default)
   // gets applied in the useEffect below — avoids "0 customers" flicker.
@@ -60,32 +67,33 @@ function V2DashboardInner() {
   // the V2ManagerDashboard signal-heatmap cell-click flow that navigates
   // here as /v2?pod=Pod+4&signal=we_silent.
   const [podFilter, setPodFilter] = useState<string | null>(null);
-  // Phase 24 — URL-bound filter (?filter=) so KPI-tile clicks + manager-side
-  // deep links flip the active V2AMTriage lane on mount.
-  const [filterFromUrl, setFilterFromUrl] = useState<string | null>(null);
-  const [sortFromUrl, setSortFromUrl] = useState<string | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
-  // Hydration-safe: only read browser state after mount
+  // Hydration-safe: only read browser state after mount.
+  // Phase 33.A — for non-admin users, the AM is locked to session.user.am_name.
+  // For admins, the existing URL > localStorage > default fallback chain stays.
   useEffect(() => {
     setMounted(true);
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    const fromQuery = url.searchParams.get("am");
-    const fromStorage = window.localStorage.getItem(STORAGE_AM_KEY);
-    const defaultAm = fromQuery || fromStorage || (ACTIVE_AMS[0] as string);
-    setSelectedAm(defaultAm);
+    if (role === "am") {
+      // AM-role: ignore URL + localStorage. Their book is whatever the
+      // session says (which may be null if BaseSheet mapping missed them).
+      if (sessionAmName) setSelectedAm(sessionAmName);
+    } else if (isAdmin) {
+      const fromQuery = url.searchParams.get("am");
+      const fromStorage = window.localStorage.getItem(STORAGE_AM_KEY);
+      const defaultAm =
+        fromQuery || fromStorage || sessionAmName || (ACTIVE_AMS[0] as string);
+      setSelectedAm(defaultAm);
+    }
     const sigFromQuery = url.searchParams.get("signal");
     if (isSignalKey(sigFromQuery)) setSignal(sigFromQuery);
     const podFromQuery = url.searchParams.get("pod");
     if (podFromQuery) setPodFilter(podFromQuery);
-    const filterQ = url.searchParams.get("filter");
-    if (filterQ) setFilterFromUrl(filterQ);
-    const sortQ = url.searchParams.get("sort");
-    if (sortQ) setSortFromUrl(sortQ);
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
-  }, []);
+  }, [role, isAdmin, sessionAmName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,15 +121,22 @@ function V2DashboardInner() {
     };
   }, []);
 
-  const handleSelectAm = useCallback((am: string) => {
-    setSelectedAm(am);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_AM_KEY, am);
-      const url = new URL(window.location.href);
-      url.searchParams.set("am", am);
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []);
+  const handleSelectAm = useCallback(
+    (am: string) => {
+      // Phase 33.A — only admins can switch AMs. The picker is hidden for
+      // AM-role users; this guard is a belt-and-braces no-op in case
+      // anything calls it programmatically.
+      if (!isAdmin) return;
+      setSelectedAm(am);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_AM_KEY, am);
+        const url = new URL(window.location.href);
+        url.searchParams.set("am", am);
+        window.history.replaceState({}, "", url.toString());
+      }
+    },
+    [isAdmin],
+  );
 
   // Phase 22.B.1 — keep ?signal= in URL in sync with the signal state. We
   // re-use the same window.history pattern as handleSelectAm above (we're
@@ -171,23 +186,7 @@ function V2DashboardInner() {
     [showToast],
   );
 
-  // Phase 24 — KPI tile click handler. Sets the active filter, syncs URL,
-  // and fires a confirmation toast. Used by the four AM-view KPI tiles
-  // (Total / Need to call / Watch / Healthy).
-  const handleKpiTileClick = useCallback(
-    (filter: "all" | "act" | "improving" | "quiet", label: string) => {
-      setFilterFromUrl(filter);
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        url.searchParams.set("filter", filter);
-        window.history.replaceState({}, "", url.toString());
-      }
-      showToast(`Showing: ${label}`, { type: "info", icon: "filter" });
-    },
-    [showToast],
-  );
-
-    const handleDismissWelcome = useCallback(() => {
+  const handleDismissWelcome = useCallback(() => {
     setWelcomeDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_WELCOME_DISMISSED, "1");
@@ -449,6 +448,11 @@ function V2DashboardInner() {
 
   const ready = snapshot.status === "ready" ? snapshot.snapshot : null;
 
+  // Phase 33.A — AM-role user with no BaseSheet mapping = empty state.
+  // Admins (and AMs whose Google email resolved to an AM name) skip this branch.
+  const showUnmappedAmState =
+    role === "am" && !sessionAmName;
+
   // ---------------------------------------------------------------------------
   // KPI tiles — RED count + MRR-at-risk computed CONSISTENTLY from this AM's
   // book. Phase 17.B had a bug where RED count was snapshot-wide while MRR
@@ -517,40 +521,32 @@ function V2DashboardInner() {
             value: scopeCustomerCount,
             subtitle: "in your book",
             color: "midnight",
-            selected: filterFromUrl === "all",
-            onClick: () => handleKpiTileClick("all", "full book"),
           },
           {
             label: "Need to call",
             value: redCountForAm,
             subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
             color: "pink",
-            // Phase 24 — "Need to call" is the canonical default lane. Keep
-            // the pink border whenever the URL has no ?filter= or filter=act.
-            selected: filterFromUrl === "act" || filterFromUrl === null,
-            onClick: () => handleKpiTileClick("act", "need to call"),
+            selected: true,
           },
           {
             label: "Watch",
             value: yellowCountForAm,
             subtitle: "likely save calls",
             color: "amber",
-            selected: filterFromUrl === "improving",
-            onClick: () => handleKpiTileClick("improving", "watch lane"),
           },
           {
             label: "Healthy",
             value: greenCountForAm,
             subtitle: "in your book",
             color: "green",
-            selected: filterFromUrl === "quiet",
-            onClick: () => handleKpiTileClick("quiet", "healthy lane"),
           },
         ]}
       />
 
       <main className="mx-auto max-w-[920px] px-4 pb-24 pt-4 md:px-6">
-        {mounted && !welcomeDismissed && snapshot.status === "ready" && (
+        {showUnmappedAmState && <V2UnmappedAmState />}
+        {!showUnmappedAmState && mounted && !welcomeDismissed && snapshot.status === "ready" && (
           <V2WelcomeStrip
             amName={selectedAm}
             customers={amCustomers}
@@ -558,17 +554,17 @@ function V2DashboardInner() {
           />
         )}
 
-        {snapshot.status === "loading" && <V2LoadingSkeleton />}
-        {snapshot.status === "error" && (
+        {!showUnmappedAmState && snapshot.status === "loading" && <V2LoadingSkeleton />}
+        {!showUnmappedAmState && snapshot.status === "error" && (
           <V2ErrorState
             message={snapshot.message}
             onRetry={() => window.location.reload()}
           />
         )}
 
-        {snapshot.status === "ready" && !selectedAm && <V2SelectAmPrompt />}
+        {!showUnmappedAmState && snapshot.status === "ready" && !selectedAm && <V2SelectAmPrompt />}
 
-        {snapshot.status === "ready" && selectedAm && view === "am" && (
+        {!showUnmappedAmState && snapshot.status === "ready" && selectedAm && view === "am" && (
           <>
             {/*
               Phase 23.A — interactive chart row, AM view only. Renders right
@@ -610,12 +606,10 @@ function V2DashboardInner() {
             onSignalChipClick={handleSignalChipClick}
             podFilter={podFilter}
             onPodFilterChange={setPodFilter}
-            filterFromUrl={filterFromUrl as ("pinned" | "act" | "improving" | "quiet" | "all" | "snoozed" | null)}
-            sortFromUrl={sortFromUrl as ("urgency" | "plan" | "lasttouch" | null)}
           />
           </>
         )}
-        {snapshot.status === "ready" && view === "pod" && (
+        {!showUnmappedAmState && snapshot.status === "ready" && view === "pod" && (
           <V2Rollup
             snapshot={snapshot.snapshot}
             initialPod={selectedPod || "All"}
@@ -625,7 +619,7 @@ function V2DashboardInner() {
             }}
           />
         )}
-        {snapshot.status === "ready" && view === "leadership" && (
+        {!showUnmappedAmState && snapshot.status === "ready" && view === "leadership" && (
           <V2Rollup
             snapshot={snapshot.snapshot}
             initialPod="All"
@@ -694,6 +688,27 @@ function V2SelectAmPrompt() {
       </p>
       <p className="mt-2 text-sm text-zoca-text-muted">
         Use the dropdown in the top bar to pick yourself or another AM.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 33.A — Empty state for an AM-role user whose Google email didn't
+// resolve to a BaseSheet entry. Friendly nudge; no data shown.
+// ---------------------------------------------------------------------------
+function V2UnmappedAmState() {
+  return (
+    <div
+      className="mt-12 rounded-zoca border border-dashed border-zoca-border-2 px-6 py-12 text-center"
+      role="status"
+    >
+      <p className="font-display text-lg font-bold text-zoca-text-primary">
+        Your account isn&rsquo;t mapped to an AM yet.
+      </p>
+      <p className="mt-2 text-sm text-zoca-text-muted">
+        We couldn&rsquo;t match your Google email to a BaseSheet record. Ask
+        your manager to add you to the AM list, then sign out and back in.
       </p>
     </div>
   );

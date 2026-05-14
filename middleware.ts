@@ -1,44 +1,51 @@
-import { NextRequest, NextResponse } from "next/server";
+// Phase 33.A — NextAuth middleware (replaces HTTP Basic Auth).
+//
+// Two gates layered on top of every request:
+//   1. `authorized` callback → must have a JWT (token != null). If absent
+//      the user is redirected to /auth/signin.
+//   2. Path-based role check → /admin and /v2/manager require role=admin.
+//      Non-admin users are bounced back to /v2 (their own AM view).
+//
+// Excluded from middleware (no auth required):
+//   - /_next/static, /_next/image, /favicon.ico  (Next.js internals)
+//   - /api/health                                  (uptime monitor)
+//   - /api/cron                                    (cron does Bearer auth itself)
+//   - /api/auth                                    (NextAuth handler — must be reachable)
+//
+// The old DASHBOARD_USER / DASHBOARD_PASSWORD env vars are no longer read
+// and can be removed from Vercel.
 
-// HTTP Basic Auth — shared password for teammates.
-// Same pattern as the AM Ticket Journey dashboard.
-// - Skip /api/health so uptime monitors can hit it.
-// - Skip /api/cron/* (the cron route does its own Bearer-token auth).
+import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|api/cron).*)"],
-};
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const path = req.nextUrl.pathname;
 
-export function middleware(req: NextRequest) {
-  const user = process.env.DASHBOARD_USER;
-  const pass = process.env.DASHBOARD_PASSWORD;
-  if (!user || !pass) {
-    // Fail closed: refuse to serve if Basic Auth isn't configured.
-    // The /api/health and /api/cron paths are already skipped by the matcher.
-    return new NextResponse(
-      "Dashboard unavailable: DASHBOARD_USER / DASHBOARD_PASSWORD env vars not set.",
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-  const auth = req.headers.get("authorization");
-  if (auth) {
-    const [scheme, value] = auth.split(" ");
-    if (scheme === "Basic" && value) {
-      try {
-        const decoded = atob(value);
-        const idx = decoded.indexOf(":");
-        if (idx > -1) {
-          const u = decoded.slice(0, idx);
-          const p = decoded.slice(idx + 1);
-          if (u === user && p === pass) return NextResponse.next();
-        }
-      } catch {
-        // fall through to 401
+    // Admin-only paths
+    if (path.startsWith("/admin") || path.startsWith("/v2/manager")) {
+      if (token?.role !== "admin") {
+        const url = new URL("/v2", req.url);
+        return NextResponse.redirect(url);
       }
     }
-  }
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Zoca Dashboard", charset="UTF-8"' },
-  });
-}
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+    pages: {
+      signIn: "/auth/signin",
+    },
+  },
+);
+
+export const config = {
+  matcher: [
+    // Same exclusions as the previous Basic-Auth middleware, PLUS api/auth/*
+    // which NextAuth needs unauthenticated access to (sign-in / callback / etc.).
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/cron|api/auth).*)",
+  ],
+};
