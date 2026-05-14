@@ -7,6 +7,8 @@ import { AnimatedNumber } from "./AnimatedNumber";
 import { EmptyState } from "./EmptyState";
 import V2AMBookTrendStrip from "./V2AMBookTrendStrip";
 import { SavedViewsRow, type SavedViewConfig } from "./SavedViewsRow";
+import V2CoachingLoops from "./V2CoachingLoops";
+import type { CoachingRow, CoachingMetric } from "@/lib/coaching";
 import {
   SIGNAL_LABELS,
   customerHasSignal,
@@ -42,10 +44,6 @@ type Props = {
   /** Phase 22.B.3 — pod filter (?pod=) from heatmap drill-in. Optional. */
   podFilter?: string | null;
   onPodFilterChange?: (pod: string | null) => void;
-  /** Phase 24 — controlled filter from URL (?filter=) / KPI-tile clicks. */
-  filterFromUrl?: FilterKey | null;
-  /** Phase 24 — controlled sort from URL (?sort=) — used by MRR @ risk drill. */
-  sortFromUrl?: SortKey | null;
 };
 
 type FilterKey = "pinned" | "act" | "improving" | "quiet" | "all" | "snoozed";
@@ -62,12 +60,22 @@ function isSortKey(v: string): v is SortKey {
 
 const ACT_TODAY_TOP_N = 10;
 
-export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick, podFilter, onPodFilterChange, filterFromUrl, sortFromUrl }: Props) {
+const COACHING_METRIC_LABEL: Record<CoachingMetric, string> = {
+  untouched_7d: "RED untouched >7d",
+  stale_14d: "Stale RED >14d",
+  noreach_streak: "No-reach streak (3+)",
+  snooze_ignored: "Snooze ignored",
+};
+
+export default function V2AMTriage({ amName, pod, customers, generatedAt, pinnedSet, onTogglePinned, snoozedSet, onSnooze, onUnsnooze, signal, onSignalChange, onSignalChipClick, podFilter, onPodFilterChange }: Props) {
   const [filter, setFilter] = useState<FilterKey>("act");
   const [sort, setSort] = useState<SortKey>("urgency");
   const [query, setQuery] = useState<string>("");
   const [customerTrends, setCustomerTrends] = useState<Record<string, CustomerTrendPoint[]>>({});
   const [contactedRecently, setContactedRecently] = useState<Set<string>>(new Set());
+  // Phase 27 — coaching loops for this AM
+  const [coachingRow, setCoachingRow] = useState<CoachingRow | null>(null);
+  const [coachingMetric, setCoachingMetric] = useState<CoachingMetric | null>(null);
 
   // Fetch the set of entities this AM has contacted in the last 7 days so we
   // can dim those cards and show a 'Contacted Xd ago' chip.
@@ -96,19 +104,32 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     };
   }, [amName]);
 
-  // Phase 24 — when V2Dashboard pushes a new ?filter= (e.g. KPI tile click),
-  // mirror it into our local state. Runs on mount + whenever the URL
-  // value changes.
+  // Phase 27 — fetch this AM's coaching row.
   useEffect(() => {
-    if (filterFromUrl && isFilterKey(filterFromUrl)) {
-      setFilter(filterFromUrl);
+    if (!amName) {
+      setCoachingRow(null);
+      return;
     }
-  }, [filterFromUrl]);
-  useEffect(() => {
-    if (sortFromUrl && isSortKey(sortFromUrl)) {
-      setSort(sortFromUrl);
-    }
-  }, [sortFromUrl]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/v2/coaching?am=${encodeURIComponent(amName)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as { ok: boolean; rows: CoachingRow[] };
+        if (cancelled) return;
+        const row = json.ok && json.rows?.[0] ? json.rows[0] : null;
+        setCoachingRow(row);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [amName]);
 
   useEffect(() => {
     if (customers.length === 0) {
@@ -276,14 +297,39 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   // Phase 22.B.3 — additionally narrow by pod when podFilter is set. Both
   // are POST-filters on the bucket/search/sort pipeline above, so they
   // compose with whatever lane the AM is currently on.
+  // Phase 27   — additionally narrow by coaching cohort when coachingMetric
+  // is set (filters to the entity_ids surfaced by the heads-up pill).
   const finalList = useMemo(() => {
     let out = filtered;
     if (signal) out = out.filter((c) => customerHasSignal(c, signal));
     if (podFilter) {
       out = out.filter((c) => (POD_MAP[c.am_name] || "Floating") === podFilter);
     }
+    if (coachingMetric && coachingRow) {
+      let allowed: Set<string> = new Set();
+      switch (coachingMetric) {
+        case "untouched_7d":
+          allowed = new Set(coachingRow.red_untouched_7d.entity_ids);
+          break;
+        case "stale_14d":
+          allowed = new Set(coachingRow.stale_red_14d.entity_ids);
+          break;
+        case "noreach_streak":
+          allowed = new Set(coachingRow.noreach_streak_3plus.entity_ids);
+          break;
+        case "snooze_ignored":
+          allowed = new Set(coachingRow.snooze_ignored.entity_ids);
+          break;
+      }
+      // Coaching cohorts can include snoozed customers (especially
+      // snooze_ignored), so search the full book — not the bucket-filtered
+      // list above which strips snoozed entries by default.
+      const source =
+        coachingMetric === "snooze_ignored" ? customers : filtered;
+      out = source.filter((c) => allowed.has(c.entity_id));
+    }
     return out;
-  }, [filtered, signal, podFilter]);
+  }, [filtered, signal, podFilter, coachingMetric, coachingRow, customers]);
 
   // Phase 22.C — FLIP transitions: when finalList re-orders (filter/sort/pin/snooze),
   // each card animates from its previous DOM position to its new one via inverse
@@ -364,6 +410,19 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
 
   return (
     <section className="mt-2">
+      {/* Phase 27 — Coaching loops "Heads up" pill bar. Mounts at the very
+          top of the AM-mode tree so the AM sees behavioral signals before
+          the saved-views row. Clicking a pill sets coachingMetric, which
+          narrows the customer list below via finalList. */}
+      {coachingRow && (
+        <V2CoachingLoops
+          mode="am"
+          rows={[coachingRow]}
+          onMetricClick={(_am, m) =>
+            setCoachingMetric((curr) => (curr === m ? null : m))
+          }
+        />
+      )}
       {/* Book trend strip — last 14 days */}
       {amName && <V2AMBookTrendStrip amName={amName} days={14} />}
       {/* Hero */}
@@ -441,7 +500,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
         />
         {filterCounts.snoozed > 0 && (
           <FilterChip
-            label="\ud83d\udcA4 Snoozed"
+            label="💤 Snoozed"
             count={filterCounts.snoozed}
             active={filter === "snoozed"}
             onClick={() => setFilter("snoozed")}
@@ -507,8 +566,9 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       </div>
 
       {/* Phase 22.B.1 + 22.B.3 — sticky filter banners (signal and pod).
-          They sit side-by-side in a flex row, each independently dismissible. */}
-      {(signal || podFilter) && (
+          They sit side-by-side in a flex row, each independently dismissible.
+          Phase 27 adds a coaching cohort banner alongside. */}
+      {(signal || podFilter || coachingMetric) && (
         <div
           style={{
             display: "flex",
@@ -588,6 +648,43 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 }}
               >
                 ×
+              </button>
+            </div>
+          )}
+          {coachingMetric && (
+            <div
+              role="status"
+              className="zoca-fade-in"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                background: "rgba(20,110,245,0.08)",
+                border: "1px solid rgba(20,110,245,0.22)",
+                color: "#0c4a6e",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              <i className="ti ti-filter" aria-hidden style={{ fontSize: "14px" }} />
+              <span>Showing coaching cohort: {COACHING_METRIC_LABEL[coachingMetric]}</span>
+              <button
+                type="button"
+                onClick={() => setCoachingMetric(null)}
+                aria-label="Clear coaching cohort filter"
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  color: "inherit",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: "0 4px",
+                  lineHeight: 1,
+                }}
+              >
+                Clear
               </button>
             </div>
           )}

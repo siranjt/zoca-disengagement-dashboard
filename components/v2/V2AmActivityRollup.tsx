@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { CoachingMetric } from "@/lib/coaching";
 
 type AmOutcomeStats = {
   am_name: string;
@@ -16,14 +17,33 @@ type State =
   | { status: "error"; message: string }
   | { status: "ready"; rows: AmOutcomeStats[] };
 
+const METRIC_LABEL: Record<CoachingMetric, string> = {
+  untouched_7d: "RED untouched >7d",
+  stale_14d: "Stale RED >14d",
+  noreach_streak: "No-reach streak (3+)",
+  snooze_ignored: "Snooze ignored",
+};
+
+type Props = {
+  daysBack?: number;
+  /** Phase 27 — when set, filter the rollup to a single AM + show banner. */
+  coachingFilter?: { amName: string; metric: CoachingMetric } | null;
+  onClearCoachingFilter?: () => void;
+};
+
 /**
  * Phase 15.2 — AM activity rollup. Renders a per-AM table of action counts
  * + outcome breakdown over the last N days. Empty state when no actions
  * have been logged yet (Phase 9 wired but unused).
  *
  * Phase 17.D — light-themed to match the Zoca brand palette.
+ * Phase 27   — optional coachingFilter prop narrows table to one AM.
  */
-export default function V2AmActivityRollup({ daysBack = 7 }: { daysBack?: number }) {
+export default function V2AmActivityRollup({
+  daysBack = 7,
+  coachingFilter = null,
+  onClearCoachingFilter,
+}: Props) {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -49,6 +69,12 @@ export default function V2AmActivityRollup({ daysBack = 7 }: { daysBack?: number
     };
   }, [daysBack]);
 
+  const displayRows = useMemo(() => {
+    if (state.status !== "ready") return [];
+    if (!coachingFilter) return state.rows;
+    return state.rows.filter((r) => r.am_name === coachingFilter.amName);
+  }, [state, coachingFilter]);
+
   return (
     <section className="mb-7">
       <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
@@ -66,6 +92,38 @@ export default function V2AmActivityRollup({ daysBack = 7 }: { daysBack?: number
           </p>
         </div>
       </header>
+
+      {coachingFilter && (
+        <div
+          role="status"
+          className="mb-3 zoca-fade-in inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+          style={{
+            background: "rgba(255,134,225,0.12)",
+            border: "1px solid rgba(255,86,187,0.22)",
+            color: "#c026d3",
+          }}
+        >
+          <span>
+            Filtered to {coachingFilter.amName} — {METRIC_LABEL[coachingFilter.metric]}.
+          </span>
+          <button
+            type="button"
+            onClick={onClearCoachingFilter}
+            aria-label="Clear coaching filter"
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "14px",
+              padding: "0 4px",
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div
         className="overflow-hidden rounded-2xl"
@@ -88,12 +146,14 @@ export default function V2AmActivityRollup({ daysBack = 7 }: { daysBack?: number
             Could not load AM activity: {state.message}
           </div>
         )}
-        {state.status === "ready" && state.rows.length === 0 && (
+        {state.status === "ready" && displayRows.length === 0 && (
           <div className="px-4 py-6 text-center text-[12px] text-zoca-text-2">
-            No AM actions recorded yet. Track outcomes via the customer card buttons to populate this view.
+            {coachingFilter
+              ? `No actions logged for ${coachingFilter.amName} in the last ${daysBack} days.`
+              : "No AM actions recorded yet. Track outcomes via the customer card buttons to populate this view."}
           </div>
         )}
-        {state.status === "ready" && state.rows.length > 0 && (
+        {state.status === "ready" && displayRows.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[12px]">
               <thead
@@ -111,7 +171,7 @@ export default function V2AmActivityRollup({ daysBack = 7 }: { daysBack?: number
                 </tr>
               </thead>
               <tbody>
-                {state.rows.map((row) => (
+                {displayRows.map((row) => (
                   <tr
                     key={row.am_name}
                     className="transition"
