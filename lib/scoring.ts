@@ -181,13 +181,6 @@ export function scoreCustomer(m: CustomerMetrics): CustomerSignals {
 // ---------------------------------------------------------------------------
 // v2 — Tickets flag
 // ---------------------------------------------------------------------------
-//
-// Phase 31: the rich per-ticket records + per-priority/source rollups are
-// populated downstream in the refresh pipeline (see `enrichTicketsRecords`
-// in lib/refresh.ts). `computeTicketsFlag` continues to emit the BaseSheet-
-// derived counts + flag and seeds the Phase 31 enrichment fields with empty
-// defaults so the type stays consistent even when HubSpot/Linear aren't
-// reachable.
 
 export function computeTicketsFlag(
   entityId: string,
@@ -199,13 +192,6 @@ export function computeTicketsFlag(
     open_tickets_30d: openTickets30d,
     unresolved_issues_last_30_days: unresolvedIssues30d,
     flag: openTickets30d > 0 || unresolvedIssues30d > 0,
-    records: [],
-    open_count: 0,
-    open_urgent_count: 0,
-    open_stale_count: 0,
-    closed_last_30d_count: 0,
-    by_priority: { URGENT: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNSET: 0 },
-    by_source: { hubspot: 0, linear: 0 },
   };
 }
 

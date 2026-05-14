@@ -207,41 +207,34 @@ export type PerformanceMetrics = {
 };
 
 // ---------------------------------------------------------------------------
-// v2 — Tickets metrics (BaseSheet-derived + Phase 31 enrichment fields)
+// v2 — Tickets metrics.
+//
+// Phase 31.v2 extends this with `records` + aggregates fed from the Metabase
+// CSV. `open_tickets_30d` and `unresolved_issues_last_30_days` are still
+// surfaced from BaseSheet as the legacy fallback signal (they pre-date the
+// per-ticket feed and remain useful when the Metabase fetch fails).
+//
+// The Phase 31.v2 fields are optional at the type level so that
+// `computeTicketsFlag()` (which only knows the BaseSheet counters) keeps
+// compiling. `lib/refresh.ts` always merges the Metabase aggregates onto
+// the same object before pushing it into the snapshot, so the dashboard
+// reads them as if they were required at runtime.
 // ---------------------------------------------------------------------------
-/**
- * Per-priority counts of OPEN tickets only (closed tickets are tracked in
- * `closed_last_30d_count`).
- */
-export type TicketsByPriority = {
-  URGENT: number;
-  HIGH: number;
-  MEDIUM: number;
-  LOW: number;
-  UNSET: number;
-};
-
-export type TicketsBySource = {
-  hubspot: number;
-  linear: number;
-};
-
 export type TicketsMetrics = {
   entity_id: string;
-  // Existing BaseSheet-derived counts (kept for backward compat).
+  // Legacy BaseSheet-derived counters (kept for backward compat)
   open_tickets_30d: number;
   unresolved_issues_last_30_days: number;
   flag: boolean;
-  // Phase 31 — rich per-ticket records, capped at 20 most recent for
-  // payload sanity. Sorted by sortTickets() before persistence.
-  records: UnifiedTicket[];
-  open_count: number;
-  open_urgent_count: number;
-  // OPEN and age_days >= TICKETS_STALE_DAYS
-  open_stale_count: number;
-  closed_last_30d_count: number;
-  by_priority: TicketsByPriority;
-  by_source: TicketsBySource;
+  // Phase 31.v2 — Metabase-derived per-ticket detail + aggregates.
+  // Optional in the type so legacy scoring code keeps compiling; the snapshot
+  // refresh pipeline always sets them.
+  records?: UnifiedTicket[];
+  open_count?: number;
+  open_stale_count?: number;
+  closed_last_30d_count?: number;
+  by_category?: Record<string, number>;
+  oldest_open_age_days?: number | null;
 };
 
 // ---------------------------------------------------------------------------

@@ -1,161 +1,179 @@
 /**
- * Phase 31 — Unified ticket model.
+ * Phase 31.v2 — Unified ticket model (Metabase-sourced).
  *
- * Both HubSpot Service Hub and Linear ticket adapters produce values of the
- * `UnifiedTicket` shape below. The customer-detail panel, customer-card chip,
- * and 1:1 prep talking points all consume tickets via this unified shape so
- * neither vendor's API leaks into the UI layer.
+ * v2 retires the HubSpot Service Hub + Linear GraphQL adapters that v1 used.
+ * The dashboard now consumes a SINGLE Metabase public CSV that the Zoca team
+ * maintains. There is no longer a per-vendor `source` discriminator; every
+ * ticket originated from the same Metabase card.
+ *
+ * The CSV's WHERE clause already restricts to "active states + closed/canceled
+ * in last 30 days", so we don't filter further here. We only transform.
  *
  * Pure module — no I/O. Safe to import from anywhere (client or server).
  */
 
-export type TicketSource = "hubspot" | "linear";
-
-export type TicketPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW" | "UNSET";
-
-export type TicketStatus =
-  | "new"
-  | "open"
-  | "in_progress"
-  | "waiting_on_us"
-  | "waiting_on_customer"
+export type TicketStatusCategory =
   | "triage"
   | "backlog"
   | "todo"
+  | "in_progress"
+  | "in_review"
   | "closed_resolved"
   | "closed_unresolved"
   | "unknown";
 
 export type UnifiedTicket = {
-  source: TicketSource;
+  /** Ticket id from CSV (Linear's id field — opaque string) */
   id: string;
   title: string;
-  status: TicketStatus;
+  /** Normalized status enum derived from CSV `state_name` */
+  status: TicketStatusCategory;
+  /** Raw human-readable status from CSV `state_name` */
   status_label: string;
-  priority: TicketPriority;
-  owner_name: string | null;
-  owner_email: string | null;
-  pipeline: string | null;
+  /** CSV `ticket_category`; "Uncategorized" if blank */
+  category: string;
+  /** CSV `ticket_classification`; null if blank */
+  classification: string | null;
+  entity_id: string;
+  bizname: string;
+  am_name: string | null;
+  ae_name: string | null;
+  /** Display name; "Unassigned" when CSV is blank */
+  assignee_name: string;
+  assignee_email: string | null;
+  creator_email: string | null;
+  /** Chargebee customer_id, useful for cross-linking elsewhere in the app */
+  customer_id: string | null;
+  /** ISO of CSV `linear_created_at` (canonical "created at" despite the name) */
   created_at: string;
-  last_updated_at: string;
-  closed_at: string | null;
+  /** ISO of CSV `last_updated_at`; drives "last touched Yd ago" UI */
+  last_updated_at: string | null;
+  /** ISO of CSV `completed_at` if closed-resolved */
+  completed_at: string | null;
+  /** ISO of CSV `canceled_at` if closed-unresolved */
+  canceled_at: string | null;
   url: string;
   age_days: number;
+  days_since_update: number | null;
+  /** !is_closed && age_days >= TICKETS_STALE_DAYS */
   is_stale: boolean;
   is_closed: boolean;
 };
 
 // ---------------------------------------------------------------------------
-// Sort + grouping helpers
+// Status mapping
 // ---------------------------------------------------------------------------
 
-export function prioritySortKey(p: TicketPriority): number {
-  switch (p) {
-    case "URGENT":
-      return 0;
-    case "HIGH":
-      return 1;
-    case "MEDIUM":
-      return 2;
-    case "LOW":
-      return 3;
-    case "UNSET":
+/**
+ * Map Linear's human-readable `state_name` to our normalized category.
+ * Unknown states fall through to "unknown". Closed states are determined
+ * here too — "Done" is closed_resolved, "Canceled" is closed_unresolved.
+ */
+export function categorizeStatus(stateName: string): TicketStatusCategory {
+  const s = (stateName || "").trim().toLowerCase();
+  switch (s) {
+    case "triage":
+      return "triage";
+    case "backlog":
+      return "backlog";
+    case "todo":
+    case "to do":
+      return "todo";
+    case "in progress":
+      return "in_progress";
+    case "in review":
+      return "in_review";
+    case "done":
+    case "completed":
+      return "closed_resolved";
+    case "canceled":
+    case "cancelled":
+      return "closed_unresolved";
     default:
-      return 4;
+      return "unknown";
   }
 }
 
 // ---------------------------------------------------------------------------
-// Color tokens — Tailwind utility class triples + human-readable label.
-// `bg`/`fg` are Tailwind class fragments designed to drop into a chip span.
+// Color tokens — Tailwind class fragments for status chips.
+// Open work uses sky/amber tints; closed work dims to emerald/zinc.
+// No priority-based colors — the v2 CSV has no priority column.
 // ---------------------------------------------------------------------------
-
-export function priorityColor(
-  p: TicketPriority,
-): { bg: string; fg: string; label: string } {
-  switch (p) {
-    case "URGENT":
-      return { bg: "bg-rose-500/18", fg: "text-rose-700", label: "Urgent" };
-    case "HIGH":
-      return { bg: "bg-amber-500/18", fg: "text-amber-700", label: "High" };
-    case "MEDIUM":
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Medium" };
-    case "LOW":
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Low" };
-    case "UNSET":
-    default:
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "—" };
-  }
-}
 
 export function statusColor(
-  s: TicketStatus,
+  s: TicketStatusCategory,
 ): { bg: string; fg: string; label: string } {
   switch (s) {
-    case "new":
-      return { bg: "bg-sky-500/18", fg: "text-sky-700", label: "New" };
-    case "open":
-      return { bg: "bg-sky-500/18", fg: "text-sky-700", label: "Open" };
-    case "in_progress":
-      return { bg: "bg-violet-500/18", fg: "text-violet-700", label: "In progress" };
-    case "waiting_on_us":
-      return { bg: "bg-amber-500/18", fg: "text-amber-700", label: "Waiting on us" };
-    case "waiting_on_customer":
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Waiting on customer" };
     case "triage":
-      return { bg: "bg-rose-500/18", fg: "text-rose-700", label: "Triage" };
+      return { bg: "bg-sky-500/18", fg: "text-sky-700", label: "Triage" };
     case "backlog":
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Backlog" };
+      return { bg: "bg-sky-500/14", fg: "text-sky-700", label: "Backlog" };
     case "todo":
       return { bg: "bg-sky-500/18", fg: "text-sky-700", label: "Todo" };
+    case "in_progress":
+      return { bg: "bg-amber-500/18", fg: "text-amber-700", label: "In progress" };
+    case "in_review":
+      return { bg: "bg-amber-500/14", fg: "text-amber-700", label: "In review" };
     case "closed_resolved":
-      return { bg: "bg-emerald-500/18", fg: "text-emerald-700", label: "Resolved" };
+      return { bg: "bg-emerald-500/14", fg: "text-emerald-700", label: "Done" };
     case "closed_unresolved":
-      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Closed" };
+      return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Canceled" };
     case "unknown":
     default:
       return { bg: "bg-zoca-bg-tint", fg: "text-zoca-text-2", label: "Unknown" };
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sort + grouping helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Sort tickets: open first (priority ascending — URGENT before LOW), with
- * older creation date breaking ties; closed tickets at the end, most-recently-
- * closed first.
+ * Sort tickets so the AM scans the most-actionable items first:
+ *  - Open tickets before closed.
+ *  - Within open: stale (is_stale=true) before fresh, then by age_days desc.
+ *  - Within closed: most-recently-closed first (completed_at | canceled_at).
  */
 export function sortTickets(tickets: UnifiedTicket[]): UnifiedTicket[] {
   const copy = tickets.slice();
   copy.sort((a, b) => {
     if (a.is_closed !== b.is_closed) return a.is_closed ? 1 : -1;
     if (!a.is_closed && !b.is_closed) {
-      const pa = prioritySortKey(a.priority);
-      const pb = prioritySortKey(b.priority);
-      if (pa !== pb) return pa - pb;
-      return (a.age_days ?? 0) > (b.age_days ?? 0) ? -1 : 1;
+      if (a.is_stale !== b.is_stale) return a.is_stale ? -1 : 1;
+      return (b.age_days ?? 0) - (a.age_days ?? 0);
     }
     // both closed — recency desc
-    const ca = a.closed_at ? Date.parse(a.closed_at) : 0;
-    const cb = b.closed_at ? Date.parse(b.closed_at) : 0;
+    const closedA = a.completed_at || a.canceled_at;
+    const closedB = b.completed_at || b.canceled_at;
+    const ca = closedA ? Date.parse(closedA) : 0;
+    const cb = closedB ? Date.parse(closedB) : 0;
     return cb - ca;
   });
   return copy;
 }
 
 /**
- * Group tickets by `pipeline` (falling back to a per-source bucket if pipeline
- * is null). Order of insertion preserved — callers can render the resulting
- * record in entry order.
+ * Group tickets by category, preserving insertion order. "Uncategorized" is
+ * always emitted last so AMs see meaningful buckets first.
  */
-export function groupTicketsByPipeline(
+export function groupTicketsByCategory(
   tickets: UnifiedTicket[],
-): Record<string, UnifiedTicket[]> {
-  const groups: Record<string, UnifiedTicket[]> = {};
+): Map<string, UnifiedTicket[]> {
+  const groups = new Map<string, UnifiedTicket[]>();
+  let uncategorized: UnifiedTicket[] | null = null;
   for (const t of tickets) {
-    const key =
-      t.pipeline ||
-      (t.source === "linear" ? "Linear" : t.source === "hubspot" ? "HubSpot" : "Other");
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(t);
+    const key = t.category || "Uncategorized";
+    if (key === "Uncategorized") {
+      if (!uncategorized) uncategorized = [];
+      uncategorized.push(t);
+      continue;
+    }
+    const arr = groups.get(key);
+    if (arr) arr.push(t);
+    else groups.set(key, [t]);
+  }
+  if (uncategorized && uncategorized.length) {
+    groups.set("Uncategorized", uncategorized);
   }
   return groups;
 }

@@ -390,26 +390,31 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
                   💼 {customer.hubspot.open_deal_count} deal{customer.hubspot.open_deal_count === 1 ? "" : "s"}
                 </span>
               )}
-            {/* Phase 31 — Tickets chip (HubSpot + Linear). Hot-routes to detail page #tickets anchor. */}
-            {customer.tickets && customer.tickets.open_count > 0 && (
+            {/* Phase 31.v2 — Tickets chip. Two states only: neutral if all
+                open tickets are fresh, amber if any are stale (>7d). No
+                priority-based rose chip since the Metabase CSV has no
+                priority column. Deep-links into the detail page #tickets. */}
+            {customer.tickets?.open_count !== undefined && customer.tickets.open_count > 0 && (
               <a
                 href={`/v2/customer/${encodeURIComponent(customer.entity_id)}#tickets`}
                 onClick={(e) => e.stopPropagation()}
-                className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-medium inline-flex items-center gap-1 ${
-                  customer.tickets.by_priority.URGENT > 0
-                    ? "bg-rose-500/18 text-rose-700 border border-rose-500/30"
-                    : customer.tickets.by_priority.HIGH > 0
-                      ? "bg-amber-500/18 text-amber-700 border border-amber-500/30"
-                      : "bg-zoca-bg-tint text-zoca-text-2 border border-zoca-border"
+                className={`rounded-zoca-pill inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium ${
+                  (customer.tickets.open_stale_count ?? 0) > 0
+                    ? "bg-amber-500/18 text-amber-700 border border-amber-500/30"
+                    : "bg-zoca-bg-tint text-zoca-text-2 border border-zoca-border"
                 }`}
                 title={`${customer.tickets.open_count} open ticket${customer.tickets.open_count === 1 ? "" : "s"}${
-                  customer.tickets.by_priority.URGENT > 0
-                    ? ` · ${customer.tickets.by_priority.URGENT} urgent`
+                  (customer.tickets.open_stale_count ?? 0) > 0
+                    ? ` · ${customer.tickets.open_stale_count} stale >7d`
                     : ""
-                }${customer.tickets.open_stale_count > 0 ? ` · ${customer.tickets.open_stale_count} stale >7d` : ""}`}
+                }`}
               >
                 🎫 {customer.tickets.open_count} ticket{customer.tickets.open_count === 1 ? "" : "s"}
-                {customer.tickets.by_priority.URGENT > 0 && ` · ${customer.tickets.by_priority.URGENT}P1`}
+                {(customer.tickets.open_stale_count ?? 0) > 0 && (
+                  <span className="text-[9px] uppercase tracking-wider">
+                    · {customer.tickets.open_stale_count} stale
+                  </span>
+                )}
               </a>
             )}
             {/* Phase 14B (Tier C): HubSpot vs. Metabase calls drift */}
@@ -526,13 +531,16 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               )}
               {s.flag_tickets && (
                 <FlagChip
-                  label={
-                    customer.tickets
-                      ? `${customer.tickets.open_tickets_30d} open ticket${
-                          customer.tickets.open_tickets_30d === 1 ? "" : "s"
-                        }`
-                      : "Tickets flag"
-                  }
+                  label={(() => {
+                    // Phase 31.v2 — prefer the Metabase per-ticket open_count
+                    // (matches the Tickets panel + chip), fall back to the
+                    // BaseSheet counter when records haven't been attached.
+                    if (!customer.tickets) return "Tickets flag";
+                    const count =
+                      customer.tickets.open_count ??
+                      customer.tickets.open_tickets_30d;
+                    return `${count} open ticket${count === 1 ? "" : "s"}`;
+                  })()}
                 />
               )}
             </div>
@@ -1376,7 +1384,7 @@ function FeedbackButton({
     | { kind: "submitting" }
     | { kind: "done" }
     | { kind: "error"; message: string };
-  setState: React.Dispatch<React.SetStateAction<{ kind: "idle" } | { kind: "open"; comment: string } | { kind: "submitting" } | { kind: "done" } | { kind: "error"; message: string }>>;
+  setState: React.Dispatch<React.SetStateAction<any>>;
   submit: (comment: string) => Promise<void>;
 }) {
   if (state.kind === "done") {

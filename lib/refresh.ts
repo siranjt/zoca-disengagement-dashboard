@@ -16,10 +16,6 @@ import { fetchCallsForCompanies, type CallsForCompany } from "./hubspot-calls";
 import { fetchContactsForCompanies, type CompanyContact } from "./hubspot-contacts";
 import { fetchEnrichedNotesPerCompany, type LastCallSummary } from "./hubspot-notes";
 import { readNoteEnrichments, writeNoteEnrichments, type CachedNoteEnrichment } from "./postgres";
-import { fetchTicketsForCompanies } from "./hubspot-tickets";
-import { fetchLinearTicketsForCustomer, linearConfigured } from "./linear-tickets";
-import { sortTickets } from "./tickets-unified";
-import type { UnifiedTicket } from "./tickets-unified";
 import { readPipelineStage } from "./pipeline-state";
 import {
   writePipelineStage,
@@ -30,9 +26,13 @@ import {
   TIER_ORDER,
   EXCLUDED_ENTITIES,
   POD_MAP,
-  TICKETS_STALE_DAYS,
+  TICKETS_MAX_RECORDS_PER_CUSTOMER,
   pgConfigured,
 } from "./config";
+// Phase 31.v2 — single Metabase CSV per nightly refresh (replaces v1 HubSpot
+// Service Hub + Linear GraphQL adapters).
+import { fetchTicketsFromMetabase } from "./tickets-from-metabase";
+import type { UnifiedTicket } from "./tickets-unified";
 import type {
   ScoredCustomer,
   ScoredCustomerV2,
@@ -55,117 +55,6 @@ import type {
 import type { Tier, Stoplight } from "./config";
 
 const todayMs = () => Date.now();
-
-// ---------------------------------------------------------------------------
-// Phase 31 — tickets enrichment helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Budget for the combined HubSpot + Linear ticket fetches during compose.
- * The Vercel compose function has its own maxDuration; once this elapses we
- * stop enriching new customers and leave their `tickets.records` empty
- * (preserving the BaseSheet counts in `open_tickets_30d` /
- * `unresolved_issues_last_30_days`).
- */
-const TICKETS_ENRICHMENT_BUDGET_MS = 60_000;
-
-/**
- * Compute per-customer ticket rollups from the merged list of
- * HubSpot + Linear records and patch them onto the customer's `tickets`
- * metric in-place. The fields seeded by `computeTicketsFlag` are preserved.
- */
-function rollupTickets(tickets: TicketsMetrics, records: UnifiedTicket[]): void {
-  const sorted = sortTickets(records);
-  const openOnly = sorted.filter((t) => !t.is_closed);
-  const closedLast30 = sorted.filter((t) => t.is_closed);
-  const byPriority = { URGENT: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNSET: 0 };
-  for (const t of openOnly) byPriority[t.priority] += 1;
-  const bySource = { hubspot: 0, linear: 0 };
-  for (const t of sorted) bySource[t.source] += 1;
-  tickets.records = sorted.slice(0, 20);
-  tickets.open_count = openOnly.length;
-  tickets.open_urgent_count = byPriority.URGENT;
-  tickets.open_stale_count = openOnly.filter((t) => t.age_days >= TICKETS_STALE_DAYS).length;
-  tickets.closed_last_30d_count = closedLast30.length;
-  tickets.by_priority = byPriority;
-  tickets.by_source = bySource;
-}
-
-/**
- * Fetch HubSpot + Linear tickets for every scored customer with a HubSpot
- * company id, batched + budgeted. Soft-fails on any error — partial coverage
- * is acceptable.
- */
-async function enrichTicketsRecords(
-  scored: ScoredCustomerV2[],
-): Promise<{ enriched: number; durationMs: number }> {
-  const started = Date.now();
-  let enriched = 0;
-
-  // 1) HubSpot — batched search across all known company ids.
-  const companyIdToEntityIds = new Map<string, string[]>();
-  for (const c of scored) {
-    const cid = c.hubspot?.hubspot_company_id;
-    if (!cid) continue;
-    const arr = companyIdToEntityIds.get(cid) ?? [];
-    arr.push(c.entity_id);
-    companyIdToEntityIds.set(cid, arr);
-  }
-  const hubspotCompanyIds = Array.from(companyIdToEntityIds.keys());
-
-  let hubspotMap: Map<string, UnifiedTicket[]> = new Map();
-  if (hubspotCompanyIds.length) {
-    try {
-      hubspotMap = await fetchTicketsForCompanies(hubspotCompanyIds);
-    } catch (e) {
-      console.warn(
-        `[tickets-enrich] HubSpot batch failed: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      hubspotMap = new Map();
-    }
-  }
-  if (Date.now() - started >= TICKETS_ENRICHMENT_BUDGET_MS) {
-    console.warn("[tickets-enrich] budget exhausted after HubSpot pass — skipping Linear");
-  }
-
-  // 2) Linear — per-customer resolver; relies on the 60s cache so we hit
-  // Linear once for the full label-scoped issue list and then loop.
-  const linearByEntity = new Map<string, UnifiedTicket[]>();
-  if (linearConfigured() && Date.now() - started < TICKETS_ENRICHMENT_BUDGET_MS) {
-    let budgetExhausted = false;
-    for (const c of scored) {
-      if (Date.now() - started >= TICKETS_ENRICHMENT_BUDGET_MS) {
-        budgetExhausted = true;
-        break;
-      }
-      try {
-        const linear = await fetchLinearTicketsForCustomer(c);
-        if (linear.length) linearByEntity.set(c.entity_id, linear);
-      } catch (e) {
-        console.warn(
-          `[tickets-enrich] Linear failed for ${c.entity_id}: ${e instanceof Error ? e.message : String(e)}`,
-        );
-      }
-    }
-    if (budgetExhausted) {
-      console.warn("[tickets-enrich] budget exhausted during Linear pass — partial coverage");
-    }
-  }
-
-  // 3) Merge + roll up per customer.
-  for (const c of scored) {
-    if (!c.tickets) continue;
-    const hubspotTickets = c.hubspot?.hubspot_company_id
-      ? (hubspotMap.get(c.hubspot.hubspot_company_id) ?? [])
-      : [];
-    const linearTickets = linearByEntity.get(c.entity_id) ?? [];
-    if (hubspotTickets.length === 0 && linearTickets.length === 0) continue;
-    rollupTickets(c.tickets, [...hubspotTickets, ...linearTickets]);
-    enriched += 1;
-  }
-
-  return { enriched, durationMs: Date.now() - started };
-}
 
 // ---------------------------------------------------------------------------
 // Stage data shapes — what gets serialized to Postgres pipeline_state.data
@@ -605,44 +494,25 @@ export async function runStageD(_today: number = todayMs()): Promise<{
   for (const [cid, d] of dealsMap) dealsByHubspotCompanyId[cid] = d;
 
   // 3. Notes — read cache first, then enrich the rest
-  // We don't yet know note IDs, so first fetch which notes are most recent,
-  // then read cache for those IDs.
   let notesByHubspotCompanyId: Record<string, LastCallSummary> = {};
   let notesEnrichedNew = 0;
   let notesEnrichedCached = 0;
   try {
-    // First call with empty cache to discover note_ids needed
     const { perCompany: peek } = await fetchEnrichedNotesPerCompany(
-      hubspotCompanyIds.slice(0, 0),  // empty — just trigger return early
+      hubspotCompanyIds.slice(0, 0),
       new Map<string, CachedNoteEnrichment>(),
     );
     void peek;
-    // Real run — need note IDs first; do a non-cached pass and prefetch cache
-    // Strategy: do enrichment in two phases —
-    //   a) Call fetchEnrichedNotesPerCompany with empty cache to discover what
-    //      notes exist for our companies (but Haiku-enrich them all the first
-    //      time — this is the cold-start cost).
-    //   b) Subsequent runs: read cache via the note_ids we learn during
-    //      enrichment, then call again with the populated cache.
-    // For simplicity here we do a single pass — first run is the most
-    // expensive (cold cache), subsequent runs benefit from the persisted
-    // hubspot_note_enrichment table.
 
-    // Phase A: discover most-recent note_ids per company
     const discovered = await timed("notes", () =>
       fetchEnrichedNotesPerCompany(
         hubspotCompanyIds,
         new Map<string, CachedNoteEnrichment>(),
       ),
     );
-    // Phase A also enriches everything that wasn't cached. We want to persist
-    // the new enrichments. But the cache wasn't consulted — so we need to
-    // RE-do this with cache loaded. Simpler: read cache for the discovered
-    // note_ids, then for note_ids that were newly enriched, save to cache.
     const discoveredNoteIds: string[] = [];
     for (const v of discovered.perCompany.values()) discoveredNoteIds.push(v.note_id);
     const cache = await readNoteEnrichments(discoveredNoteIds);
-    // Save newly-enriched notes to cache (any from discovered.toCache)
     if (discovered.toCache.size > 0) {
       await writeNoteEnrichments(discovered.toCache);
     }
@@ -726,11 +596,6 @@ export async function composeSnapshot(
   // -------------------------------------------------------------------------
   let { a, b, c, d, missing, staleStages } = await readAllPipelineStages(snapshotDate);
 
-  // Self-heal: if a stage is missing and autoRunMissingStages is on, run
-  // them in order (A -> B -> C) and re-load. Compose has maxDuration=90s on
-  // Vercel; Stage A is heaviest at ~10-15s, Stage B at ~20-30s, Stage C at
-  // ~5-10s — so a full self-heal can land within budget when only one or two
-  // are missing.
   if (missing.length && options.autoRunMissingStages !== false) {
     console.log(`[compose] auto-running missing stages: ${missing.join(", ")}`);
     for (const stage of missing) {
@@ -765,10 +630,16 @@ export async function composeSnapshot(
   const stageD = (d?.data as StageDData | undefined) ?? null;
   const today = stageA.todayMs;
 
+  // -------------------------------------------------------------------------
+  // Phase 31.v2 — Single Metabase CSV fetch for tickets, BEFORE the scoring
+  // loop. Soft-fails to an empty Map on any error so the entire compose stays
+  // resilient. Aggregates are derived per-customer inside the loop below.
+  // -------------------------------------------------------------------------
+  const ticketsResult = await fetchTicketsFromMetabase();
+  let ticketsCustomersMatched = 0;
+  let ticketsCustomersWithStale = 0;
+
   // Pre-build HubSpot lookups if Stage D landed
-  // Phase 14A: place_id is the canonical join key (HubSpot companies are
-  // natively keyed by place_id); bizname stays as a fallback for entities
-  // without GBP/place_id resolved.
   const hubspotByPlaceId: Map<string, HubspotCompanyByPlaceId> = new Map();
   const hubspotByNormalizedName: Map<string, HubspotCompanyByPlaceId> = new Map();
   if (stageD) {
@@ -791,10 +662,12 @@ export async function composeSnapshot(
   // -------------------------------------------------------------------------
   const scored: ScoredCustomerV2[] = [];
   let mixpanelCoverage = 0;
-  // Phase 14A: track join performance for logging
   let matchedByPlaceId = 0;
   let matchedByBizname = 0;
   let hubspotUnmatched = 0;
+
+  // Cutoff used for closed_last_30d_count below.
+  const cutoff30d = today - 30 * 86400 * 1000;
 
   for (const entityId of stageA.activeEntityIds) {
     const meta = stageA.entityMeta[entityId];
@@ -814,13 +687,58 @@ export async function composeSnapshot(
     // Billing
     const billingScore = scoreBilling(billing);
 
-    // Performance + tickets flags
+    // Performance + tickets flags. The flag itself is still derived from the
+    // BaseSheet counts so the existing scoring math doesn't move; Phase 31.v2
+    // merges the Metabase records + aggregates onto the same object below.
     const perf = stageC.performanceMetricsByEntity[entityId] || null;
-    const tickets = computeTicketsFlag(
+    const ticketsFlag = computeTicketsFlag(
       entityId,
       Number(bs?.open_tickets_30d || 0),
       Number(bs?.unresolved_issues_last_30_days || 0),
     );
+
+    // ---------------------------------------------------------------------
+    // Phase 31.v2 — Per-customer tickets enrichment from Metabase records.
+    // Preserves the existing BaseSheet-derived `open_tickets_30d` and
+    // `unresolved_issues_last_30_days` (legacy counters) and adds the new
+    // per-record + aggregate fields. If no Metabase records exist for this
+    // entity, all new aggregates default to zero / empty.
+    // ---------------------------------------------------------------------
+    const entityTickets: UnifiedTicket[] = ticketsResult.byEntityId.get(entityId) ?? [];
+    if (entityTickets.length > 0) ticketsCustomersMatched += 1;
+    let openCount = 0;
+    let openStaleCount = 0;
+    let closedLast30dCount = 0;
+    let oldestOpenAgeDays: number | null = null;
+    const byCategory: Record<string, number> = {};
+    for (const t of entityTickets) {
+      byCategory[t.category] = (byCategory[t.category] ?? 0) + 1;
+      if (t.is_closed) {
+        const closedIso = t.completed_at || t.canceled_at;
+        if (closedIso) {
+          const closedMs = Date.parse(closedIso);
+          if (Number.isFinite(closedMs) && closedMs >= cutoff30d) {
+            closedLast30dCount += 1;
+          }
+        }
+      } else {
+        openCount += 1;
+        if (t.is_stale) openStaleCount += 1;
+        if (oldestOpenAgeDays === null || t.age_days > oldestOpenAgeDays) {
+          oldestOpenAgeDays = t.age_days;
+        }
+      }
+    }
+    if (openStaleCount > 0) ticketsCustomersWithStale += 1;
+    const tickets: TicketsMetrics = {
+      ...ticketsFlag,
+      records: entityTickets.slice(0, TICKETS_MAX_RECORDS_PER_CUSTOMER),
+      open_count: openCount,
+      open_stale_count: openStaleCount,
+      closed_last_30d_count: closedLast30dCount,
+      by_category: byCategory,
+      oldest_open_age_days: oldestOpenAgeDays,
+    };
 
     // Detect pre-launch: Chargebee sub status is "future" OR activated_at
     // is null/in-the-future. These customers haven't started using the
@@ -850,9 +768,6 @@ export async function composeSnapshot(
     const pod = POD_MAP[amName] || "";
 
     // HubSpot join (Phase 14A) — place_id first, bizname fallback.
-    // The bizname fallback is intentionally preserved: ~16% of customers
-    // don't have a place_id in Aurora yet (no GBP or unconnected), and
-    // bizname catches most of them.
     let hubspotJoin: ScoredCustomerV2["hubspot"] = null;
     if (stageD) {
       const { normalizeName } = await import("./hubspot-companies");
@@ -878,9 +793,6 @@ export async function composeSnapshot(
         const lifecycleDrift =
           !!hsCo.lifecycle_stage && hsCo.lifecycle_stage.toLowerCase() !== "customer";
 
-        // Phase 14B (Tier C): comms drift between HubSpot calls and Metabase phone
-        // Phase 14.1: optional-chain the parent map — older cached Stage D
-        // payloads (pre-Phase 14) don't have this field at all.
         const hubspotCalls =
           stageD?.callsByHubspotCompanyId?.[hsCo.hubspot_company_id]?.call_count_30d ?? 0;
         const metabaseCalls =
@@ -895,8 +807,6 @@ export async function composeSnapshot(
               }
             : null;
 
-        // Phase 14C (Tier E): top contacts
-        // Phase 14.1: optional-chain the parent map (see comms-drift note above).
         const contacts =
           stageD?.contactsByHubspotCompanyId?.[hsCo.hubspot_company_id] ?? [];
 
@@ -958,34 +868,17 @@ export async function composeSnapshot(
   }
 
   memSnap("compose after score");
+  console.log(
+    `[phase31v2] tickets refresh: ${ticketsResult.totalRows} rows, ` +
+      `${ticketsCustomersMatched} customers matched, ` +
+      `${ticketsResult.parseErrors} rows skipped (no entity_id or bad row), ` +
+      `${ticketsCustomersWithStale} customers with stale tickets >7d`,
+  );
   if (stageD) {
     console.log(
       `[compose] hubspot join: ${matchedByPlaceId} via place_id, ${matchedByBizname} via bizname, ${hubspotUnmatched} unmatched`,
     );
   }
-
-  // -------------------------------------------------------------------------
-  // 2.1 Phase 31 — Tickets enrichment (HubSpot + Linear)
-  //
-  // Runs AFTER the BaseSheet-derived counts are seeded so the Phase 31
-  // record fields are strictly additive. Soft-fails to no-op if either
-  // source is misconfigured or the time budget is exhausted; the existing
-  // open_tickets_30d / unresolved_issues_last_30_days counts are preserved.
-  // -------------------------------------------------------------------------
-  try {
-    const ticketsResult = await enrichTicketsRecords(scored);
-    console.log(
-      `[compose] tickets enrichment: enriched=${ticketsResult.enriched}/${scored.length} took ${ticketsResult.durationMs}ms`,
-    );
-    if (ticketsResult.enriched > 0) {
-      errors.push(`tickets enrichment ran on ${ticketsResult.enriched} customers`);
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.warn(`[compose] tickets enrichment failed: ${msg}`);
-    errors.push(`tickets enrichment: ${msg}`);
-  }
-  memSnap("compose after tickets enrichment");
 
   // Sort by composite desc, then comms volume desc
   scored.sort((a, b) => {
@@ -1135,9 +1028,6 @@ export async function composeSnapshot(
 
   // -------------------------------------------------------------------------
   // 2.4  LLM narrative enrichment for RED customers (Phase 11)
-  //      No-op when ANTHROPIC_API_KEY is unset. Concurrency-capped at 15
-  //      with per-call 5s timeout — falls back to deterministic templates
-  //      silently on any failure.
   // -------------------------------------------------------------------------
   try {
     const result = await enrichRedNarratives(snapshot);
@@ -1152,8 +1042,7 @@ export async function composeSnapshot(
   }
 
   // -------------------------------------------------------------------------
-  // 2.5  Trajectory backfill: patch each customer's trajectory_7d field
-  //      with the delta vs the snapshot from 7 days ago (fallback: yesterday).
+  // 2.5  Trajectory backfill
   // -------------------------------------------------------------------------
   try {
     const sevenDaysAgo = new Date(snapshotDate + "T00:00:00Z");
@@ -1162,7 +1051,6 @@ export async function composeSnapshot(
     let prevSnap = await readSnapshotByDate(ymd7);
     let prevWindowDays = 7;
     if (!prevSnap) {
-      // Fall back to yesterday if 7d-ago has no snapshot yet (early life)
       const yesterday = new Date(snapshotDate + "T00:00:00Z");
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       prevSnap = await readSnapshotByDate(yesterday.toISOString().slice(0, 10));
@@ -1175,7 +1063,7 @@ export async function composeSnapshot(
           prevByEntity.set(c.entity_id, c.signals_v2.composite);
         }
       }
-      const STABLE_DELTA = 5; // |delta| < 5 = stable
+      const STABLE_DELTA = 5;
       let patched = 0;
       for (const c of snapshot.customers) {
         const prev = prevByEntity.get(c.entity_id);
@@ -1199,9 +1087,6 @@ export async function composeSnapshot(
 
   // -------------------------------------------------------------------------
   // 2.6  Phase 13.1: scope meta + status-guard assertion.
-  //      The snapshot universe is "Chargebee subscribers in one of four
-  //      active-paying statuses". Anything else is a pipeline drift bug and
-  //      we refuse to write the snapshot rather than silently drift the UI.
   // -------------------------------------------------------------------------
   {
     const allowedStatuses = new Set(["active", "non_renewing", "in_trial", "future"]);
@@ -1296,8 +1181,6 @@ export async function runStageBAndStore(snapshotDate?: string): Promise<{
   rowCount: number;
 }> {
   const date = snapshotDate ?? todaySnapshotDate();
-  // Re-use Stage A's `todayMs` if available so all windows in this snapshot
-  // anchor to the same moment, even if Stage B runs hours later.
   const stageA = await readPipelineStage<StageAData>("A", date);
   const anchorToday = stageA?.data?.todayMs ?? todayMs();
   const { data, durationMs, errors } = await runStageB(anchorToday);
@@ -1344,13 +1227,10 @@ export async function runStageDAndStore(snapshotDate?: string): Promise<{
 }
 
 // ===========================================================================
-// Legacy single-shot orchestrator (kept for backward compat with v1 routes).
-// This will NOT fit under Hobby tier 60s — calling it from a route is an
-// anti-pattern post-Phase-2.0. Prefer running the stage routes separately.
+// Legacy single-shot orchestrator
 // ===========================================================================
 
 export async function buildSnapshotV2(): Promise<SnapshotV2> {
-  // Run all 3 stages in sequence + compose. Useful for local dev / one-shot tests.
   const date = todaySnapshotDate();
   await runStageAAndStore(date);
   await runStageBAndStore(date);

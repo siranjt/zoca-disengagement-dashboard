@@ -8,6 +8,10 @@ export const METABASE_ENDPOINTS = {
   phone:     "https://metabase.zoca.ai/public/question/60797a27-c546-450d-b00b-a51b7e490143.csv",
   video:     "https://metabase.zoca.ai/public/question/d95d9354-7c84-4a57-8af5-e700580c6ecb.csv",
   sms:       "https://metabase.zoca.ai/public/question/bbaad2fb-5f9d-4249-af59-c7812851437c.csv",
+  // Phase 31.v2 — single Metabase CSV maintained by the Zoca team. Replaces
+  // the HubSpot Service Hub + Linear GraphQL adapters that v1 used. The CSV
+  // already filters to "active states + closed/canceled in last 30 days".
+  tickets:   "https://metabase.zoca.ai/public/question/a80bac40-c055-4867-a778-9ee1f29053ca.csv",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -25,6 +29,14 @@ export const METABASE_V2_ENDPOINTS = {
 
 export const WINDOWS_DAYS = [7, 14, 30, 60, 90] as const;
 export const COMMS_RETAIN_DAYS = 120;
+
+// ---------------------------------------------------------------------------
+// Phase 31.v2 — tickets staleness threshold + per-customer record cap.
+// "Stale" applies only to open tickets (is_closed=false). The cap keeps the
+// snapshot payload bounded in customers with runaway ticket volume.
+// ---------------------------------------------------------------------------
+export const TICKETS_STALE_DAYS = 7;
+export const TICKETS_MAX_RECORDS_PER_CUSTOMER = 20;
 
 // ---------------------------------------------------------------------------
 // v1 composite weights (kept for backward compatibility with existing dashboard)
@@ -178,14 +190,6 @@ export const WATCH_LANE_FLAG_COUNT = 2;
 // surfaces at least YELLOW in the stoplight regardless of composite/tier.
 // Catches the 'fresh comms + active app + stacked unpaid invoices' edge case.
 export const BILLING_YELLOW_OVERRIDE = 40;
-
-// ---------------------------------------------------------------------------
-// Phase 31 — Tickets enrichment thresholds
-// `is_stale` fires when an open ticket is older than TICKETS_STALE_DAYS days.
-// `closed_last_30d` retention window for the rolling closed-tickets view.
-// ---------------------------------------------------------------------------
-export const TICKETS_STALE_DAYS = 7;
-export const TICKETS_RECENT_CLOSED_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // v2 — Pods (per AM Transition Toolkit, hardcoded May 2026)
