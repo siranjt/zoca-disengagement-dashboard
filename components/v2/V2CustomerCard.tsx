@@ -14,8 +14,8 @@ import {
   buildHubspotCompanyUrl, buildHubspotLocationUrl} from "@/lib/contact-links";
 import type { SignalKey } from "@/lib/signal-taxonomy";
 import { useMagnetic } from "@/lib/hooks/useMagnetic";
-import { useActivityLogger } from "@/hooks/use-activity-logger";
 
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 type CompositeTrendPoint = { date: string; composite: number };
 
 type Props = {
