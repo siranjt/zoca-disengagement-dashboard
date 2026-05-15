@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Customer Health Dashboard — AM Knowledge Transfer · Zoca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/theme/white.min.css">
+<style>
+:root {
+  --midnight: #0b051d;
+  --pink: #ff56bb;
+  --pink-light: #ff86e1;
+  --blue: #146ef5;
+  --blue-light: #5b8fef;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --green: #10b981;
+  --bg-page: #fafafa;
+  --bg-card: #ffffff;
+  --border: rgba(11, 5, 29, 0.08);
+  --text: #0b051d;
+  --text-muted: #696376;
+}
+.reveal { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 400; color: var(--text); font-size: 26px; }
+.reveal .slides { text-align: left; }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 0.4em; }
+.reveal h1 { font-size: 2.6em; }
+.reveal h2 { font-size: 1.8em; }
+.reveal h3 { font-size: 1.3em; }
+.reveal p { line-height: 1.5; }
+.reveal code { font-family: 'JetBrains Mono', monospace; background: rgba(255,86,187,0.08); color: var(--midnight); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; position: relative; }
+.reveal code::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 1px; height: 1px; background: var(--pink); transform: scaleX(0); transform-origin: left; transition: transform 0.6s ease; }
+.reveal .present code::after { transform: scaleX(1); transition-delay: 0.4s; }
+.reveal a { color: var(--blue); text-decoration: none; border-bottom: 1px dashed currentColor; }
+.reveal section { padding: 0 !important; }
+.reveal .slide-number { font-family: 'JetBrains Mono', monospace; background: rgba(11,5,29,0.7); color: white; font-size: 13px; padding: 4px 10px; border-radius: 999px; }
+.reveal .progress { color: var(--pink); height: 4px; }
+.reveal .controls { color: var(--pink); }
+.cursor-glow { position: fixed; width: 600px; height: 600px; border-radius: 50%; pointer-events: none; z-index: 0; background: radial-gradient(circle, rgba(255,86,187,0.18) 0%, rgba(20,110,245,0.08) 40%, transparent 70%); filter: blur(60px); transform: translate(-50%, -50%); transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); mix-blend-mode: multiply; }
+.gradient-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #0b051d 0%, #2a0f3d 25%, #1a2b6f 50%, #0b051d 75%, #2a0f3d 100%); background-size: 400% 400%; animation: gradient-shift 20s ease infinite; z-index: 0; }
+@keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.particles span { position: absolute; bottom: -20px; width: 8px; height: 8px; border-radius: 50%; opacity: 0.6; animation: rise linear infinite; }
+.particles span:nth-child(odd) { background: var(--pink); }
+.particles span:nth-child(even) { background: var(--blue-light); }
+@keyframes rise { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.5; } 100% { transform: translateY(-900px) translateX(var(--drift, 30px)); opacity: 0; } }
+.shimmer { background: linear-gradient(90deg, #fff 0%, #fff 30%, #ff86e1 50%, #fff 70%, #fff 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 4s ease infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.title-slide { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: 100%; padding: 60px 80px !important; color: white; }
+.title-slide h1 { color: white; font-size: 3.4em; font-weight: 800; }
+.title-slide .eyebrow { font-size: 0.55em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: var(--pink-light); margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 6px 14px; display: inline-block; }
+.title-slide .subline { font-size: 0.9em; color: rgba(255,255,255,0.7); margin-top: 32px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; }
+.slide-inner { padding: 50px 70px; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 1; }
+.slide-header { font-size: 0.6em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 6px; }
+.slide-title { font-size: 2.2em; font-weight: 700; margin-bottom: 24px; animation: slideInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+.slide-footer { margin-top: auto; padding-top: 16px; display: flex; justify-content: space-between; font-size: 0.5em; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(11,5,29,0.04); transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s; position: relative; transform-style: preserve-3d; will-change: transform; }
+.card:hover { box-shadow: 0 20px 40px -10px rgba(11,5,29,0.15); transform: translateY(-4px); }
+.card .card-eyebrow { font-size: 0.45em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; text-align: left; transition: all 0.3s ease; }
+.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -8px rgba(11,5,29,0.12); }
+.kpi .label { font-size: 0.5em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 8px; }
+.kpi .value { font-size: 2.4em; font-weight: 800; color: var(--text); font-family: 'Inter', sans-serif; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .sub { font-size: 0.5em; color: var(--text-muted); margin-top: 6px; }
+.kpi.red .value { color: var(--red); }
+.kpi.yellow .value { color: var(--yellow); }
+.kpi.green .value { color: var(--green); }
+.kpi.pink .value { color: var(--pink); }
+.kpi.blue .value { color: var(--blue); }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; vertical-align: middle; position: relative; }
+.dot.red { background: var(--red); }
+.dot.yellow { background: var(--yellow); }
+.dot.green { background: var(--green); }
+.dot::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: pulse 2s ease-out infinite; }
+.dot.red::after { color: var(--red); }
+.dot.yellow::after { color: var(--yellow); }
+.dot.green::after { color: var(--green); }
+@keyframes pulse { 0% { transform: scale(0.8); opacity: 0.7; } 100% { transform: scale(1.7); opacity: 0; } }
+.dot-lg { width: 80px; height: 80px; }
+.narrative { padding: 12px 16px; border-radius: 12px; font-size: 0.7em; line-height: 1.45; margin: 12px 0; }
+.narrative.red { background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); color: #7a1414; }
+.narrative.yellow { background: rgba(245,158,11,0.08); border-left: 3px solid var(--yellow); color: #6b3d05; }
+.narrative.green { background: rgba(16,185,129,0.08); border-left: 3px solid var(--green); color: #064e3b; }
+.chip { display: inline-block; font-size: 0.5em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 999px; margin-right: 6px; background: rgba(11,5,29,0.06); color: var(--text); }
+.chip.red { background: rgba(239,68,68,0.12); color: var(--red); }
+.chip.yellow { background: rgba(245,158,11,0.14); color: #b45309; }
+.chip.green { background: rgba(16,185,129,0.12); color: #047857; }
+.chip.pink { background: rgba(255,86,187,0.12); color: #b8278a; }
+.chip.blue { background: rgba(20,110,245,0.10); color: var(--blue); }
+.pill { background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px; font-size: 0.6em; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.25s; }
+.pill:hover { border-color: var(--pink); transform: translateY(-1px); }
+.pill .count { background: var(--midnight); color: white; border-radius: 999px; padding: 2px 8px; font-size: 0.85em; font-family: 'JetBrains Mono', monospace; }
+.cust-card { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 20px; position: relative; font-size: 0.65em; }
+.cust-card .header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cust-card .bizname { font-size: 1.4em; font-weight: 700; }
+.cust-card .open-detail { margin-left: auto; color: var(--blue); font-size: 0.8em; cursor: pointer; }
+.cust-card .chips { margin-bottom: 8px; }
+.cust-card .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; padding: 10px; background: #f7f6fa; border-radius: 8px; }
+.cust-card .metric { text-align: center; }
+.cust-card .metric .label { font-size: 0.7em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.cust-card .metric .val { font-size: 1.1em; font-weight: 700; }
+.cust-card .action-btn { background: linear-gradient(135deg, var(--pink) 0%, #ff3aa8 100%); color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600; display: inline-block; cursor: pointer; transition: transform 0.2s; border: none; }
+.cust-card .action-btn:hover { transform: scale(1.04); }
+.action-btn { background: linear-gradient(135deg, var(--pink) 0%, #ff3aa8 100%); color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600; display: inline-block; cursor: pointer; transition: transform 0.2s; border: none; }
+.magnetic { transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.big-stat { font-size: 4em; font-weight: 800; color: var(--text); letter-spacing: -0.04em; line-height: 1; }
+.callout { background: linear-gradient(135deg, rgba(255,86,187,0.06) 0%, rgba(20,110,245,0.06) 100%); border-left: 4px solid var(--pink); border-radius: 8px; padding: 16px 20px; font-size: 0.7em; margin: 16px 0; }
+.callout strong { color: var(--pink); }
+.warn { background: rgba(245,158,11,0.08); border-left: 4px solid var(--yellow); border-radius: 8px; padding: 16px 20px; font-size: 0.7em; }
+.warn .warn-icon { color: var(--yellow); font-weight: 700; font-size: 1.4em; margin-right: 8px; }
+.kbd { display: inline-block; font-family: 'JetBrains Mono', monospace; background: white; border: 1px solid var(--border); border-bottom: 3px solid #d4d2d8; border-radius: 6px; padding: 6px 12px; font-size: 0.7em; font-weight: 600; min-width: 36px; text-align: center; }
+.num-circle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--pink) 0%, var(--blue) 100%); color: white; font-weight: 700; font-size: 0.7em; margin-right: 12px; font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+.step { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+.step .step-content { flex: 1; font-size: 0.7em; line-height: 1.5; }
+.step .step-time { background: var(--midnight); color: white; font-family: 'JetBrains Mono', monospace; font-size: 0.6em; padding: 3px 10px; border-radius: 999px; margin-left: 8px; }
+table.zoca-table { width: 100%; border-collapse: collapse; font-size: 0.55em; }
+table.zoca-table th { background: var(--midnight); color: white; text-align: left; padding: 10px; font-weight: 600; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.08em; }
+table.zoca-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+table.zoca-table tr:hover { background: rgba(255,86,187,0.04); }
+.cell-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: center; }
+.cell-num.hi { color: var(--red); }
+.cell-num.mid { color: var(--yellow); }
+.cell-num.lo { color: var(--green); }
+.reveal .fragment.fade-up { opacity: 0; transform: translateY(20px); transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal .fragment.fade-up.visible { opacity: 1; transform: translateY(0); }
+.reveal .fragment.scale-in { opacity: 0; transform: scale(0.9); transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal .fragment.scale-in.visible { opacity: 1; transform: scale(1); }
+.char-reveal span { display: inline-block; opacity: 0; transform: translateY(20px); animation: char-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes char-in { to { opacity: 1; transform: translateY(0); } }
+.confetti-wrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti-piece { position: absolute; width: 10px; height: 14px; top: -20px; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .gradient-bg, .particles span, .shimmer, .dot::after, .cursor-glow, .char-reveal span { animation: none !important; opacity: 1 !important; transform: none !important; } .reveal .fragment { opacity: 1 !important; transform: none !important; } }
+@media (max-width: 600px) { .reveal { font-size: 18px; } .slide-inner { padding: 30px 24px; } .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr !important; } }
+.perf-panel { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 20px; font-size: 0.65em; }
+.perf-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.perf-row:last-child { border-bottom: none; }
+.perf-row .num { width: 24px; height: 24px; border-radius: 50%; background: var(--midnight); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: 700; flex-shrink: 0; }
+.perf-row .body { flex: 1; }
+.perf-row .body .title { font-weight: 600; }
+.perf-row .body .sub { color: var(--text-muted); font-size: 0.85em; }
+.preview-popover { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 20px 50px -10px rgba(11,5,29,0.2); font-size: 0.65em; max-width: 320px; }
+.preview-popover .sparkline { height: 40px; width: 100%; margin: 10px 0; position: relative; }
+.preview-popover .sparkline svg { width: 100%; height: 100%; }
+.flow-col { display: flex; flex-direction: column; gap: 10px; }
+.flow-col .step-row { display: flex; gap: 10px; align-items: center; padding: 8px 12px; background: white; border: 1px solid var(--border); border-radius: 8px; font-size: 0.65em; }
+.flow-col .step-row .num { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--pink); }
+.log-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.65em; }
+.log-item:last-child { border: none; }
+.log-item .date { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85em; flex-shrink: 0; width: 60px; }
+.section-divider { height: 100%; display: flex; align-items: center; justify-content: center; background: var(--midnight); color: white; position: relative; overflow: hidden; }
+.section-divider .label { font-size: 0.6em; color: var(--pink-light); text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 16px; }
+.section-divider h1 { color: white; font-size: 3em; }
+[data-count-up] { font-variant-numeric: tabular-nums; }
+.timeline-mock { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 24px; font-size: 0.6em; }
+.timeline-bar { height: 30px; border-radius: 6px; background: linear-gradient(90deg, var(--green) 0%, var(--green) 35%, var(--yellow) 35%, var(--yellow) 60%, var(--red) 60%, var(--red) 100%); margin: 10px 0; position: relative; }
+.timeline-bar .marker { position: absolute; top: -4px; width: 4px; height: 38px; background: var(--midnight); }
+</style>
+</head>
+<body>
+<div class="cursor-glow" id="cursorGlow"></div>
+<div class="reveal">
+<div class="slides">
+<!-- SLIDE 1 -->
+<section data-transition="fade" data-background-color="#0b051d">
+  <div class="title-slide">
+    <div class="gradient-bg"></div>
+    <div class="particles"></div>
+    <div style="position: relative; z-index: 2;">
+      <div class="eyebrow">Zoca · 2026</div>
+      <h1 class="shimmer" style="margin: 0;">Customer Health<br>Dashboard</h1>
+      <div style="font-size: 1.4em; font-weight: 500; margin-top: 16px; color: rgba(255,255,255,0.85);">AM Knowledge Transfer</div>
+      <div class="subline">45-min walkthrough · Press → to begin</div>
+    </div>
+  </div>
+  <aside class="notes">Welcome AMs. This 45-min walkthrough covers the dashboard top-to-bottom. By the end you should be able to work your daily list in under 20 minutes.</aside>
+</section>
+
+<!-- SLIDE 2 -->
+<section data-auto-animate>
+  <div class="slide-inner">
+    <div class="slide-header">Agenda</div>
+    <h2 class="slide-title" data-id="title">What you'll learn</h2>
+    <div class="grid-3" style="margin-top: 20px;">
+      <div class="card fragment fade-up"><div class="card-eyebrow">01</div><h3 style="font-size: 1em;">The dashboard, in 30 seconds</h3><p style="font-size: 0.65em; color: var(--text-muted);">What it is, why we built it, what it replaces.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">02</div><h3 style="font-size: 1em;">Your daily 'who do I call today' list</h3><p style="font-size: 0.65em; color: var(--text-muted);">How to read it. How to work it.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">03</div><h3 style="font-size: 1em;">Logging calls, notes, snoozes</h3><p style="font-size: 0.65em; color: var(--text-muted);">Three-click flow. Connected / VM / No reach.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">04</div><h3 style="font-size: 1em;">The customer detail page</h3><p style="font-size: 0.65em; color: var(--text-muted);">Timeline, comms, performance, tickets — one screen.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">05</div><h3 style="font-size: 1em;">Keyboard shortcuts (30 min/day saved)</h3><p style="font-size: 0.65em; color: var(--text-muted);">?, j/k, c, s — the four that matter.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">06</div><h3 style="font-size: 1em;">Where to get help when stuck</h3><p style="font-size: 0.65em; color: var(--text-muted);">Slack, your manager, the wrong-signal flag.</p></div>
+    </div>
+    <div class="slide-footer"><span>Time: 45 minutes</span><span>Zoca · AM KT · 2026</span><span>02 / 28</span></div>
+  </div>
+  <aside class="notes">Six things to cover. Don't worry about taking notes — the deck will be in #zoca-dashboard. Stop me with questions.</aside>
+</section>
+
+<!-- SLIDE 3 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Why this exists</div>
+    <h2 class="slide-title">The problem we're solving</h2>
+    <div class="grid-2">
+      <div class="card fragment fade-up" style="background: #fef2f2; border-color: rgba(239,68,68,0.2);">
+        <div class="card-eyebrow" style="color: var(--red);">BEFORE</div>
+        <h3 style="font-size: 0.95em; margin-bottom: 16px;">The AM Excel-and-memory loop</h3>
+        <ul style="font-size: 0.65em; line-height: 1.8; padding-left: 18px;">
+          <li>Pick a customer randomly</li>
+          <li>Hope you remember why you reached out last time</li>
+          <li>Open three tools to piece together their story</li>
+          <li>Forget to log the call when the next one rings</li>
+          <li>Miss the RED customer until the renewal is gone</li>
+        </ul>
+      </div>
+      <div class="card fragment fade-up" style="background: #f0fdf4; border-color: rgba(16,185,129,0.2);">
+        <div class="card-eyebrow" style="color: var(--green);">NOW</div>
+        <h3 style="font-size: 0.95em; margin-bottom: 16px;">One screen. One narrative. One click.</h3>
+        <ul style="font-size: 0.65em; line-height: 1.8; padding-left: 18px;">
+          <li>Open dashboard → see your RED customers</li>
+          <li>Narrative pill tells you exactly why each is RED</li>
+          <li>Click once to log how the call went</li>
+          <li>Notes, snooze, follow-up — all baked in</li>
+          <li>Save it. Tomorrow's list is waiting for you.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout fragment scale-in" style="margin-top: 24px;">Save <strong>1 RED customer / month</strong> and you've paid for the dashboard <strong>10× over</strong>.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>03 / 28</span></div>
+  </div>
+  <aside class="notes">Don't focus on the tooling — focus on the math. One save a month is the ROI bar. Anything beyond that is upside.</aside>
+</section>
+
+<!-- SLIDE 4 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Getting started</div>
+    <h2 class="slide-title">How to log in</h2>
+    <div class="grid-4">
+      <div class="card fragment fade-up"><div class="num-circle">1</div><h3 style="font-size: 0.85em; margin-top: 12px;">Open the dashboard</h3><p style="font-size: 0.55em; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">zoca-disengagement-dashboard.vercel.app</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">2</div><h3 style="font-size: 0.85em; margin-top: 12px;">Click 'Continue with Google'</h3><p style="font-size: 0.6em; color: var(--text-muted);">One button. No password to remember.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">3</div><h3 style="font-size: 0.85em; margin-top: 12px;">Sign in with @zoca.com</h3><p style="font-size: 0.6em; color: var(--text-muted);">Your existing work email. SSO routes the rest.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">4</div><h3 style="font-size: 0.85em; margin-top: 12px;">You land on your book</h3><p style="font-size: 0.6em; color: var(--text-muted);">Sorted by urgency. RED on top.</p></div>
+    </div>
+    <div class="warn fragment fade-up" style="margin-top: 24px;"><span class="warn-icon">!</span><strong>Sign-in trouble?</strong> If Google rejects you, your @zoca.com account hasn't been added to the access list yet. Ping your manager — takes 2 minutes to fix in <code>lib/config.ts</code>.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>04 / 28</span></div>
+  </div>
+  <aside class="notes">Quick login walk-through. If anyone has trouble signing in today, raise your hand — we'll fix the access list during the break.</aside>
+</section>
+
+<!-- SLIDE 5 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The big picture</div>
+    <h2 class="slide-title">Your landing page, annotated</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment fade-up">
+        <div class="card" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;"><strong style="color: var(--pink); font-size: 0.8em;">Zoca</strong><span style="font-size: 0.55em; color: var(--text-muted);">Atharv Y · AM</span></div>
+          <div style="font-size: 0.95em; font-weight: 600; margin-bottom: 16px;">Today, you have <span style="color: var(--red);" data-count-up data-target="12">0</span> customers to act on.</div>
+          <div class="grid-4" style="gap: 8px; margin-bottom: 16px;">
+            <div class="kpi" style="padding: 10px;"><div class="label" style="font-size: 0.4em;">Total</div><div class="value" style="font-size: 1.3em;" data-count-up data-target="73">0</div></div>
+            <div class="kpi red" style="padding: 10px;"><div class="label" style="font-size: 0.4em;">Need to call</div><div class="value" style="font-size: 1.3em;" data-count-up data-target="12">0</div></div>
+            <div class="kpi yellow" style="padding: 10px;"><div class="label" style="font-size: 0.4em;">Watch</div><div class="value" style="font-size: 1.3em;" data-count-up data-target="21">0</div></div>
+            <div class="kpi green" style="padding: 10px;"><div class="label" style="font-size: 0.4em;">Healthy</div><div class="value" style="font-size: 1.3em;" data-count-up data-target="40">0</div></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.55em;"><span class="dot red"></span><strong>Hcg Fit</strong> · 45d silent, 2 unpaid<span style="margin-left: auto; background: var(--pink); color: white; padding: 4px 10px; border-radius: 6px; font-weight: 600;">Call now</span></div>
+            <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.55em;"><span class="dot red"></span><strong>Maven Studio</strong> · response rate ↓60%<span style="margin-left: auto; background: var(--pink); color: white; padding: 4px 10px; border-radius: 6px; font-weight: 600;">Call now</span></div>
+            <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; font-size: 0.55em;"><span class="dot red"></span><strong>Skin &amp; Tonic</strong> · usage low<span style="margin-left: auto; background: var(--pink); color: white; padding: 4px 10px; border-radius: 6px; font-weight: 600;">Call now</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="fragment fade-up" style="font-size: 0.7em; margin-bottom: 18px;"><strong>Header</strong> — Your name + role badge top-right</div>
+        <div class="fragment fade-up" style="font-size: 0.7em; margin-bottom: 18px;"><strong>Hero</strong> — Today, you have N customers to act on</div>
+        <div class="fragment fade-up" style="font-size: 0.7em; margin-bottom: 18px;"><strong>KPI tiles</strong> — Total / Need to call / Watch / Healthy</div>
+        <div class="fragment fade-up" style="font-size: 0.7em; margin-bottom: 18px;"><strong>Filter pills</strong> — Switch cohorts in one click</div>
+        <div class="fragment fade-up" style="font-size: 0.7em;"><strong>Card list</strong> — Sorted by urgency. RED on top.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>05 / 28</span></div>
+  </div>
+  <aside class="notes">Don't memorize. The point of an annotated screenshot is to give your eye a map. Once you click around for an hour it becomes muscle memory.</aside>
+</section>
+
+<!-- SLIDE 6 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Anatomy</div>
+    <h2 class="slide-title">The KPI tiles, explained</h2>
+    <div class="grid-4" style="margin-bottom: 28px;">
+      <div class="kpi fragment scale-in"><div class="label">Total</div><div class="value" data-count-up data-target="73">0</div><div class="sub">Everyone in your book.</div></div>
+      <div class="kpi red fragment scale-in"><div class="label">Need to call</div><div class="value" data-count-up data-target="12">0</div><div class="sub">RED stoplight — urgent.</div></div>
+      <div class="kpi yellow fragment scale-in"><div class="label">Watch</div><div class="value" data-count-up data-target="21">0</div><div class="sub">YELLOW — keep an eye on.</div></div>
+      <div class="kpi green fragment scale-in"><div class="label">Healthy</div><div class="value" data-count-up data-target="40">0</div><div class="sub">GREEN — doing fine.</div></div>
+    </div>
+    <div class="callout fragment fade-up"><strong>Tip:</strong> Clicking any tile filters the card list below to that cohort. Your default landing is <strong>Need to call</strong> — but if you want to be proactive, click <strong>Watch</strong> to see who's drifting before they tip into RED.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>06 / 28</span></div>
+  </div>
+  <aside class="notes">The four tiles always add up. If they don't, the snapshot is broken — ping me. Mention the pro tip about Watch being where proactive AMs hunt.</aside>
+</section>
+
+<!-- SLIDE 7 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Filtering</div>
+    <h2 class="slide-title">Filter pills, explained</h2>
+    <div style="display: flex; flex-direction: column; gap: 18px;">
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: center;"><span class="pill" style="background: var(--midnight); color: white; justify-self: start;"><span class="dot red"></span>Need to call today <span class="count">12</span></span><span style="font-size: 0.75em; color: var(--text-muted);">Your default landing. RED stoplight. Cold-reach urgency.</span></div>
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: center;"><span class="pill" style="justify-self: start;"><span class="dot yellow"></span>Watch <span class="count">21</span></span><span style="font-size: 0.75em; color: var(--text-muted);">YELLOW. Drifting signals. Proactive outreach window.</span></div>
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: center;"><span class="pill" style="justify-self: start;"><span class="dot green"></span>Healthy <span class="count">40</span></span><span style="font-size: 0.75em; color: var(--text-muted);">GREEN. Doing fine. Use for renewal or upsell prep.</span></div>
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: center;"><span class="pill" style="justify-self: start;">Full book <span class="count">73</span></span><span style="font-size: 0.75em; color: var(--text-muted);">Everyone. Use for search or batch operations.</span></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>07 / 28</span></div>
+  </div>
+  <aside class="notes">Pills are just shortcuts to KPI-tile filters. Same data, different ergonomics — for when your hand's already on the mouse.</aside>
+</section>
+
+<!-- SLIDE 8 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The unit of work</div>
+    <h2 class="slide-title">Anatomy of a customer card</h2>
+    <div class="grid-2" style="gap: 40px;">
+      <div class="fragment scale-in">
+        <div class="cust-card">
+          <div class="header"><span class="dot red"></span><span class="bizname">Hcg Fit Studio</span><span class="open-detail">↗ Open detail</span></div>
+          <div class="chips"><span class="chip blue">ICP A</span><span class="chip pink">2 open deals</span><span class="chip yellow">Comms drift</span></div>
+          <div class="narrative red">Client silent 45d + zero app usage + 2 unpaid invoices. Cold-reach today.</div>
+          <div class="chips" style="margin-top: 10px;"><span class="chip red">CLIENT SILENT</span><span class="chip yellow">WE SILENT</span><span class="chip pink">USAGE LOW</span><span class="chip blue">BILLING</span></div>
+          <div class="metrics-row">
+            <div class="metric"><div class="label">Last touch</div><div class="val">45d ago</div></div>
+            <div class="metric"><div class="label">Comms/30d</div><div class="val">0</div></div>
+            <div class="metric"><div class="label">App tier</div><div class="val">Cold</div></div>
+            <div class="metric"><div class="label">Billing</div><div class="val">$430</div></div>
+          </div>
+          <button class="action-btn magnetic">Call about billing →</button>
+          <div style="margin-top: 10px; font-size: 0.8em; color: var(--text-muted);">Pin / Snooze · + Add private note</div>
+        </div>
+      </div>
+      <div style="font-size: 0.65em;">
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Stoplight dot</strong> — RED / YELLOW / GREEN tier</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Bizname → HubSpot</strong> — Opens the HubSpot company</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Chips</strong> — ICP, deals, drift, contacted-recently</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Narrative pill</strong> — One-line tl;dr of why this tier</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Signal chips</strong> — Clickable, filters to all matching</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Metrics row</strong> — Last touch, comms, usage, billing</div>
+        <div class="fragment fade-up" style="margin-bottom: 14px;"><strong>Primary action</strong> — Log the call in 3 clicks</div>
+        <div class="fragment fade-up"><strong>Pin / Snooze</strong> — Stick to top, or hide until later</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>08 / 28</span></div>
+  </div>
+  <aside class="notes">The single most important visual to memorize. Every part of the card is doing a job. Once you can name the eight regions, the rest of the dashboard reads like a book.</aside>
+</section>
+
+<!-- SLIDE 9 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The tl;dr</div>
+    <h2 class="slide-title">The narrative pill</h2>
+    <div style="display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px;">
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 80px 1fr; gap: 20px; align-items: center;"><span style="font-size: 0.8em; font-weight: 700; color: var(--red);">RED</span><div class="narrative red">Client silent 45d + zero app usage + 2 unpaid invoices. Cold-reach today.</div></div>
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 80px 1fr; gap: 20px; align-items: center;"><span style="font-size: 0.8em; font-weight: 700; color: var(--yellow);">YELLOW</span><div class="narrative yellow">Response rate down 60% — book a check-in.</div></div>
+      <div class="fragment fade-up" style="display: grid; grid-template-columns: 80px 1fr; gap: 20px; align-items: center;"><span style="font-size: 0.8em; font-weight: 700; color: var(--green);">GREEN</span><div class="narrative green">All systems healthy — keep doing what you're doing.</div></div>
+    </div>
+    <div class="callout fragment fade-up">This is your <strong>tl;dr</strong>. The pink/amber/emerald tint matches the stoplight — read it before you click anything else.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>09 / 28</span></div>
+  </div>
+  <aside class="notes">The narrative is the single sentence we hope you internalize per customer. If a card doesn't have a narrative, that's a bug — flag it.</aside>
+</section>
+
+<!-- SLIDE 10 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The signals</div>
+    <h2 class="slide-title">Signal chips</h2>
+    <div class="grid-3" style="margin-bottom: 24px;">
+      <div class="card fragment fade-up"><span class="chip red">CLIENT SILENT</span><p style="font-size: 0.65em; margin-top: 12px;">They've gone quiet 30d+</p></div>
+      <div class="card fragment fade-up"><span class="chip yellow">WE SILENT</span><p style="font-size: 0.65em; margin-top: 12px;">We haven't reached out 30d+</p></div>
+      <div class="card fragment fade-up"><span class="chip pink">RESP DROP</span><p style="font-size: 0.65em; margin-top: 12px;">Response rate ↓50%+ vs baseline</p></div>
+      <div class="card fragment fade-up"><span class="chip pink">VOL COLLAPSE</span><p style="font-size: 0.65em; margin-top: 12px;">Total comms volume halved</p></div>
+      <div class="card fragment fade-up"><span class="chip blue">USAGE LOW</span><p style="font-size: 0.65em; margin-top: 12px;">Mixpanel session days down</p></div>
+      <div class="card fragment fade-up"><span class="chip blue">BILLING</span><p style="font-size: 0.65em; margin-top: 12px;">Unpaid invoice or dispute open</p></div>
+    </div>
+    <div class="callout fragment fade-up"><strong>Click any chip to batch.</strong> Filters your book to all customers with that signal. Useful for batching: "12 customers with BILLING — let me knock those out in one sitting."</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>10 / 28</span></div>
+  </div>
+  <aside class="notes">Six signals total. They're not exclusive — a card can have all six. The narrative pill picks the dominant one for the tl;dr.</aside>
+</section>
+<!-- SLIDE 11 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Why they're in this tier</div>
+    <h2 class="slide-title">Performance signals panel</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment scale-in">
+        <div class="perf-panel">
+          <div style="font-size: 0.85em; font-weight: 600; margin-bottom: 12px;">▼ Concerning — GBP clicks 38% below peak</div>
+          <div class="perf-row"><span class="num">1</span><div class="body"><div class="title">GBP profile clicks (90d)</div><div class="sub">412 vs 670 peak · −38% · complete months only</div></div></div>
+          <div class="perf-row"><span class="num">2</span><div class="body"><div class="title">Top keyword rankings</div><div class="sub">8 active · 3 top-10 · 5 outside</div></div></div>
+          <div class="perf-row"><span class="num">3</span><div class="body"><div class="title">Reviews (12w)</div><div class="sub">11 reviews · Target: 4/week</div></div></div>
+          <div class="perf-row"><span class="num">4</span><div class="body"><div class="title">YTD GBP leads</div><div class="sub">47 booked · of 89 inquiries</div></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="callout fragment fade-up"><strong>Use this on calls.</strong> The performance panel tells you WHY the customer is in their tier.</div>
+        <div class="fragment fade-up" style="margin-top: 16px; padding: 14px; background: white; border-left: 4px solid var(--blue); border-radius: 8px; font-size: 0.7em; font-style: italic;">"Your GBP clicks are 38% off your peak — looks like the seasonal dip lined up with the GMB hours change you mentioned."</div>
+        <div class="warn fragment fade-up" style="margin-top: 16px;"><span class="warn-icon">!</span><strong>Never quote predictions.</strong> The 6-month forecast is internal. Customer-facing = peak / current / dip only.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>11 / 28</span></div>
+  </div>
+  <aside class="notes">Big rule: predictions are internal. Peak, current, dip — that's customer-facing language. Anything beyond that and you'll over-promise.</aside>
+</section>
+
+<!-- SLIDE 12 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The pink button</div>
+    <h2 class="slide-title">The primary action button</h2>
+    <div class="grid-2" style="gap: 40px;">
+      <div class="fragment scale-in">
+        <div class="card"><div class="card-eyebrow">YOUR ONE-CLICK LOGGER</div>
+          <p style="font-size: 0.65em; line-height: 1.8;">1. Click the pink button.<br><em style="color: var(--text-muted);">Connected / VM / No reach modal opens.</em><br><br>2. Pick a reason code.<br><em style="color: var(--text-muted);">Renewal, performance, billing, check-in, escalation, other.</em><br><br>3. Optional: follow-up date.<br><em style="color: var(--text-muted);">VM defaults to 7 days. No-reach auto-schedules retry.</em><br><br>4. Card flips to '✓ Logged' instantly.</p>
+        </div>
+      </div>
+      <div class="fragment fade-up">
+        <div class="card-eyebrow">HOW IT FEELS</div>
+        <button class="action-btn magnetic" style="font-size: 0.85em; margin: 16px 0;">Call about renewal →</button>
+        <div style="display: flex; gap: 10px; margin: 16px 0;">
+          <button class="action-btn" style="background: var(--green); padding: 8px 14px; font-size: 0.7em;">Connected</button>
+          <button class="action-btn" style="background: var(--blue); padding: 8px 14px; font-size: 0.7em;">Voicemail</button>
+          <button class="action-btn" style="background: var(--red); padding: 8px 14px; font-size: 0.7em;">No reach</button>
+        </div>
+        <div class="callout">Pick reason → add follow-up reminder → done.</div>
+        <div class="narrative green" style="margin-top: 12px;">✓ Logged — Connected, renewal discussed</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>12 / 28</span></div>
+  </div>
+  <aside class="notes">The pink button is your job in one motion. If you remember nothing else, remember: every call ends with one click here.</aside>
+</section>
+
+<!-- SLIDE 13 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Three states only</div>
+    <h2 class="slide-title">Logging a call: the 3-state flow</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--green);">
+        <div style="font-size: 2em; color: var(--green); font-weight: 800;">✓</div>
+        <h3 style="font-size: 1em;">Connected</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-bottom: 12px;">You spoke with them. Pick a reason: renewal, performance, billing, check-in, escalation, other.</p>
+        <div class="chip green">Default · 80% of calls</div>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div style="font-size: 2em; color: var(--blue); font-weight: 800;">VM</div>
+        <h3 style="font-size: 1em;">Voicemail</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-bottom: 12px;">You left a message. Set a 7-day follow-up by default — or shorter if urgent.</p>
+        <div class="chip blue">VM ≠ no-reach. Partial touch.</div>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--red);">
+        <div style="font-size: 2em; color: var(--red); font-weight: 800;">×</div>
+        <h3 style="font-size: 1em;">No reach</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-bottom: 12px;">Couldn't get hold. Auto-schedules a retry. Triggers a 'no-reach streak (3+)' coaching loop after the third attempt.</p>
+        <div class="chip red">Log it. Coach sees the pattern.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>13 / 28</span></div>
+  </div>
+  <aside class="notes">The single biggest mistake: marking a VM as no-reach. They mean different things. VM is a partial touch. No-reach = total miss.</aside>
+</section>
+
+<!-- SLIDE 14 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Your second brain</div>
+    <h2 class="slide-title">Notes (private to you)</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment fade-up">
+        <div class="card">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;"><strong style="font-size: 0.9em;">Notes (private)</strong><span class="chip" style="background: rgba(255,86,187,0.1); color: var(--pink);">Only you see this</span></div>
+          <div class="log-item"><span class="date">May 12</span><div>Callback Wed 3pm — owner asked about adding a second location next month.</div></div>
+          <div class="log-item"><span class="date">May 8</span><div>Asked about the lead notification feature. Demoed inline. Promised follow-up doc.</div></div>
+          <div class="log-item"><span class="date">May 1</span><div>Wife handles bookkeeping — she's hesitant about ACH. Maybe revisit in Q3.</div></div>
+          <button class="action-btn" style="background: white; color: var(--pink); border: 1px solid var(--pink); margin-top: 10px; font-size: 0.7em;">+ Add note</button>
+        </div>
+      </div>
+      <div>
+        <div class="fragment fade-up" style="font-size: 0.7em; margin-bottom: 16px;"><strong>Per-AM. Private. Yours.</strong></div>
+        <div class="fragment fade-up" style="font-size: 0.65em; margin-bottom: 12px;">Your manager doesn't see notes. Use them for the things you'd jot in a notebook:</div>
+        <ul class="fragment fade-up" style="font-size: 0.65em; line-height: 1.8; padding-left: 18px;"><li>Callback at 3pm Wed</li><li>Asked about feature X</li><li>Mood: irritable, give space</li><li>Spouse handles bookkeeping</li></ul>
+        <div class="callout fragment fade-up" style="margin-top: 14px;"><strong>What goes in the action log instead:</strong> Reason codes (renewal, billing, etc.) — those are structured + searchable.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>14 / 28</span></div>
+  </div>
+  <aside class="notes">Reinforce: notes are private. We chose this on purpose. Psychological safety. If you wouldn't show your manager — that's the point of notes.</aside>
+</section>
+
+<!-- SLIDE 15 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Control the order</div>
+    <h2 class="slide-title">Pin and Snooze</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);">
+        <div class="card-eyebrow" style="color: var(--pink);">PIN</div>
+        <h3 style="font-size: 1em;">Keeps a customer at the top of your book.</h3>
+        <p style="font-size: 0.65em; margin-top: 12px;"><strong>Use it for:</strong></p>
+        <ul style="font-size: 0.65em; line-height: 1.7; padding-left: 18px;"><li>Active deals you're working</li><li>Renewals in the next 30 days</li><li>Escalations needing manager visibility</li><li>Anything you'd write 'don't forget' on a sticky</li></ul>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div class="card-eyebrow" style="color: var(--blue);">SNOOZE</div>
+        <h3 style="font-size: 1em;">Hide a customer until N days from now.</h3>
+        <div style="display: flex; gap: 8px; margin: 14px 0;"><span class="kbd">1d</span><span class="kbd">3d</span><span class="kbd">7d</span><span class="kbd">14d</span><span class="kbd">30d</span></div>
+        <p style="font-size: 0.65em;">Auto-reappears when the snooze expires.</p>
+      </div>
+    </div>
+    <div class="warn fragment fade-up" style="margin-top: 24px;"><span class="warn-icon">!</span><strong>Watch out for 'Snooze ignored':</strong> If a snooze elapses without action, it shows up in your coaching loops. Address those first.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>15 / 28</span></div>
+  </div>
+  <aside class="notes">Pin = sticky top. Snooze = hide. The most common mistake: snoozing instead of resolving. A snooze isn't a fix.</aside>
+</section>
+
+<!-- SLIDE 16 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Your coaching loops</div>
+    <h2 class="slide-title">The 'Heads up' coaching pills</h2>
+    <div class="grid-4" style="margin-bottom: 24px;">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--red);"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><strong style="font-size: 0.8em;">RED untouched &gt;7d</strong><span class="big-stat" style="font-size: 2em; color: var(--red);" data-count-up data-target="3">0</span></div><p style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">RED customer + you haven't logged a contact in 7+ days. Most urgent.</p></div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--yellow);"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><strong style="font-size: 0.8em;">Stale RED &gt;14d</strong><span class="big-stat" style="font-size: 2em; color: var(--yellow);" data-count-up data-target="1">0</span></div><p style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">Customer stuck in RED for 14+ days. Tier hasn't moved.</p></div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><strong style="font-size: 0.8em;">No-reach streak (3+)</strong><span class="big-stat" style="font-size: 2em; color: var(--blue);" data-count-up data-target="2">0</span></div><p style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">3+ consecutive no-reaches against the same customer. Time to change the channel.</p></div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><strong style="font-size: 0.8em;">Snooze ignored</strong><span class="big-stat" style="font-size: 2em; color: var(--pink);" data-count-up data-target="1">0</span></div><p style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">A snooze elapsed without a follow-up. You said 7 days — it's been 9.</p></div>
+    </div>
+    <div class="callout fragment fade-up">These are gentle nudges, not alarms. Click any pill → filter your book to those customers. They need your attention — but they're already in your book. No new fires, just a sort order.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>16 / 28</span></div>
+  </div>
+  <aside class="notes">Manager sees these too. So coaching is anchored in the same data. Don't fear them — they're useful prompts, not punishment.</aside>
+</section>
+
+<!-- SLIDE 17 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">One screen, full picture</div>
+    <h2 class="slide-title">The customer detail page</h2>
+    <div class="grid-4" style="gap: 16px;">
+      <div class="card fragment fade-up"><div class="num-circle">1</div><h3 style="font-size: 0.8em; margin-top: 8px;">90-day composite trend</h3><p style="font-size: 0.55em; color: var(--text-muted);">Visual timeline of stoplight tier, with action markers and snooze ranges.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">2</div><h3 style="font-size: 0.8em; margin-top: 8px;">Action log</h3><p style="font-size: 0.55em; color: var(--text-muted);">Every contact attempt, reason code, outcome — chronological.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">3</div><h3 style="font-size: 0.8em; margin-top: 8px;">Notes panel</h3><p style="font-size: 0.55em; color: var(--text-muted);">Your private notes per customer.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">4</div><h3 style="font-size: 0.8em; margin-top: 8px;">Performance signals</h3><p style="font-size: 0.55em; color: var(--text-muted);">GBP clicks, keyword rankings, reviews, leads — current vs peak.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">5</div><h3 style="font-size: 0.8em; margin-top: 8px;">Comms thread (5 channels)</h3><p style="font-size: 0.55em; color: var(--text-muted);">App Chat, Email, Phone, Video, SMS — live Metabase fetch.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">6</div><h3 style="font-size: 0.8em; margin-top: 8px;">HubSpot contacts + last call</h3><p style="font-size: 0.55em; color: var(--text-muted);">Who your contact people are, when they last spoke to anyone.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">7</div><h3 style="font-size: 0.8em; margin-top: 8px;">Billing</h3><p style="font-size: 0.55em; color: var(--text-muted);">Subscription, MRR, open invoices, ACH status.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">8</div><h3 style="font-size: 0.8em; margin-top: 8px;">Tickets</h3><p style="font-size: 0.55em; color: var(--text-muted);">Open + 30-day history from Metabase.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>17 / 28</span></div>
+  </div>
+  <aside class="notes">Eight panels. You'll mostly use 1, 2, 5 every day. The rest are for context calls — escalations, renewals, deeper digs.</aside>
+</section>
+
+<!-- SLIDE 18 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">30 minutes a day, gone</div>
+    <h2 class="slide-title">Keyboard shortcuts</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">?</span><span style="font-size: 0.7em;">Open shortcut help</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span><span class="kbd">j</span> / <span class="kbd">k</span></span><span style="font-size: 0.7em;">Cycle through cards</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">→</span><span style="font-size: 0.7em;">Open the focused card's detail page</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">c</span><span style="font-size: 0.7em;">Click the primary action</span></div>
+      </div>
+      <div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">s</span><span style="font-size: 0.7em;">Open Snooze menu</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">r</span><span style="font-size: 0.7em;">Refresh data</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span class="kbd">/</span><span style="font-size: 0.7em;">Focus the search bar</span></div>
+        <div class="fragment fade-up" style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;"><span><span class="kbd">g</span> <span class="kbd">m</span></span><span style="font-size: 0.7em;">Go to Manager view (admin/manager only)</span></div>
+      </div>
+    </div>
+    <div class="callout fragment scale-in" style="margin-top: 16px;"><strong>Power move:</strong> master <span class="kbd">?</span> <span class="kbd">j/k</span> <span class="kbd">c</span> <span class="kbd">s</span> — that's 80% of the keyboard wins.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>18 / 28</span></div>
+  </div>
+  <aside class="notes">Don't memorize them all today. Master question-mark first. Everything else lives behind that key.</aside>
+</section>
+
+<!-- SLIDE 19 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Peek without clicking</div>
+    <h2 class="slide-title">Hover preview</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment scale-in">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 0.6em; display: flex; align-items: center; gap: 8px;"><span class="dot red"></span><strong>Hcg Fit Studio</strong></div>
+          <div style="background: white; border: 2px solid var(--pink); border-radius: 8px; padding: 10px; font-size: 0.6em; display: flex; align-items: center; gap: 8px; position: relative;"><span class="dot red"></span><strong>Maven Studio</strong>
+            <div class="preview-popover" style="position: absolute; left: 60%; top: 100%; margin-top: 8px; z-index: 5;">
+              <div style="display: flex; align-items: center; gap: 8px;"><span class="dot red"></span><strong>Maven Studio</strong></div>
+              <div class="sparkline"><svg viewBox="0 0 200 40"><polyline fill="none" stroke="#ff56bb" stroke-width="2" points="0,12 30,18 60,15 90,22 120,28 150,30 180,32 200,35"/></svg></div>
+              <div class="narrative red" style="padding: 6px 10px; font-size: 0.95em;">Response rate ↓60% — book check-in</div>
+              <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 6px;">Last touch: 12d ago · 4 comms/30d</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 0.6em; display: flex; align-items: center; gap: 8px;"><span class="dot yellow"></span><strong>Skin &amp; Tonic</strong></div>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.75em; margin-bottom: 16px;"><strong>Hover over any card for 0.4 seconds.</strong></p>
+        <p class="fragment fade-up" style="font-size: 0.65em; color: var(--text-muted); margin-bottom: 14px;">The popover shows:</p>
+        <ul class="fragment fade-up" style="font-size: 0.65em; line-height: 1.8; padding-left: 18px;"><li>Bizname + stoplight dot</li><li>30-day composite sparkline</li><li>Narrative pill</li><li>Last touch + comms/30d</li></ul>
+        <div class="callout fragment fade-up" style="margin-top: 16px;">Saves opening detail pages just to remember why a card is flagged.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>19 / 28</span></div>
+  </div>
+  <aside class="notes">Use hover for triage. Open detail only when you're going to actually take action.</aside>
+</section>
+
+<!-- SLIDE 20 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Why it feels fast</div>
+    <h2 class="slide-title">Optimistic UI</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="card fragment fade-up" style="background: #fef2f2; border-color: rgba(239,68,68,0.2);">
+        <div class="card-eyebrow" style="color: var(--red);">BEFORE — Click → wait → confirm</div>
+        <div class="flow-col" style="margin-top: 14px;">
+          <div class="step-row"><span class="num">1</span> Click action</div>
+          <div class="step-row"><span class="num">2</span> Wait 400ms (spinner)</div>
+          <div class="step-row"><span class="num">3</span> API returns success</div>
+          <div class="step-row"><span class="num">4</span> '✓ Logged' appears</div>
+        </div>
+      </div>
+      <div class="card fragment fade-up" style="background: #f0fdf4; border-color: rgba(16,185,129,0.2);">
+        <div class="card-eyebrow" style="color: var(--green);">AFTER — Click → instant → save</div>
+        <div class="flow-col" style="margin-top: 14px;">
+          <div class="step-row"><span class="num">1</span> Click action</div>
+          <div class="step-row"><span class="num">2</span> '✓ Logged' appears instantly</div>
+          <div class="step-row"><span class="num">3</span> Tiny 'saving…' badge in corner</div>
+          <div class="step-row"><span class="num">4</span> Badge clears when API confirms</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout fragment fade-up" style="margin-top: 24px;">If the API fails, a toast appears and the action reverts. <strong>You'll always know.</strong></div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>20 / 28</span></div>
+  </div>
+  <aside class="notes">Optimistic UI = perceived speed. Don't worry about the network round-trip — we have your back.</aside>
+</section>
+<!-- SLIDE 21 -->
+<section data-confetti>
+  <div class="slide-inner">
+    <div class="slide-header">First login walkthrough</div>
+    <h2 class="slide-title">The onboarding tour</h2>
+    <p class="fragment fade-up" style="font-size: 0.8em; margin-bottom: 24px;">5-step guided tour, first login. Hands you through the hero, KPI tiles, filter pills, customer card, and the primary action.</p>
+    <div class="grid-5">
+      <div class="card fragment scale-in" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">1</div><h3 style="font-size: 0.75em; margin-top: 10px;">Hero</h3></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">2</div><h3 style="font-size: 0.75em; margin-top: 10px;">KPI tiles</h3></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">3</div><h3 style="font-size: 0.75em; margin-top: 10px;">Filter pills</h3></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">4</div><h3 style="font-size: 0.75em; margin-top: 10px;">Customer card</h3></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">5</div><h3 style="font-size: 0.75em; margin-top: 10px;">Action button</h3></div>
+    </div>
+    <div class="callout fragment fade-up" style="margin-top: 24px;"><strong>Re-run the tour anytime:</strong> Add <code>?force-tour=1</code> to the dashboard URL — the tour replays from step 1.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>21 / 28</span></div>
+  </div>
+  <aside class="notes">First-login tour is auto-triggered. If you skipped it the first time, force-tour=1 brings it back.</aside>
+</section>
+
+<!-- SLIDE 22 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Trust the data</div>
+    <h2 class="slide-title">Live data freshness</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--green);">
+        <div class="card-eyebrow" style="color: var(--green);">FRESH</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin: 12px 0;"><span class="dot green"></span><strong style="font-size: 0.85em;">Live · 12 min ago</strong></div>
+        <p style="font-size: 0.65em; color: var(--text-muted);">Data refreshed in the last 6 hours. You're good.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--yellow);">
+        <div class="card-eyebrow" style="color: var(--yellow);">AGING</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin: 12px 0;"><span class="dot yellow"></span><strong style="font-size: 0.85em;">Stale · 14h ago</strong></div>
+        <p style="font-size: 0.65em; color: var(--text-muted);">6–24h old. Still usable. Click Refresh when you have a moment.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--red);">
+        <div class="card-eyebrow" style="color: var(--red);">STALE</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin: 12px 0;"><span class="dot red"></span><strong style="font-size: 0.85em;">Stale · 26h ago</strong></div>
+        <p style="font-size: 0.65em; color: var(--text-muted);">&gt;24h old. The orange staleness banner appears. Click Refresh before working the list.</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>22 / 28</span></div>
+  </div>
+  <aside class="notes">Cron runs daily 8am IST. If you see >24h staleness, click refresh OR ping #zoca-dashboard.</aside>
+</section>
+
+<!-- SLIDE 23 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">20 minutes a day</div>
+    <h2 class="slide-title">Suggested daily routine — 20 min morning sweep</h2>
+    <div>
+      <div class="step fragment fade-up"><div class="num-circle">1</div><div class="step-content">Open dashboard. Check the orange staleness banner. Click Refresh if stale.<span class="step-time">1 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">2</div><div class="step-content">Read 'Today, you have N customers'. Open the first RED card. Read its narrative pill.<span class="step-time">5 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">3</div><div class="step-content">Work the RED list. For each: open detail → glance at last comm + performance + tickets → call.<span class="step-time">10 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">4</div><div class="step-content">Log each call: Connected / VM / No reach + a reason code.<span class="step-time">3 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">5</div><div class="step-content">Glance at 'Heads up' coaching pills. Address 'Snooze ignored' first.<span class="step-time">1 min</span></div></div>
+    </div>
+    <div class="callout fragment scale-in" style="margin-top: 20px;"><strong>Total: 20 minutes.</strong> You're done before the standup.</div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>23 / 28</span></div>
+  </div>
+  <aside class="notes">Don't optimize past 20 minutes. The point isn't speed — it's coverage. 20 minutes covers 12 customers comfortably.</aside>
+</section>
+
+<!-- SLIDE 24 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Friday wrap</div>
+    <h2 class="slide-title">Suggested weekly routine — Friday wrap</h2>
+    <div class="grid-2">
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--pink);">PIN MONDAY'S FOCUS</div><p style="font-size: 0.7em; line-height: 1.5;">Customers you want to follow up on Monday morning. Pin them now so you don't lose them in the weekend.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--blue);">SNOOZE THE QUIET ONES</div><p style="font-size: 0.7em; line-height: 1.5;">Customers who don't need attention until next week — snooze for the right number of days.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--green);">WRITE THE IMPORTANT NOTES</div><p style="font-size: 0.7em; line-height: 1.5;">Anything important from this week's calls. The future-you Monday will thank present-you Friday.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--yellow);">GLANCE AT THE ACTION LOG</div><p style="font-size: 0.7em; line-height: 1.5;">Open a 1-2 customer detail pages, scroll the action log. Catch yourself up on the week's narrative.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>24 / 28</span></div>
+  </div>
+  <aside class="notes">Friday wrap is the rhythm move. 10 minutes Friday saves you 30 minutes Monday.</aside>
+</section>
+
+<!-- SLIDE 25 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Watch for these</div>
+    <h2 class="slide-title">Common gotchas</h2>
+    <div class="grid-2">
+      <div class="warn fragment fade-up"><span class="warn-icon">!</span><strong>Notes are PRIVATE.</strong><p style="font-size: 0.85em; margin-top: 6px;">Don't put anything you'd be embarrassed for your manager to see — but also nothing they NEED to see. Use the action log's reason codes for structured handoff.</p></div>
+      <div class="warn fragment fade-up"><span class="warn-icon">!</span><strong>Snoozes don't text the customer.</strong><p style="font-size: 0.85em; margin-top: 6px;">Set a calendar reminder if you need the snooze to drive an outreach. The dashboard just hides them — it doesn't auto-DM.</p></div>
+      <div class="warn fragment fade-up"><span class="warn-icon">!</span><strong>0 customers today?</strong><p style="font-size: 0.85em; margin-top: 6px;">Congrats! Use the 'Watch' filter to be proactive. YELLOW customers are tomorrow's RED if no one talks to them.</p></div>
+      <div class="warn fragment fade-up"><span class="warn-icon">!</span><strong>The orange staleness banner is real.</strong><p style="font-size: 0.85em; margin-top: 6px;">If you see 'Snapshot is 24h ago', click Refresh — don't work the list before the data updates.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>25 / 28</span></div>
+  </div>
+  <aside class="notes">These four traps account for ~80% of confused support tickets. If you remember them, you'll save us all time.</aside>
+</section>
+
+<!-- SLIDE 26 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">When you're stuck</div>
+    <h2 class="slide-title">Where to get help</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);"><div class="card-eyebrow" style="color: var(--pink);">#ZOCA-DASHBOARD</div><h3 style="font-size: 0.95em; margin-top: 8px;">Slack channel</h3><p style="font-size: 0.65em; color: var(--text-muted);">Bugs, feature ideas, screenshots welcome.</p></div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);"><div class="card-eyebrow" style="color: var(--blue);">YOUR MANAGER</div><h3 style="font-size: 0.95em; margin-top: 8px;">1:1 prep page</h3><p style="font-size: 0.65em; color: var(--text-muted);">Their 1:1 prep page shows your engagement — they're already looking.</p></div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--yellow);"><div class="card-eyebrow" style="color: var(--yellow);">WRONG-SIGNAL FLAG</div><h3 style="font-size: 0.95em; margin-top: 8px;">× wrong? button</h3><p style="font-size: 0.65em; color: var(--text-muted);">On any card. Files a feedback report instantly.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>26 / 28</span></div>
+  </div>
+  <aside class="notes">Three escalation paths. Slack first for visibility. Manager for context. Wrong-signal flag for data quality issues.</aside>
+</section>
+
+<!-- SLIDE 27 -->
+<section data-confetti>
+  <div class="slide-inner">
+    <div class="slide-header">The 5 things</div>
+    <h2 class="slide-title">Recap — 5 things to remember</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">1</div><div style="font-size: 0.85em; font-weight: 600;">RED stoplight + narrative pill = your daily focus.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">2</div><div style="font-size: 0.85em; font-weight: 600;">Log every call. Reason codes matter.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">3</div><div style="font-size: 0.85em; font-weight: 600;">Use keyboard shortcuts. Especially <span class="kbd">?</span> <span class="kbd">j/k</span> <span class="kbd">c</span>.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">4</div><div style="font-size: 0.85em; font-weight: 600;">Hover for preview. Click '↗ Open detail' for the full picture.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">5</div><div style="font-size: 0.85em; font-weight: 600;">Your manager sees the same data. Use it to anchor your 1:1s.</div></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · AM KT · 2026</span><span>27 / 28</span></div>
+  </div>
+  <aside class="notes">If you remember nothing else, remember these five. Print this slide and tape it to your monitor for week one.</aside>
+</section>
+
+<!-- SLIDE 28 -->
+<section data-transition="fade" data-background-color="#0b051d" data-confetti>
+  <div class="title-slide">
+    <div class="gradient-bg"></div>
+    <div class="particles"></div>
+    <div style="position: relative; z-index: 2;">
+      <div class="eyebrow">Thanks!</div>
+      <h1 class="shimmer char-reveal" data-chars="Questions?" style="margin: 0;">Questions?</h1>
+      <div style="font-size: 1em; font-weight: 400; margin-top: 20px; color: rgba(255,255,255,0.85); max-width: 720px;">Try the dashboard for a week, then bring sticky points to the team retrospective.</div>
+      <div style="margin-top: 36px; display: flex; gap: 30px; flex-wrap: wrap;">
+        <div><div style="font-size: 0.55em; color: rgba(255,134,225,0.8); text-transform: uppercase; letter-spacing: 0.2em;">Built by</div><div style="font-size: 0.85em; color: white; font-family: 'JetBrains Mono', monospace;">Siranj &middot; <a href="mailto:siranjith.t@zoca.com" style="color: white; text-decoration: underline;">siranjith.t@zoca.com</a></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Throw it open. Most likely questions: data refresh cadence, why my book has fewer RED than someone else's, how to flag a wrong signal.</aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/reveal.min.js"></script>
+<script>
+const PREFERS_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeParticles(c, n) {
+  if (!c || PREFERS_REDUCED) return;
+  for (let i = 0; i < (n || 36); i++) {
+    const s = document.createElement('span');
+    const sz = 4 + Math.random() * 8;
+    s.style.width = sz + 'px'; s.style.height = sz + 'px';
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.animationDuration = (10 + Math.random() * 14) + 's';
+    s.style.animationDelay = (Math.random() * 8) + 's';
+    s.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+    c.appendChild(s);
+  }
+}
+document.querySelectorAll('.particles').forEach(p => makeParticles(p));
+
+document.querySelectorAll('.char-reveal').forEach(el => {
+  const t = el.dataset.chars || el.textContent;
+  el.innerHTML = '';
+  [...t].forEach((c, i) => {
+    const s = document.createElement('span');
+    s.textContent = c === ' ' ? ' ' : c;
+    s.style.animationDelay = (i * 0.05) + 's';
+    el.appendChild(s);
+  });
+});
+
+const cg = document.getElementById('cursorGlow');
+if (cg && !PREFERS_REDUCED) {
+  let mx = window.innerWidth/2, my = window.innerHeight/2, cx = mx, cy = my;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  function loop() {
+    cx += (mx - cx) * 0.12; cy += (my - cy) * 0.12;
+    cg.style.transform = 'translate(' + cx + 'px,' + cy + 'px) translate(-50%,-50%)';
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function countUp(el) {
+  if (PREFERS_REDUCED) { el.textContent = el.dataset.target; return; }
+  const tgt = parseFloat(el.dataset.target);
+  const dur = 1000, start = performance.now();
+  function tick(t) {
+    const p = Math.min(1, (t - start) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(tgt * e).toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function addTilt() {
+  document.querySelectorAll('.card').forEach(card => {
+    if (card.dataset.tiltBound) return;
+    card.dataset.tiltBound = '1';
+    card.addEventListener('mousemove', e => {
+      if (PREFERS_REDUCED) return;
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = 'perspective(1000px) rotateX(' + (-y * 6) + 'deg) rotateY(' + (x * 6) + 'deg) translateY(-4px)';
+    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
+}
+addTilt();
+
+function addMagnetic() {
+  document.querySelectorAll('.magnetic').forEach(btn => {
+    if (btn.dataset.magBound) return;
+    btn.dataset.magBound = '1';
+    btn.addEventListener('mousemove', e => {
+      if (PREFERS_REDUCED) return;
+      const r = btn.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 100) btn.style.transform = 'translate(' + (dx*0.15) + 'px,' + (dy*0.15) + 'px)';
+    });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+  });
+}
+addMagnetic();
+
+function fireConfetti(c) {
+  if (PREFERS_REDUCED || !c) return;
+  if (c.dataset.confettiFired) return;
+  c.dataset.confettiFired = '1';
+  const cols = ['#ff56bb', '#146ef5', '#10b981', '#f59e0b', '#ff86e1'];
+  const w = document.createElement('div'); w.className = 'confetti-wrap'; c.appendChild(w);
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div'); p.className = 'confetti-piece';
+    p.style.background = cols[i % cols.length];
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+    w.appendChild(p);
+    const dur = 1800 + Math.random() * 1400;
+    const dx = (Math.random() * 400 - 200) + 'px';
+    p.animate([
+      { opacity: 1, transform: 'translate(0,0) rotate(0deg)' },
+      { opacity: 1, transform: 'translate(' + dx + ', 900px) rotate(' + (Math.random()*720) + 'deg)' }
+    ], { duration: dur, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' });
+  }
+  setTimeout(() => w.remove(), 3500);
+}
+
+Reveal.initialize({
+  hash: true, controls: true, progress: true,
+  slideNumber: 'c/t', transition: 'fade', transitionSpeed: 'default',
+  backgroundTransition: 'fade', autoAnimate: true,
+  autoAnimateEasing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  autoAnimateDuration: 0.8, fragments: true,
+  width: 1400, height: 800, margin: 0.04,
+}).then(() => {
+  Reveal.on('slidechanged', e => {
+    e.currentSlide.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+    if (e.currentSlide.dataset.confetti !== undefined) fireConfetti(e.currentSlide);
+    addTilt(); addMagnetic();
+  });
+  Reveal.on('fragmentshown', e => {
+    e.fragment.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+  });
+  const cur = Reveal.getCurrentSlide();
+  cur.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+  if (cur.dataset.confetti !== undefined) fireConfetti(cur);
+});
+</script>
+</body>
+</html>

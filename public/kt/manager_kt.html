@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Customer Health Dashboard — Manager Guide · Zoca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/theme/white.min.css">
+<style>
+:root {
+  --midnight: #0b051d;
+  --pink: #ff56bb;
+  --pink-light: #ff86e1;
+  --blue: #146ef5;
+  --blue-light: #5b8fef;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --green: #10b981;
+  --bg-page: #fafafa;
+  --bg-card: #ffffff;
+  --border: rgba(11, 5, 29, 0.08);
+  --text: #0b051d;
+  --text-muted: #696376;
+}
+.reveal { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 400; color: var(--text); font-size: 26px; }
+.reveal .slides { text-align: left; }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 0.4em; }
+.reveal h1 { font-size: 2.6em; }
+.reveal h2 { font-size: 1.8em; }
+.reveal h3 { font-size: 1.3em; }
+.reveal p { line-height: 1.5; }
+.reveal code { font-family: 'JetBrains Mono', monospace; background: rgba(255,86,187,0.08); color: var(--midnight); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; position: relative; }
+.reveal code::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 1px; height: 1px; background: var(--pink); transform: scaleX(0); transform-origin: left; transition: transform 0.6s ease; }
+.reveal .present code::after { transform: scaleX(1); transition-delay: 0.4s; }
+.reveal a { color: var(--blue); text-decoration: none; border-bottom: 1px dashed currentColor; }
+.reveal section { padding: 0 !important; }
+.reveal .slide-number { font-family: 'JetBrains Mono', monospace; background: rgba(11,5,29,0.7); color: white; font-size: 13px; padding: 4px 10px; border-radius: 999px; }
+.reveal .progress { color: var(--pink); height: 4px; }
+.reveal .controls { color: var(--pink); }
+.cursor-glow { position: fixed; width: 600px; height: 600px; border-radius: 50%; pointer-events: none; z-index: 0; background: radial-gradient(circle, rgba(255,86,187,0.18) 0%, rgba(20,110,245,0.08) 40%, transparent 70%); filter: blur(60px); transform: translate(-50%, -50%); transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); mix-blend-mode: multiply; }
+.gradient-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #0b051d 0%, #2a0f3d 25%, #1a2b6f 50%, #0b051d 75%, #2a0f3d 100%); background-size: 400% 400%; animation: gradient-shift 20s ease infinite; z-index: 0; }
+@keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.particles span { position: absolute; bottom: -20px; width: 8px; height: 8px; border-radius: 50%; opacity: 0.6; animation: rise linear infinite; }
+.particles span:nth-child(odd) { background: var(--pink); }
+.particles span:nth-child(even) { background: var(--blue-light); }
+@keyframes rise { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.5; } 100% { transform: translateY(-900px) translateX(var(--drift, 30px)); opacity: 0; } }
+.shimmer { background: linear-gradient(90deg, #fff 0%, #fff 30%, #ff86e1 50%, #fff 70%, #fff 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 4s ease infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.title-slide { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: 100%; padding: 60px 80px !important; color: white; }
+.title-slide h1 { color: white; font-size: 3.4em; font-weight: 800; }
+.title-slide .eyebrow { font-size: 0.55em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: var(--pink-light); margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 6px 14px; display: inline-block; }
+.title-slide .subline { font-size: 0.9em; color: rgba(255,255,255,0.7); margin-top: 32px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; }
+.slide-inner { padding: 50px 70px; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 1; }
+.slide-header { font-size: 0.6em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 6px; }
+.slide-title { font-size: 2.2em; font-weight: 700; margin-bottom: 24px; animation: slideInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+.slide-footer { margin-top: auto; padding-top: 16px; display: flex; justify-content: space-between; font-size: 0.5em; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(11,5,29,0.04); transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s; position: relative; transform-style: preserve-3d; will-change: transform; }
+.card:hover { box-shadow: 0 20px 40px -10px rgba(11,5,29,0.15); transform: translateY(-4px); }
+.card .card-eyebrow { font-size: 0.45em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; text-align: left; transition: all 0.3s ease; }
+.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -8px rgba(11,5,29,0.12); }
+.kpi .label { font-size: 0.5em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin-bottom: 8px; }
+.kpi .value { font-size: 2.4em; font-weight: 800; color: var(--text); font-family: 'Inter', sans-serif; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .sub { font-size: 0.5em; color: var(--text-muted); margin-top: 6px; }
+.kpi.red .value { color: var(--red); }
+.kpi.yellow .value { color: var(--yellow); }
+.kpi.green .value { color: var(--green); }
+.kpi.pink .value { color: var(--pink); }
+.kpi.blue .value { color: var(--blue); }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; vertical-align: middle; position: relative; }
+.dot.red { background: var(--red); }
+.dot.yellow { background: var(--yellow); }
+.dot.green { background: var(--green); }
+.dot::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: pulse 2s ease-out infinite; }
+.dot.red::after { color: var(--red); }
+.dot.yellow::after { color: var(--yellow); }
+.dot.green::after { color: var(--green); }
+@keyframes pulse { 0% { transform: scale(0.8); opacity: 0.7; } 100% { transform: scale(1.7); opacity: 0; } }
+.dot-lg { width: 80px; height: 80px; }
+.narrative { padding: 12px 16px; border-radius: 12px; font-size: 0.7em; line-height: 1.45; margin: 12px 0; }
+.narrative.red { background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); color: #7a1414; }
+.narrative.yellow { background: rgba(245,158,11,0.08); border-left: 3px solid var(--yellow); color: #6b3d05; }
+.narrative.green { background: rgba(16,185,129,0.08); border-left: 3px solid var(--green); color: #064e3b; }
+.chip { display: inline-block; font-size: 0.5em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 999px; margin-right: 6px; background: rgba(11,5,29,0.06); color: var(--text); }
+.chip.red { background: rgba(239,68,68,0.12); color: var(--red); }
+.chip.yellow { background: rgba(245,158,11,0.14); color: #b45309; }
+.chip.green { background: rgba(16,185,129,0.12); color: #047857; }
+.chip.pink { background: rgba(255,86,187,0.12); color: #b8278a; }
+.chip.blue { background: rgba(20,110,245,0.10); color: var(--blue); }
+.pill { background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px; font-size: 0.6em; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.25s; }
+.pill:hover { border-color: var(--pink); transform: translateY(-1px); }
+.pill .count { background: var(--midnight); color: white; border-radius: 999px; padding: 2px 8px; font-size: 0.85em; font-family: 'JetBrains Mono', monospace; }
+.cust-card { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 20px; position: relative; font-size: 0.65em; }
+.cust-card .header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cust-card .bizname { font-size: 1.4em; font-weight: 700; }
+.cust-card .open-detail { margin-left: auto; color: var(--blue); font-size: 0.8em; cursor: pointer; }
+.cust-card .chips { margin-bottom: 8px; }
+.cust-card .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; padding: 10px; background: #f7f6fa; border-radius: 8px; }
+.cust-card .metric { text-align: center; }
+.cust-card .metric .label { font-size: 0.7em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.cust-card .metric .val { font-size: 1.1em; font-weight: 700; }
+.cust-card .action-btn { background: linear-gradient(135deg, var(--pink) 0%, #ff3aa8 100%); color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600; display: inline-block; cursor: pointer; transition: transform 0.2s; border: none; }
+.cust-card .action-btn:hover { transform: scale(1.04); }
+.action-btn { background: linear-gradient(135deg, var(--pink) 0%, #ff3aa8 100%); color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600; display: inline-block; cursor: pointer; transition: transform 0.2s; border: none; }
+.magnetic { transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.big-stat { font-size: 4em; font-weight: 800; color: var(--text); letter-spacing: -0.04em; line-height: 1; }
+.callout { background: linear-gradient(135deg, rgba(255,86,187,0.06) 0%, rgba(20,110,245,0.06) 100%); border-left: 4px solid var(--pink); border-radius: 8px; padding: 16px 20px; font-size: 0.7em; margin: 16px 0; }
+.callout strong { color: var(--pink); }
+.warn { background: rgba(245,158,11,0.08); border-left: 4px solid var(--yellow); border-radius: 8px; padding: 16px 20px; font-size: 0.7em; }
+.warn .warn-icon { color: var(--yellow); font-weight: 700; font-size: 1.4em; margin-right: 8px; }
+.kbd { display: inline-block; font-family: 'JetBrains Mono', monospace; background: white; border: 1px solid var(--border); border-bottom: 3px solid #d4d2d8; border-radius: 6px; padding: 6px 12px; font-size: 0.7em; font-weight: 600; min-width: 36px; text-align: center; }
+.num-circle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--pink) 0%, var(--blue) 100%); color: white; font-weight: 700; font-size: 0.7em; margin-right: 12px; font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+.step { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+.step .step-content { flex: 1; font-size: 0.7em; line-height: 1.5; }
+.step .step-time { background: var(--midnight); color: white; font-family: 'JetBrains Mono', monospace; font-size: 0.6em; padding: 3px 10px; border-radius: 999px; margin-left: 8px; }
+table.zoca-table { width: 100%; border-collapse: collapse; font-size: 0.55em; }
+table.zoca-table th { background: var(--midnight); color: white; text-align: left; padding: 10px; font-weight: 600; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.08em; }
+table.zoca-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+table.zoca-table tr:hover { background: rgba(255,86,187,0.04); }
+.cell-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: center; }
+.cell-num.hi { color: var(--red); }
+.cell-num.mid { color: var(--yellow); }
+.cell-num.lo { color: var(--green); }
+.reveal .fragment.fade-up { opacity: 0; transform: translateY(20px); transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal .fragment.fade-up.visible { opacity: 1; transform: translateY(0); }
+.reveal .fragment.scale-in { opacity: 0; transform: scale(0.9); transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal .fragment.scale-in.visible { opacity: 1; transform: scale(1); }
+.char-reveal span { display: inline-block; opacity: 0; transform: translateY(20px); animation: char-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes char-in { to { opacity: 1; transform: translateY(0); } }
+.confetti-wrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti-piece { position: absolute; width: 10px; height: 14px; top: -20px; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .gradient-bg, .particles span, .shimmer, .dot::after, .cursor-glow, .char-reveal span { animation: none !important; opacity: 1 !important; transform: none !important; } .reveal .fragment { opacity: 1 !important; transform: none !important; } }
+@media (max-width: 600px) { .reveal { font-size: 18px; } .slide-inner { padding: 30px 24px; } .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr !important; } }
+.perf-panel { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 20px; font-size: 0.65em; }
+.perf-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.perf-row:last-child { border-bottom: none; }
+.perf-row .num { width: 24px; height: 24px; border-radius: 50%; background: var(--midnight); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: 700; flex-shrink: 0; }
+.perf-row .body { flex: 1; }
+.perf-row .body .title { font-weight: 600; }
+.perf-row .body .sub { color: var(--text-muted); font-size: 0.85em; }
+.preview-popover { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 20px 50px -10px rgba(11,5,29,0.2); font-size: 0.65em; max-width: 320px; }
+.preview-popover .sparkline { height: 40px; width: 100%; margin: 10px 0; position: relative; }
+.preview-popover .sparkline svg { width: 100%; height: 100%; }
+.flow-col { display: flex; flex-direction: column; gap: 10px; }
+.flow-col .step-row { display: flex; gap: 10px; align-items: center; padding: 8px 12px; background: white; border: 1px solid var(--border); border-radius: 8px; font-size: 0.65em; }
+.flow-col .step-row .num { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--pink); }
+.log-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.65em; }
+.log-item:last-child { border: none; }
+.log-item .date { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85em; flex-shrink: 0; width: 60px; }
+.section-divider { height: 100%; display: flex; align-items: center; justify-content: center; background: var(--midnight); color: white; position: relative; overflow: hidden; }
+.section-divider .label { font-size: 0.6em; color: var(--pink-light); text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 16px; }
+.section-divider h1 { color: white; font-size: 3em; }
+[data-count-up] { font-variant-numeric: tabular-nums; }
+.timeline-mock { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 24px; font-size: 0.6em; }
+.timeline-bar { height: 30px; border-radius: 6px; background: linear-gradient(90deg, var(--green) 0%, var(--green) 35%, var(--yellow) 35%, var(--yellow) 60%, var(--red) 60%, var(--red) 100%); margin: 10px 0; position: relative; }
+.timeline-bar .marker { position: absolute; top: -4px; width: 4px; height: 38px; background: var(--midnight); }
+</style>
+</head>
+<body>
+<div class="cursor-glow" id="cursorGlow"></div>
+<div class="reveal">
+<div class="slides">
+<!-- SLIDE 1 -->
+<section data-transition="fade" data-background-color="#0b051d">
+  <div class="title-slide">
+    <div class="gradient-bg"></div>
+    <div class="particles"></div>
+    <div style="position: relative; z-index: 2;">
+      <div class="eyebrow">Zoca · 2026</div>
+      <h1 class="shimmer" style="margin: 0;">Customer Health<br>Dashboard</h1>
+      <div style="font-size: 1.4em; font-weight: 500; margin-top: 16px; color: rgba(255,255,255,0.85);">Manager's Guide</div>
+      <div style="font-size: 0.85em; color: rgba(255,255,255,0.65); margin-top: 10px;">Cross-AM visibility · Coaching · 1:1 prep</div>
+      <div class="subline">45-min walkthrough · Press → to begin</div>
+    </div>
+  </div>
+  <aside class="notes">Welcome managers. This is your operating-system tour — daily, weekly, monthly. Focus on the coaching loops table and 1:1 prep page; those are the new muscles.</aside>
+</section>
+
+<!-- SLIDE 2 -->
+<section data-auto-animate>
+  <div class="slide-inner">
+    <div class="slide-header">Agenda</div>
+    <h2 class="slide-title" data-id="title">What you'll learn</h2>
+    <div class="grid-3" style="margin-top: 20px;">
+      <div class="card fragment fade-up"><div class="card-eyebrow">01</div><h3 style="font-size: 1em;">Manager view: KPIs, coaching, rollups</h3><p style="font-size: 0.65em; color: var(--text-muted);">The signals you scan every Monday morning.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">02</div><h3 style="font-size: 1em;">Drill from team to individual</h3><p style="font-size: 0.65em; color: var(--text-muted);">Team signal → AM → customer in 3 clicks.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">03</div><h3 style="font-size: 1em;">1:1 prep mode</h3><p style="font-size: 0.65em; color: var(--text-muted);">Auto-generated agenda for every AM.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">04</div><h3 style="font-size: 1em;">Coaching with data</h3><p style="font-size: 0.65em; color: var(--text-muted);">Anchor weekly 1:1s in what actually happened.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">05</div><h3 style="font-size: 1em;">Admin features (if applicable)</h3><p style="font-size: 0.65em; color: var(--text-muted);">Role management, integration health, manual cron.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow">06</div><h3 style="font-size: 1em;">How to operate the rhythm</h3><p style="font-size: 0.65em; color: var(--text-muted);">Daily 5-min check + weekly review + monthly retro.</p></div>
+    </div>
+    <div class="slide-footer"><span>Time: 45 minutes</span><span>Zoca · Manager's Guide · 2026</span><span>02 / 28</span></div>
+  </div>
+  <aside class="notes">Six things to cover. We'll move fast through 1-4 (the basics) and slow down on 5 and 6 (where you'll spend your time).</aside>
+</section>
+
+<!-- SLIDE 3 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Why this matters to you</div>
+    <h2 class="slide-title">Why managers care</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="text-align: center;"><div class="big-stat" style="background: linear-gradient(135deg, var(--pink), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent;">13 → 1</div><h3 style="font-size: 0.95em; margin-top: 12px;">AM books, one screen</h3><p style="font-size: 0.65em; color: var(--text-muted);">See every AM's book at once, not 13 separate Excels.</p></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="big-stat" style="background: linear-gradient(135deg, var(--pink), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent;">Data → 1:1</div><h3 style="font-size: 0.95em; margin-top: 12px;">Coaching anchored in evidence</h3><p style="font-size: 0.65em; color: var(--text-muted);">Data-anchored 1:1s instead of subjective gut-feel.</p></div>
+      <div class="card fragment scale-in" style="text-align: center;"><div class="big-stat" style="background: linear-gradient(135deg, var(--pink), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent;">2hr → 15m</div><h3 style="font-size: 0.95em; margin-top: 12px;">Weekly review collapse</h3><p style="font-size: 0.65em; color: var(--text-muted);">Weekly review goes from 2 hours to 15 minutes.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>03 / 28</span></div>
+  </div>
+  <aside class="notes">Three big wins. Focus the conversation on the 2hr→15m collapse — that's the most concrete change for your week.</aside>
+</section>
+
+<!-- SLIDE 4 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Two perspectives</div>
+    <h2 class="slide-title">Two views, one dashboard</h2>
+    <div class="grid-2">
+      <div class="card fragment fade-up" style="border-top: 4px solid var(--blue);">
+        <div class="card-eyebrow" style="color: var(--blue);">AM'S VIEW</div>
+        <h3 style="font-size: 0.95em;"><code>/v2</code></h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin: 8px 0 12px;">Pick any AM in the dropdown → see exactly what they see.</p>
+        <p style="font-size: 0.7em;"><strong>Use it for:</strong></p>
+        <ul style="font-size: 0.65em; line-height: 1.7; padding-left: 18px;"><li>Impersonation — debug what an AM is seeing</li><li>Empathy — understand what their morning looks like</li><li>Spot-check — does their narrative pill make sense?</li></ul>
+      </div>
+      <div class="card fragment fade-up" style="border-top: 4px solid var(--pink);">
+        <div class="card-eyebrow" style="color: var(--pink);">MANAGER'S VIEW</div>
+        <h3 style="font-size: 0.95em;"><code>/v2/manager</code></h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin: 8px 0 12px;">Rollup view — KPIs, charts, AM activity, coaching signals.</p>
+        <p style="font-size: 0.7em;"><strong>Use it for:</strong></p>
+        <ul style="font-size: 0.65em; line-height: 1.7; padding-left: 18px;"><li>Monday 15-min sweep</li><li>Spotting which AM needs attention this week</li><li>Pulling MRR-at-risk numbers for leadership</li></ul>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>04 / 28</span></div>
+  </div>
+  <aside class="notes">Two URLs. Same data. Different lens. Tell them: bookmark both. Switch with one keypress (g m).</aside>
+</section>
+
+<!-- SLIDE 5 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Switch books in 1 click</div>
+    <h2 class="slide-title">The AM picker</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment scale-in">
+        <div class="card" style="padding: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--midnight); color: white; border-radius: 8px; font-size: 0.7em; margin-bottom: 8px;"><span>Atharv Y</span><span>▼</span></div>
+          <div style="display: flex; flex-direction: column; font-size: 0.6em;">
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Anu Srivastava</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Apurvaa Biswas</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border); background: rgba(255,86,187,0.08); font-weight: 700;">Atharv Y</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Bikash Mishra</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Hubern C</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Kanak sharma</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Kripali Suri</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Nikita Singh</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Sakshi Mamgain</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Santhosh V</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Shruti Sinha</div>
+            <div style="padding: 8px 14px; border-bottom: 1px solid var(--border);">Siddhi Shetty</div>
+            <div style="padding: 8px 14px;">Sudha Goutami</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.75em; margin-bottom: 14px;"><strong>Pick. Switch. No mode change.</strong></p>
+        <p class="fragment fade-up" style="font-size: 0.65em; color: var(--text-muted); margin-bottom: 12px;">Click any AM in the dropdown — you switch into their book instantly.</p>
+        <div class="fragment fade-up"><strong style="font-size: 0.7em;">What changes:</strong>
+          <ul style="font-size: 0.65em; line-height: 1.7; padding-left: 18px; margin-top: 8px;"><li>Their narrative pills</li><li>Their coaching loops</li><li>Their action log</li><li>Their RED/YELLOW/GREEN counts</li></ul>
+        </div>
+        <div class="callout fragment fade-up" style="margin-top: 14px;">Same UI an AM sees. No 'manager mode' to learn separately.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>05 / 28</span></div>
+  </div>
+  <aside class="notes">Empathy is the killer feature here. Spot-check a card. Read their narrative. Ask 'does this match what I expected?'</aside>
+</section>
+
+<!-- SLIDE 6 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The hero, decoded</div>
+    <h2 class="slide-title">Manager view — the hero</h2>
+    <div class="grid-5" style="margin-bottom: 28px;">
+      <div class="kpi blue fragment scale-in"><div class="label">Total Customers</div><div class="value" data-count-up data-target="927">0</div></div>
+      <div class="kpi green fragment scale-in"><div class="label">MRR Managed</div><div class="value">$<span data-count-up data-target="201">0</span>K</div></div>
+      <div class="kpi red fragment scale-in"><div class="label">RED Count</div><div class="value" data-count-up data-target="84">0</div></div>
+      <div class="kpi yellow fragment scale-in"><div class="label">MRR at Risk</div><div class="value">$<span data-count-up data-target="18.2">0</span>K</div></div>
+      <div class="kpi pink fragment scale-in"><div class="label">AMs w/ Action (7d)</div><div class="value">11 / 13</div></div>
+    </div>
+    <div class="card fragment fade-up">
+      <strong style="font-size: 0.85em;">What this hero tells you, in one glance:</strong>
+      <ul style="font-size: 0.7em; line-height: 1.8; padding-left: 18px; margin-top: 10px;">
+        <li><strong>927</strong> customers, <strong>$201K</strong> MRR — that's the book.</li>
+        <li><strong>84</strong> RED with <strong>$18.2K</strong> at risk — that's 9% of MRR needing attention.</li>
+        <li><strong>11 of 13</strong> AMs logged action in the last 7 days — the other 2 are coaching candidates.</li>
+      </ul>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>06 / 28</span></div>
+  </div>
+  <aside class="notes">The 11/13 number is the single most important glance. Anyone not logging action in 7 days is your first coaching conversation.</aside>
+</section>
+
+<!-- SLIDE 7 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The charts</div>
+    <h2 class="slide-title">Manager view — the charts</h2>
+    <div class="grid-3">
+      <div class="card fragment fade-up">
+        <div class="card-eyebrow">AM Stoplight Stack</div>
+        <p style="font-size: 0.6em; color: var(--text-muted); margin: 6px 0 12px;">RED / YELLOW / GREEN split per AM</p>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.55em;">
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Atharv</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 12;"></div><div style="background: var(--yellow); flex: 21;"></div><div style="background: var(--green); flex: 40;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Sudha</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 9;"></div><div style="background: var(--yellow); flex: 18;"></div><div style="background: var(--green); flex: 45;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Hubern</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 14;"></div><div style="background: var(--yellow); flex: 22;"></div><div style="background: var(--green); flex: 38;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Sakshi</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 6;"></div><div style="background: var(--yellow); flex: 15;"></div><div style="background: var(--green); flex: 49;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Bikash</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 11;"></div><div style="background: var(--yellow); flex: 19;"></div><div style="background: var(--green); flex: 42;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Anu</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 8;"></div><div style="background: var(--yellow); flex: 16;"></div><div style="background: var(--green); flex: 47;"></div></div></div>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center;"><span>Kanak</span><div style="display: flex; height: 12px; border-radius: 4px; overflow: hidden;"><div style="background: var(--red); flex: 5;"></div><div style="background: var(--yellow); flex: 12;"></div><div style="background: var(--green); flex: 55;"></div></div></div>
+        </div>
+      </div>
+      <div class="card fragment fade-up">
+        <div class="card-eyebrow">Outcome breakdown (7d)</div>
+        <p style="font-size: 0.6em; color: var(--text-muted); margin: 6px 0 12px;">Connected / VM / No reach / Escalated</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.6em;">
+          <div style="display: grid; grid-template-columns: 90px 1fr 40px; gap: 8px; align-items: center;"><span>Connected</span><div style="background: var(--green); height: 14px; border-radius: 4px; width: 100%;"></div><strong>142</strong></div>
+          <div style="display: grid; grid-template-columns: 90px 1fr 40px; gap: 8px; align-items: center;"><span>Voicemail</span><div style="background: var(--blue); height: 14px; border-radius: 4px; width: 47%;"></div><strong>67</strong></div>
+          <div style="display: grid; grid-template-columns: 90px 1fr 40px; gap: 8px; align-items: center;"><span>No reach</span><div style="background: var(--red); height: 14px; border-radius: 4px; width: 27%;"></div><strong>38</strong></div>
+          <div style="display: grid; grid-template-columns: 90px 1fr 40px; gap: 8px; align-items: center;"><span>Escalated</span><div style="background: var(--pink); height: 14px; border-radius: 4px; width: 6%;"></div><strong>9</strong></div>
+        </div>
+      </div>
+      <div class="card fragment fade-up">
+        <div class="card-eyebrow">Top signals across book</div>
+        <p style="font-size: 0.6em; color: var(--text-muted); margin: 6px 0 12px;">Most common signal types</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.6em;">
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip red">CLIENT SILENT</span><div style="background: var(--red); height: 14px; border-radius: 4px; width: 100%;"></div><strong>127</strong></div>
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip blue">USAGE LOW</span><div style="background: var(--blue); height: 14px; border-radius: 4px; width: 77%;"></div><strong>98</strong></div>
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip pink">RESP DROP</span><div style="background: var(--pink); height: 14px; border-radius: 4px; width: 66%;"></div><strong>84</strong></div>
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip yellow">WE SILENT</span><div style="background: var(--yellow); height: 14px; border-radius: 4px; width: 60%;"></div><strong>76</strong></div>
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip pink">VOL COLLAPSE</span><div style="background: var(--pink); height: 14px; border-radius: 4px; width: 41%;"></div><strong>52</strong></div>
+          <div style="display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center;"><span class="chip blue">BILLING</span><div style="background: var(--blue); height: 14px; border-radius: 4px; width: 30%;"></div><strong>38</strong></div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>07 / 28</span></div>
+  </div>
+  <aside class="notes">Three charts. AM stack tells you 'who'. Outcome breakdown tells you 'are they trying'. Top signals tells you 'what's broken'.</aside>
+</section>
+
+<!-- SLIDE 8 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Your 4 coaching signals</div>
+    <h2 class="slide-title">Coaching loops — the 4 signals</h2>
+    <div class="grid-2" style="gap: 24px;">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--red);">
+        <div class="card-eyebrow" style="color: var(--red);">RED UNTOUCHED &gt;7d</div>
+        <p style="font-size: 0.7em; line-height: 1.5;">RED customers with no logged contact in 7 days. Most urgent.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--yellow);">
+        <div class="card-eyebrow" style="color: var(--yellow);">STALE RED &gt;14d</div>
+        <p style="font-size: 0.7em; line-height: 1.5;">Customers stuck in RED for 14+ days. Tier hasn't moved.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div class="card-eyebrow" style="color: var(--blue);">NO-REACH STREAK (3+)</div>
+        <p style="font-size: 0.7em; line-height: 1.5;">3+ consecutive no-reaches against the same customer. Channel change needed.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);">
+        <div class="card-eyebrow" style="color: var(--pink);">SNOOZE IGNORED</div>
+        <p style="font-size: 0.7em; line-height: 1.5;">Snoozes that elapsed without a follow-up. Promised attention not delivered.</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>08 / 28</span></div>
+  </div>
+  <aside class="notes">Memorize these four. They're the same four the AM sees in their own dashboard. Same data anchoring both sides of the 1:1.</aside>
+</section>
+
+<!-- SLIDE 9 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Per-AM rollup</div>
+    <h2 class="slide-title">The coaching table — per AM</h2>
+    <div class="card fragment fade-up" style="padding: 12px;">
+      <table class="zoca-table">
+        <thead><tr><th>AM</th><th>RED Untouched &gt;7d</th><th>Stale RED &gt;14d</th><th>No-reach 3+</th><th>Snooze ignored</th><th>Total RED</th><th>MRR at risk</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Atharv Y</strong></td><td class="cell-num hi">8</td><td class="cell-num hi">3</td><td class="cell-num mid">2</td><td class="cell-num mid">1</td><td class="cell-num">14</td><td class="cell-num">$3.1K</td></tr>
+          <tr><td><strong>Hubern C</strong></td><td class="cell-num hi">6</td><td class="cell-num hi">5</td><td class="cell-num mid">1</td><td class="cell-num lo">0</td><td class="cell-num">12</td><td class="cell-num">$2.4K</td></tr>
+          <tr><td><strong>Bikash Mishra</strong></td><td class="cell-num mid">5</td><td class="cell-num mid">2</td><td class="cell-num hi">3</td><td class="cell-num mid">1</td><td class="cell-num">11</td><td class="cell-num">$1.9K</td></tr>
+          <tr><td><strong>Sudha Goutami</strong></td><td class="cell-num lo">2</td><td class="cell-num mid">1</td><td class="cell-num lo">0</td><td class="cell-num lo">0</td><td class="cell-num">9</td><td class="cell-num">$1.2K</td></tr>
+          <tr><td><strong>Sakshi Mamgain</strong></td><td class="cell-num mid">1</td><td class="cell-num lo">0</td><td class="cell-num mid">1</td><td class="cell-num lo">0</td><td class="cell-num">6</td><td class="cell-num">$0.8K</td></tr>
+          <tr><td><strong>Anu Srivastava</strong></td><td class="cell-num lo">0</td><td class="cell-num lo">0</td><td class="cell-num lo">0</td><td class="cell-num lo">0</td><td class="cell-num">8</td><td class="cell-num">$1.1K</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout fragment fade-up" style="margin-top: 18px;">Sortable by total signal count desc. AMs with zero signals are dimmed.</div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>09 / 28</span></div>
+  </div>
+  <aside class="notes">This table is your Monday morning. Eyeball the leftmost columns for hot spots. Atharv's RED-untouched-8 jumps out.</aside>
+</section>
+
+<!-- SLIDE 10 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Click → drill</div>
+    <h2 class="slide-title">Drilling in — click a cell</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment scale-in">
+        <div class="card" style="padding: 14px;">
+          <div class="card-eyebrow">Coaching loops table</div>
+          <table class="zoca-table" style="margin-top: 8px;">
+            <thead><tr><th>AM</th><th>Untouched</th><th>Stale</th><th>No-reach</th><th>Snooze</th></tr></thead>
+            <tbody>
+              <tr style="background: rgba(255,86,187,0.15);"><td><strong>Atharv Y</strong></td><td class="cell-num hi" style="font-size: 1.2em;">8</td><td class="cell-num">3</td><td class="cell-num">2</td><td class="cell-num">1</td></tr>
+              <tr><td>Hubern C</td><td class="cell-num">6</td><td class="cell-num">5</td><td class="cell-num">1</td><td class="cell-num">0</td></tr>
+            </tbody>
+          </table>
+          <div class="narrative red" style="margin-top: 10px;">→ Atharv's RED Untouched: 8</div>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.85em; font-weight: 700; margin-bottom: 16px;">Two paths after one click.</p>
+        <div class="card fragment fade-up" style="border-left: 4px solid var(--blue); margin-bottom: 14px;">
+          <strong style="font-size: 0.85em;">Path 1: Stay in manager view</strong>
+          <p style="font-size: 0.65em; color: var(--text-muted); margin-top: 6px;">AM rollup below the table filters to Atharv. You see his 8 RED-untouched customers without leaving the page.</p>
+        </div>
+        <div class="card fragment fade-up" style="border-left: 4px solid var(--pink);">
+          <strong style="font-size: 0.85em;">Path 2: Switch into Atharv's view</strong>
+          <p style="font-size: 0.65em; color: var(--text-muted); margin-top: 6px;">Click his name in the picker → see his book exactly as he does. Useful for 1:1 prep.</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>10 / 28</span></div>
+  </div>
+  <aside class="notes">Path 1 for batch eyeballing. Path 2 for 1:1 prep — when you want to see exactly what Atharv saw this morning.</aside>
+</section>
+<!-- SLIDE 11 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Daily / Weekly / Monthly</div>
+    <h2 class="slide-title">Coaching cadence</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--green);">
+        <div style="display: flex; align-items: center; justify-content: space-between;"><div class="card-eyebrow" style="color: var(--green);">DAILY</div><span class="step-time" style="background: var(--green);">5 min</span></div>
+        <h3 style="font-size: 0.95em; margin-top: 10px;">Spike scan</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-top: 8px;">Scan the coaching table. Look for sudden spikes — an AM jumping from 2 → 8 RED-untouched overnight is the signal.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div style="display: flex; align-items: center; justify-content: space-between;"><div class="card-eyebrow" style="color: var(--blue);">WEEKLY</div><span class="step-time" style="background: var(--blue);">15 min</span></div>
+        <h3 style="font-size: 0.95em; margin-top: 10px;">1:1 walk-through</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-top: 8px;">Walk through AMs with elevated coaching signals. Identify top 3 names for the week's 1:1 focus.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);">
+        <div style="display: flex; align-items: center; justify-content: space-between;"><div class="card-eyebrow" style="color: var(--pink);">MONTHLY</div><span class="step-time" style="background: var(--pink);">30 min</span></div>
+        <h3 style="font-size: 0.95em; margin-top: 10px;">Retrospective</h3>
+        <p style="font-size: 0.65em; color: var(--text-muted); margin-top: 8px;">Retrospective: is the team's 'Stale RED &gt;14d' count trending down? If not, it's a process problem, not an AM problem.</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>11 / 28</span></div>
+  </div>
+  <aside class="notes">The monthly is where you separate process from people. If the team metric isn't moving, the playbook needs a change — not a coaching session.</aside>
+</section>
+
+<!-- SLIDE 12 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Per-AM snapshots</div>
+    <h2 class="slide-title">1:1 prep mode — the picker</h2>
+    <div class="grid-4" style="gap: 14px;">
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--red);">
+        <strong style="font-size: 0.85em;">Atharv Y</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 4</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--red);" data-count-up data-target="14">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$3.1K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 8d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--red);">
+        <strong style="font-size: 0.85em;">Hubern C</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 2</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--red);" data-count-up data-target="12">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$2.4K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 13d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--red);">
+        <strong style="font-size: 0.85em;">Bikash Mishra</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 3</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--red);" data-count-up data-target="11">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$1.9K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 5d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--yellow);">
+        <strong style="font-size: 0.85em;">Sudha Goutami</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 1</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--yellow);" data-count-up data-target="9">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$1.2K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 22d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--yellow);">
+        <strong style="font-size: 0.85em;">Anu Srivastava</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 3</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--yellow);" data-count-up data-target="8">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$1.1K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 6d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--yellow);">
+        <strong style="font-size: 0.85em;">Sakshi Mamgain</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 2</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--yellow);" data-count-up data-target="6">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$0.8K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 11d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--green);">
+        <strong style="font-size: 0.85em;">Kanak sharma</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 1</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--green);" data-count-up data-target="5">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$0.7K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 9d</div>
+      </div>
+      <div class="card fragment scale-in" style="padding: 14px; border-top: 3px solid var(--green);">
+        <strong style="font-size: 0.85em;">Santhosh V</strong>
+        <div class="chip pink" style="margin-top: 4px;">Pod 1</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">RED</div><div style="font-size: 1.4em; font-weight: 800; color: var(--green);" data-count-up data-target="5">0</div></div>
+          <div><div style="font-size: 0.55em; color: var(--text-muted);">MRR at risk</div><div style="font-size: 1em; font-weight: 700;">$0.6K</div></div>
+        </div>
+        <div style="font-size: 0.55em; color: var(--text-muted); margin-top: 8px;">Last 1:1 14d</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>12 / 28</span></div>
+  </div>
+  <aside class="notes">Each card is a click → into that AM's per-AM prep page. The 'Last 1:1' number is the awkward truth-teller — Sudha at 22d is overdue.</aside>
+</section>
+
+<!-- SLIDE 13 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Auto-generated agenda</div>
+    <h2 class="slide-title">The per-AM prep page</h2>
+    <div class="grid-4" style="gap: 14px;">
+      <div class="card fragment fade-up"><div class="num-circle">1</div><h3 style="font-size: 0.8em; margin-top: 8px;">Header</h3><p style="font-size: 0.55em; color: var(--text-muted);">AM name, pod, last 1:1 date, total RED.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">2</div><h3 style="font-size: 0.8em; margin-top: 8px;">Book summary</h3><p style="font-size: 0.55em; color: var(--text-muted);">RED / YELLOW / GREEN counts + MRR at risk.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">3</div><h3 style="font-size: 0.8em; margin-top: 8px;">Actions recap (7d)</h3><p style="font-size: 0.55em; color: var(--text-muted);">What got logged. Connected, VM, no-reach split.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">4</div><h3 style="font-size: 0.8em; margin-top: 8px;">Wins since last 1:1</h3><p style="font-size: 0.55em; color: var(--text-muted);">Customers that moved RED→GREEN or RED→YELLOW.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">5</div><h3 style="font-size: 0.8em; margin-top: 8px;">Coaching loops</h3><p style="font-size: 0.55em; color: var(--text-muted);">All 4 signal types for this AM, with counts.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">6</div><h3 style="font-size: 0.8em; margin-top: 8px;">Talking points</h3><p style="font-size: 0.55em; color: var(--text-muted);">Up to 7 rule-based items. AI-enrichable.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">7</div><h3 style="font-size: 0.8em; margin-top: 8px;">Notes + action items</h3><p style="font-size: 0.55em; color: var(--text-muted);">From last 1:1. Checkbox completion.</p></div>
+      <div class="card fragment fade-up"><div class="num-circle">8</div><h3 style="font-size: 0.8em; margin-top: 8px;">History of past 1:1s</h3><p style="font-size: 0.55em; color: var(--text-muted);">All previous notes + which talking points were discussed.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>13 / 28</span></div>
+  </div>
+  <aside class="notes">Eight sections, all auto-populated. You won't ever stare at an empty agenda again — the page builds itself overnight.</aside>
+</section>
+
+<!-- SLIDE 14 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">The 4 talking-point flavors</div>
+    <h2 class="slide-title">Talking points — rule-based</h2>
+    <div class="grid-2" style="gap: 18px;">
+      <div class="card fragment scale-in" style="border-left: 4px solid var(--green);">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="background: var(--green); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">CELEBRATE</span></div>
+        <p style="font-size: 0.75em; margin-top: 10px;">3 customers recovered from RED since your last 1:1 — Maven Studio, Bloom Bar, Velvet Studio.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-left: 4px solid var(--yellow);">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="background: var(--yellow); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">CONSTRUCTIVE</span></div>
+        <p style="font-size: 0.75em; margin-top: 10px;">8 RED customers untouched &gt;7d. Trend worsening (was 5 last week).</p>
+      </div>
+      <div class="card fragment scale-in" style="border-left: 4px solid var(--red);">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="background: var(--red); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">WARNING</span></div>
+        <p style="font-size: 0.75em; margin-top: 10px;">MRR at risk: $4,250. Top accounts: Hcg Fit ($1.1K), Maven Studio ($890), Skin &amp; Tonic ($720).</p>
+      </div>
+      <div class="card fragment scale-in" style="border-left: 4px solid var(--blue);">
+        <div style="display: flex; align-items: center; gap: 10px;"><span style="background: var(--blue); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">ASK</span></div>
+        <p style="font-size: 0.75em; margin-top: 10px;">Anything blocking on the top 2-3 RED accounts: Hcg Fit, Skin &amp; Tonic?</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>14 / 28</span></div>
+  </div>
+  <aside class="notes">Always lead with Celebrate. Never start a 1:1 with the warning. People shut down when warmth arrives last.</aside>
+</section>
+
+<!-- SLIDE 15 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Same data, different voice</div>
+    <h2 class="slide-title">AI-enrich the talking points</h2>
+    <div class="grid-2" style="gap: 24px;">
+      <div class="card fragment fade-up" style="background: #fef6f3;">
+        <div class="card-eyebrow" style="color: var(--text-muted);">BEFORE</div>
+        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;"><span style="background: var(--yellow); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">CONSTRUCTIVE</span></div>
+        <p style="font-size: 0.75em; line-height: 1.5;">8 RED customers untouched &gt;7d. Trend worsening.</p>
+        <div style="margin-top: 12px; font-size: 0.65em; color: var(--text-muted); font-style: italic;">→ Direct. Data-true. A bit dry.</div>
+      </div>
+      <div class="card fragment fade-up" style="background: #f3f0ff; border-color: rgba(20,110,245,0.2);">
+        <div class="card-eyebrow" style="color: var(--blue);">AFTER (AI-enriched)</div>
+        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;"><span style="background: var(--yellow); color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.55em; font-weight: 700;">CONSTRUCTIVE</span></div>
+        <p style="font-size: 0.75em; line-height: 1.5; font-style: italic;">I noticed our RED-untouched count drifted from 5 to 8 this week. Walk me through what got in the way — and where you could use cover.</p>
+        <div style="margin-top: 12px; font-size: 0.65em; color: var(--blue); font-style: italic;">→ Same data. Warmer. Conversational.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>15 / 28</span></div>
+  </div>
+  <aside class="notes">Toggle 'AI enrich' at the top of the prep page. Reads the same data, gives you the question to ask.</aside>
+</section>
+
+<!-- SLIDE 16 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Close the 1:1 loop</div>
+    <h2 class="slide-title">Save the 1:1</h2>
+    <div class="grid-2" style="gap: 24px;">
+      <div class="fragment fade-up">
+        <div class="card">
+          <div class="card-eyebrow">NOTES</div>
+          <p style="font-size: 0.7em; font-style: italic; padding: 12px; background: #f7f6fa; border-radius: 8px; margin: 10px 0;">Atharv to call top 3 RED accounts by EOD Friday. Will pair with me on Maven Studio call.</p>
+          <div class="card-eyebrow" style="margin-top: 16px;">ACTION ITEMS</div>
+          <div class="log-item"><span style="color: var(--green); font-weight: 700;">✓</span><div>Atharv: call Hcg Fit re: renewal</div></div>
+          <div class="log-item"><span style="color: var(--text-muted);">○</span><div>Atharv: send onboarding refresher to Skin &amp; Tonic</div></div>
+          <div class="log-item"><span style="color: var(--text-muted);">○</span><div>Manager: review Atharv's pod 4 stale-RED trend next Monday</div></div>
+          <button class="action-btn magnetic" style="margin-top: 10px;">Save 1:1</button>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.85em; font-weight: 700; margin-bottom: 14px;">What gets stored</p>
+        <ul class="fragment fade-up" style="font-size: 0.7em; line-height: 1.8; padding-left: 18px;">
+          <li>Notes</li>
+          <li>Action items + completion status</li>
+          <li>Which talking points were discussed</li>
+          <li>Date + duration</li>
+        </ul>
+        <div class="callout fragment fade-up" style="margin-top: 16px;">Next prep compares against this log to compute new wins, drift, and 'still pending' action items.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>16 / 28</span></div>
+  </div>
+  <aside class="notes">The save is what makes the next 1:1 useful. Skip the save and you lose the 'still pending' trick.</aside>
+</section>
+
+<!-- SLIDE 17 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">3-click drill-down</div>
+    <h2 class="slide-title">Drilling from team to individual customer</h2>
+    <div class="grid-4">
+      <div class="card fragment fade-up" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">1</div><h3 style="font-size: 0.8em; margin-top: 10px;">Manager view</h3><p style="font-size: 0.55em; color: var(--text-muted);">Coaching loops table</p></div>
+      <div class="card fragment fade-up" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">2</div><h3 style="font-size: 0.8em; margin-top: 10px;">AM coaching cell</h3><p style="font-size: 0.55em; color: var(--text-muted);">Click '8' under RED Untouched</p></div>
+      <div class="card fragment fade-up" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">3</div><h3 style="font-size: 0.8em; margin-top: 10px;">AM rollup filtered</h3><p style="font-size: 0.55em; color: var(--text-muted);">Atharv's 8 customers</p></div>
+      <div class="card fragment fade-up" style="text-align: center;"><div class="num-circle" style="margin: 0 auto;">4</div><h3 style="font-size: 0.8em; margin-top: 10px;">Customer detail page</h3><p style="font-size: 0.55em; color: var(--text-muted);">Full file. Timeline, comms, performance.</p></div>
+    </div>
+    <div class="callout fragment scale-in" style="margin-top: 24px;"><strong>Three clicks.</strong> Team signal → individual customer's full file.</div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>17 / 28</span></div>
+  </div>
+  <aside class="notes">Memorize this path. It's the single most valuable manager motion: 'something looks off in this team metric → which customer is causing it?'</aside>
+</section>
+
+<!-- SLIDE 18 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Manager-side view</div>
+    <h2 class="slide-title">Customer detail page — cross-AM</h2>
+    <div class="grid-2" style="gap: 30px;">
+      <div class="fragment scale-in">
+        <div class="card">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;"><span class="dot red"></span><h3 style="font-size: 1em; margin: 0;">Hcg Fit Studio</h3></div>
+          <div style="font-size: 0.55em; color: var(--text-muted);">AM: Atharv Y · Pod 4 · MRR: $890/mo</div>
+          <div class="narrative red" style="margin-top: 12px;">Manager note — full visibility on AM's work</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">90-day composite</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">Action log</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">Performance</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">Comms thread</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">HubSpot contacts</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">Billing</div>
+            <div style="background: #f7f6fa; padding: 8px; border-radius: 6px; font-size: 0.55em;">Tickets</div>
+            <div style="background: rgba(255,86,187,0.08); padding: 8px; border-radius: 6px; font-size: 0.55em; color: var(--text-muted);">Notes (AM-only)</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.8em; font-weight: 700; margin-bottom: 14px;">You see everything the AM sees.</p>
+        <ul class="fragment fade-up" style="font-size: 0.65em; line-height: 1.8; padding-left: 18px;">
+          <li>All action history</li>
+          <li>All comms across 5 channels</li>
+          <li>Full performance signals</li>
+          <li>Tickets, billing, contacts</li>
+        </ul>
+        <div class="warn fragment fade-up" style="margin-top: 16px;"><span class="warn-icon">!</span><strong>Exception:</strong> the AM's private notes panel. That's intentional — psychological safety for honest jotting.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>18 / 28</span></div>
+  </div>
+  <aside class="notes">Notes are the only thing you don't see. Tell your AMs that — it's a trust signal worth establishing on day one.</aside>
+</section>
+
+<!-- SLIDE 19 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Visual chronology</div>
+    <h2 class="slide-title">Snapshot timeline</h2>
+    <div class="fragment scale-in">
+      <div class="timeline-mock">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;"><span class="dot red"></span><strong style="font-size: 0.85em;">Hcg Fit · 90-day composite</strong></div>
+        <div class="timeline-bar"><div class="marker" style="left: 18%;"></div><div class="marker" style="left: 42%;"></div><div class="marker" style="left: 68%;"></div></div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.6em; color: var(--text-muted); padding: 0 4px; margin-top: 6px;"><span>Feb</span><span>Mar</span><span>Apr</span><span>May (today)</span></div>
+        <div style="display: flex; gap: 18px; margin-top: 14px; font-size: 0.6em;">
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 14px; height: 14px; background: var(--green); border-radius: 4px;"></span>GREEN band</span>
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 14px; height: 14px; background: var(--yellow); border-radius: 4px;"></span>YELLOW band</span>
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 14px; height: 14px; background: var(--red); border-radius: 4px;"></span>RED band</span>
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 3px; height: 14px; background: var(--midnight); border-radius: 2px;"></span>Action logged</span>
+        </div>
+      </div>
+    </div>
+    <div class="callout fragment fade-up" style="margin-top: 20px;">
+      <strong>Use in 1:1s:</strong> "What was the snooze on March 12 about? Did it pay off?"
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>19 / 28</span></div>
+  </div>
+  <aside class="notes">Use the timeline as a coaching prop. Point at a specific marker, ask the AM to walk you through that moment. It feels less like an interrogation.</aside>
+</section>
+
+<!-- SLIDE 20 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Deep-link power</div>
+    <h2 class="slide-title">The full picture in one URL</h2>
+    <div class="grid-2" style="gap: 30px; align-items: center;">
+      <div class="fragment scale-in">
+        <div class="card" style="background: var(--midnight); color: white; border: none; padding: 24px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.7em; color: var(--pink-light); margin-bottom: 10px;">URL</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.85em; word-break: break-all;">/v2/customer/[entity_id]</div>
+          <div style="margin-top: 16px; font-size: 0.65em; color: rgba(255,255,255,0.7);">Detail page = everything for one customer.</div>
+        </div>
+      </div>
+      <div>
+        <p class="fragment fade-up" style="font-size: 0.8em; font-weight: 600; margin-bottom: 14px;">Bookmark URLs you reference often.</p>
+        <ul class="fragment fade-up" style="font-size: 0.7em; line-height: 1.8; padding-left: 18px;">
+          <li>Paste them in Slack.</li>
+          <li>Share with the AM for context before a call.</li>
+          <li>Drop in 1:1 notes — the URL becomes the agenda.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>20 / 28</span></div>
+  </div>
+  <aside class="notes">Deep links replace half your Slack messages. 'See this' + URL is faster than 'check Hcg Fit's last 3 calls then come back to me'.</aside>
+</section>
+<!-- SLIDE 21 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Monday morning routine</div>
+    <h2 class="slide-title">Suggested Monday 15-min sweep</h2>
+    <div>
+      <div class="step fragment fade-up"><div class="num-circle">1</div><div class="step-content">Glance at hero KPI tiles. Anything moved last week? RED count up or down?<span class="step-time">1 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">2</div><div class="step-content">Scan the AM stoplight stack. Which AMs spiked in RED count?<span class="step-time">5 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">3</div><div class="step-content">Open coaching loops table. Sort by total signal count desc. Top 3 AMs need attention.<span class="step-time">5 min</span></div></div>
+      <div class="step fragment fade-up"><div class="num-circle">4</div><div class="step-content">For each top AM: open 1:1 prep page, read talking points, mark which to discuss this week.<span class="step-time">4 min</span></div></div>
+    </div>
+    <div class="callout fragment scale-in" style="margin-top: 20px;"><strong>Total: 15 minutes.</strong> Three top AMs identified before your first coffee.</div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>21 / 28</span></div>
+  </div>
+  <aside class="notes">15-min Monday makes the rest of the week run itself. Skip Monday and the week feels reactive.</aside>
+</section>
+
+<!-- SLIDE 22 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Friday wrap</div>
+    <h2 class="slide-title">Suggested Friday wrap</h2>
+    <div class="grid-2">
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--pink);">REVIEW THE WEEK'S LOGGED ACTIONS</div><p style="font-size: 0.7em; line-height: 1.5;">Across the team. Who logged the most? Who logged the least?</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--green);">IDENTIFY RED → GREEN MOVERS</div><p style="font-size: 0.7em; line-height: 1.5;">Customers who recovered. Use the timeline to see what triggered the recovery.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--blue);">UPDATE 1:1 NOTES</div><p style="font-size: 0.7em; line-height: 1.5;">Action item completion. Anything still pending needs to roll forward.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--yellow);">NOTE NEXT WEEK'S FOCAL CUSTOMERS</div><p style="font-size: 0.7em; line-height: 1.5;">Pin them in your own view. Or message the AM with the URL.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>22 / 28</span></div>
+  </div>
+  <aside class="notes">Friday wrap = closure. Without it, the next Monday's 15-min sweep is fishing in the dark.</aside>
+</section>
+
+<!-- SLIDE 23 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">In the 1:1 itself</div>
+    <h2 class="slide-title">How to use this in 1:1s</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div class="card-eyebrow" style="color: var(--blue);">COACHING QUESTION</div>
+        <p style="font-size: 0.75em; font-style: italic; margin-top: 10px;">"You have 8 customers untouched 7d+. Walk me through this week."</p>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">→ AM explains. You note the action item.</div>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);">
+        <div class="card-eyebrow" style="color: var(--pink);">SPECIFIC DRILL</div>
+        <p style="font-size: 0.75em; font-style: italic; margin-top: 10px;">"Hcg Fit hasn't moved in 3 weeks. What's the next step?"</p>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">→ Discuss. Log the next attempt date.</div>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--green);">
+        <div class="card-eyebrow" style="color: var(--green);">CELEBRATE</div>
+        <p style="font-size: 0.75em; font-style: italic; margin-top: 10px;">"Skin &amp; Tonic moved RED → YELLOW. What did you change?"</p>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-top: 8px;">→ Capture the move. Share with the rest of the team.</div>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>23 / 28</span></div>
+  </div>
+  <aside class="notes">Three question types. Always include a Celebrate. Always close with a specific drill (someone has homework).</aside>
+</section>
+
+<!-- SLIDE 24 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Permissions matter</div>
+    <h2 class="slide-title">Three roles</h2>
+    <div class="grid-3">
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--blue);">
+        <div class="card-eyebrow" style="color: var(--blue);">AM</div>
+        <div class="big-stat" style="font-size: 2.4em; color: var(--blue); margin: 10px 0;" data-count-up data-target="12">0</div>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-bottom: 12px;">people</div>
+        <p style="font-size: 0.65em;">Locked to own book. AM picker hidden. Manager view inaccessible.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--pink);">
+        <div class="card-eyebrow" style="color: var(--pink);">MANAGER</div>
+        <div class="big-stat" style="font-size: 2.4em; color: var(--pink); margin: 10px 0;" data-count-up data-target="9">0</div>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-bottom: 12px;">people</div>
+        <p style="font-size: 0.65em;">Cross-AM access. Manager view, 1:1 prep, picker. No admin.</p>
+      </div>
+      <div class="card fragment scale-in" style="border-top: 4px solid var(--yellow);">
+        <div class="card-eyebrow" style="color: var(--yellow);">ADMIN</div>
+        <div class="big-stat" style="font-size: 2.4em; color: var(--yellow); margin: 10px 0;" data-count-up data-target="2">0</div>
+        <div style="font-size: 0.6em; color: var(--text-muted); margin-bottom: 12px;">people</div>
+        <p style="font-size: 0.65em;">Manager + integration health diagnostics + role management + cron triggers.</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>24 / 28</span></div>
+  </div>
+  <aside class="notes">Three tiers. Managers can see what AMs see — but can't change role membership or trigger crons. Those live in admin.</aside>
+</section>
+
+<!-- SLIDE 25 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Admin only</div>
+    <h2 class="slide-title">Admin-exclusive features</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="card fragment fade-up" style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;">
+        <div><div class="card-eyebrow" style="color: var(--pink);">/ADMIN/USAGE</div><h3 style="font-size: 0.95em; margin-top: 4px;">Who's using the dashboard</h3></div>
+        <p style="font-size: 0.7em;">Per-user login + action counts. Find AMs who haven't logged in.</p>
+      </div>
+      <div class="card fragment fade-up" style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;">
+        <div><div class="card-eyebrow" style="color: var(--blue);">/API/V2/HEALTH/INTEGRATIONS</div><h3 style="font-size: 0.95em; margin-top: 4px;">Integration health</h3></div>
+        <p style="font-size: 0.7em;">HubSpot, Mixpanel, Tickets coverage diagnostics. Spot silent failures.</p>
+      </div>
+      <div class="card fragment fade-up" style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;">
+        <div><div class="card-eyebrow" style="color: var(--yellow);">LIB/CONFIG.TS</div><h3 style="font-size: 0.95em; margin-top: 4px;">Role list management</h3></div>
+        <p style="font-size: 0.7em;">Add new AMs/managers. Edit + deploy.</p>
+      </div>
+      <div class="card fragment fade-up" style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;">
+        <div><div class="card-eyebrow" style="color: var(--green);">MANUAL CRON</div><h3 style="font-size: 0.95em; margin-top: 4px;">Force a snapshot refresh</h3></div>
+        <p style="font-size: 0.7em;">Override the daily cron. Useful for testing new scoring.</p>
+      </div>
+      <div class="card fragment fade-up" style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;">
+        <div><div class="card-eyebrow" style="color: var(--red);">EXCLUDED ENTITIES</div><h3 style="font-size: 0.95em; margin-top: 4px;">Hide test/internal accounts</h3></div>
+        <p style="font-size: 0.7em;">Keep the dashboard clean from non-customer entities.</p>
+      </div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>25 / 28</span></div>
+  </div>
+  <aside class="notes">If you're not an admin, skip this slide. If you are, integration health is your daily smoke test.</aside>
+</section>
+
+<!-- SLIDE 26 -->
+<section>
+  <div class="slide-inner">
+    <div class="slide-header">Field-tested workflows</div>
+    <h2 class="slide-title">Common manager workflows</h2>
+    <div class="grid-2">
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--red);">CUSTOMER X IS AT RISK</div><p style="font-size: 0.7em; line-height: 1.5;">Pull up their detail page. Screenshot the timeline. Send to AM in Slack with one line of context.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--blue);">ATHARV KEEPS GETTING NO-REACH ON HCG FIT</div><p style="font-size: 0.7em; line-height: 1.5;">Pull up the action log. See the pattern: 4 calls, 4 VMs. Suggest changing channel — try email or SMS.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--green);">WINS TO SHARE IN STANDUP</div><p style="font-size: 0.7em; line-height: 1.5;">Use the team's snapshot timeline to find RED → GREEN recoveries. Celebrate publicly. Cheap morale win.</p></div>
+      <div class="card fragment fade-up"><div class="card-eyebrow" style="color: var(--pink);">QUARTERLY LEADERSHIP READOUT</div><p style="font-size: 0.7em; line-height: 1.5;">MRR managed, MRR at risk, total RED, recovery rate. All on the hero. Screenshot and ship.</p></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>26 / 28</span></div>
+  </div>
+  <aside class="notes">Four real workflows. Practice the first one this week — pulling a detail page into Slack for an AM is a habit-builder.</aside>
+</section>
+
+<!-- SLIDE 27 -->
+<section data-confetti>
+  <div class="slide-inner">
+    <div class="slide-header">The 5 things</div>
+    <h2 class="slide-title">Recap — 5 things to remember</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">1</div><div style="font-size: 0.85em; font-weight: 600;">Manager view's coaching loops table is your 5-min daily check.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">2</div><div style="font-size: 0.85em; font-weight: 600;">1:1 prep pages eliminate 'what should we talk about today'.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">3</div><div style="font-size: 0.85em; font-weight: 600;">Drill from team signal → individual customer in 3 clicks.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">4</div><div style="font-size: 0.85em; font-weight: 600;">Customer detail pages are deep-linkable — paste them in Slack.</div></div>
+      <div class="fragment fade-up" style="display: flex; align-items: center; gap: 18px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px;"><div class="num-circle" style="width: 44px; height: 44px; font-size: 0.85em;">5</div><div style="font-size: 0.85em; font-weight: 600;">AI-enrich the talking points if you want them warmer.</div></div>
+    </div>
+    <div class="slide-footer"><span></span><span>Zoca · Manager's Guide · 2026</span><span>27 / 28</span></div>
+  </div>
+  <aside class="notes">Five anchors. If you remember these, the rest will come from doing the work.</aside>
+</section>
+
+<!-- SLIDE 28 -->
+<section data-transition="fade" data-background-color="#0b051d" data-confetti>
+  <div class="title-slide">
+    <div class="gradient-bg"></div>
+    <div class="particles"></div>
+    <div style="position: relative; z-index: 2;">
+      <div class="eyebrow">Thanks!</div>
+      <h1 class="shimmer char-reveal" data-chars="Questions?" style="margin: 0;">Questions?</h1>
+      <div style="font-size: 1em; font-weight: 400; margin-top: 20px; color: rgba(255,255,255,0.85); max-width: 720px;">Try the manager view for a week, then bring sticky points to the team retrospective.</div>
+      <div style="margin-top: 36px; display: flex; gap: 30px; flex-wrap: wrap;">
+        <div><div style="font-size: 0.55em; color: rgba(255,134,225,0.8); text-transform: uppercase; letter-spacing: 0.2em;">Built by</div><div style="font-size: 0.85em; color: white; font-family: 'JetBrains Mono', monospace;">Siranj &middot; <a href="mailto:siranjith.t@zoca.com" style="color: white; text-decoration: underline;">siranjith.t@zoca.com</a></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Open it up. Common questions: how to handle a Manager who's also covering an AM book, what data refresh cadence is, how to add a new AM.</aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.5/reveal.min.js"></script>
+<script>
+const PREFERS_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeParticles(c, n) {
+  if (!c || PREFERS_REDUCED) return;
+  for (let i = 0; i < (n || 36); i++) {
+    const s = document.createElement('span');
+    const sz = 4 + Math.random() * 8;
+    s.style.width = sz + 'px'; s.style.height = sz + 'px';
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.animationDuration = (10 + Math.random() * 14) + 's';
+    s.style.animationDelay = (Math.random() * 8) + 's';
+    s.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+    c.appendChild(s);
+  }
+}
+document.querySelectorAll('.particles').forEach(p => makeParticles(p));
+document.querySelectorAll('.char-reveal').forEach(el => {
+  const t = el.dataset.chars || el.textContent;
+  el.innerHTML = '';
+  [...t].forEach((c, i) => {
+    const s = document.createElement('span');
+    s.textContent = c === ' ' ? ' ' : c;
+    s.style.animationDelay = (i * 0.05) + 's';
+    el.appendChild(s);
+  });
+});
+const cg = document.getElementById('cursorGlow');
+if (cg && !PREFERS_REDUCED) {
+  let mx = window.innerWidth/2, my = window.innerHeight/2, cx = mx, cy = my;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  function loop() {
+    cx += (mx - cx) * 0.12; cy += (my - cy) * 0.12;
+    cg.style.transform = 'translate(' + cx + 'px,' + cy + 'px) translate(-50%,-50%)';
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+function countUp(el) {
+  if (PREFERS_REDUCED) { el.textContent = el.dataset.target; return; }
+  const tgt = parseFloat(el.dataset.target);
+  const dur = 1000, start = performance.now();
+  function tick(t) {
+    const p = Math.min(1, (t - start) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    const v = tgt * e;
+    el.textContent = (tgt < 100 && tgt % 1 !== 0) ? v.toFixed(1) : Math.round(v).toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = (tgt < 100 && tgt % 1 !== 0) ? tgt.toFixed(1) : Math.round(tgt).toLocaleString();
+  }
+  requestAnimationFrame(tick);
+}
+function addTilt() {
+  document.querySelectorAll('.card').forEach(card => {
+    if (card.dataset.tiltBound) return;
+    card.dataset.tiltBound = '1';
+    card.addEventListener('mousemove', e => {
+      if (PREFERS_REDUCED) return;
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = 'perspective(1000px) rotateX(' + (-y * 6) + 'deg) rotateY(' + (x * 6) + 'deg) translateY(-4px)';
+    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
+}
+addTilt();
+function addMagnetic() {
+  document.querySelectorAll('.magnetic').forEach(btn => {
+    if (btn.dataset.magBound) return;
+    btn.dataset.magBound = '1';
+    btn.addEventListener('mousemove', e => {
+      if (PREFERS_REDUCED) return;
+      const r = btn.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 100) btn.style.transform = 'translate(' + (dx*0.15) + 'px,' + (dy*0.15) + 'px)';
+    });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+  });
+}
+addMagnetic();
+function fireConfetti(c) {
+  if (PREFERS_REDUCED || !c) return;
+  if (c.dataset.confettiFired) return;
+  c.dataset.confettiFired = '1';
+  const cols = ['#ff56bb', '#146ef5', '#10b981', '#f59e0b', '#ff86e1'];
+  const w = document.createElement('div'); w.className = 'confetti-wrap'; c.appendChild(w);
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div'); p.className = 'confetti-piece';
+    p.style.background = cols[i % cols.length];
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+    w.appendChild(p);
+    const dur = 1800 + Math.random() * 1400;
+    const dx = (Math.random() * 400 - 200) + 'px';
+    p.animate([
+      { opacity: 1, transform: 'translate(0,0) rotate(0deg)' },
+      { opacity: 1, transform: 'translate(' + dx + ', 900px) rotate(' + (Math.random()*720) + 'deg)' }
+    ], { duration: dur, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' });
+  }
+  setTimeout(() => w.remove(), 3500);
+}
+Reveal.initialize({
+  hash: true, controls: true, progress: true,
+  slideNumber: 'c/t', transition: 'fade', transitionSpeed: 'default',
+  backgroundTransition: 'fade', autoAnimate: true,
+  autoAnimateEasing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  autoAnimateDuration: 0.8, fragments: true,
+  width: 1400, height: 800, margin: 0.04,
+}).then(() => {
+  Reveal.on('slidechanged', e => {
+    e.currentSlide.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+    if (e.currentSlide.dataset.confetti !== undefined) fireConfetti(e.currentSlide);
+    addTilt(); addMagnetic();
+  });
+  Reveal.on('fragmentshown', e => {
+    e.fragment.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+  });
+  const cur = Reveal.getCurrentSlide();
+  cur.querySelectorAll('[data-count-up]').forEach(el => { el.textContent = '0'; countUp(el); });
+  if (cur.dataset.confetti !== undefined) fireConfetti(cur);
+});
+</script>
+</body>
+</html>

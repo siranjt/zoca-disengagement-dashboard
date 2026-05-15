@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoca Dashboard · Knowledge Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --midnight: #0b051d;
+    --midnight-2: #150b2f;
+    --pink: #ff56bb;
+    --blue: #146ef5;
+    --text-muted: rgba(255,255,255,0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--midnight);
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(255,86,187,0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(20,110,245,0.15) 0%, transparent 50%);
+    z-index: 0;
+    animation: gradientShift 20s ease-in-out infinite;
+  }
+  @keyframes gradientShift {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.15) rotate(8deg); }
+  }
+  .container {
+    max-width: 980px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--pink);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 800;
+    margin: 0 0 18px;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #fff 0%, #ff86d9 60%, #5b9eff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subhead {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin-bottom: 48px;
+    line-height: 1.5;
+  }
+  .deck-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 24px;
+  }
+  .deck-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: block;
+  }
+  .deck-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,86,187,0.0) 0%, rgba(20,110,245,0.0) 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 0;
+  }
+  .deck-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(255,134,225,0.4);
+    box-shadow: 0 30px 60px rgba(255,86,187,0.15), 0 0 0 1px rgba(255,134,225,0.2);
+  }
+  .deck-card:hover::before {
+    opacity: 1;
+    background: linear-gradient(135deg, rgba(255,86,187,0.08) 0%, rgba(20,110,245,0.06) 100%);
+  }
+  .deck-card > * { position: relative; z-index: 1; }
+  .deck-eyebrow {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--pink);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .deck-card h2 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: white;
+  }
+  .deck-card p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 20px;
+  }
+  .deck-meta {
+    display: flex;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+  }
+  .deck-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .deck-meta span::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pink);
+  }
+  .deck-cta {
+    margin-top: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 0.9rem;
+  }
+  .deck-cta::after {
+    content: '→';
+    transition: transform 0.25s ease;
+  }
+  .deck-card:hover .deck-cta::after {
+    transform: translateX(6px);
+  }
+  .footer {
+    margin-top: 56px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.4);
+  }
+  .footer a { color: rgba(255,134,225,0.8); text-decoration: none; }
+  .footer a:hover { color: var(--pink); }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="eyebrow">Knowledge transfer</div>
+    <h1>Zoca Customer Health Dashboard</h1>
+    <p class="subhead">Pick your deck. Use arrow keys / space to navigate, <b>S</b> for speaker notes, <b>F</b> for fullscreen, <b>O</b> for slide overview.</p>
+
+    <div class="deck-grid">
+      <a class="deck-card" href="./am_kt.html">
+        <div class="deck-eyebrow">For Account Managers</div>
+        <h2>AM KT Deck</h2>
+        <p>Daily flow, RED/YELLOW/GREEN tiers, coaching loops, customer detail page, keyboard shortcuts, and the 7-day playbook.</p>
+        <div class="deck-meta"><span>28 slides</span><span>~45 min</span></div>
+        <div class="deck-cta">Open AM deck</div>
+      </a>
+
+      <a class="deck-card" href="./manager_kt.html">
+        <div class="deck-eyebrow">For Managers</div>
+        <h2>Manager KT Deck</h2>
+        <p>Pod-level view, AM picker, 1:1 prep mode, coaching dashboards, escalation patterns, weekly review cadence.</p>
+        <div class="deck-meta"><span>28 slides</span><span>~45 min</span></div>
+        <div class="deck-cta">Open Manager deck</div>
+      </a>
+    </div>
+
+    <div class="footer">
+      Built by Siranj · <a href="mailto:siranjith.t@zoca.com">siranjith.t@zoca.com</a>
+    </div>
+  </div>
+</body>
+</html>
