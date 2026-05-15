@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readStoplightMovement } from "@/lib/postgres";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,8 +9,14 @@ export const dynamic = "force-dynamic";
  * GET /api/v2/snapshot/movement?days=7
  *   → stoplight movement between latest snapshot and N days ago.
  *     Buckets: flippedToRed, recoveries, degraded.
+ *
+ * Phase 33.B — admin + manager only (cross-AM rollup).
  */
 export async function GET(req: NextRequest) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const days = Math.max(1, Math.min(60, Number(url.searchParams.get("days") || 7)));
   try {

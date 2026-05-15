@@ -50,12 +50,15 @@ export default function V2Dashboard() {
 
 function V2DashboardInner() {
   const { showToast } = useToast();
-  // Phase 33.A — role-aware AM scoping. Admins keep the existing picker +
-  // localStorage flow; AM-role users are pinned to their own am_name.
+  // Phase 33.A + 33.B — role-aware AM scoping. Admins + managers keep the
+  // existing picker + localStorage flow (both are cross-AM roles); AM-role
+  // users are pinned to their own am_name.
   const { data: session } = useSession();
   const role = session?.user?.role ?? null;
   const sessionAmName = session?.user?.am_name ?? null;
-  const isAdmin = role === "admin";
+  const isAm = role === "am";
+  // canSwitchAm is true for admin AND manager (the two cross-AM roles).
+  const canSwitchAm = !isAm && role !== null;
   const [snapshot, setSnapshot] = useState<SnapshotState>({ status: "loading" });
   // Initialize to a stable default. Real value (URL > localStorage > default)
   // gets applied in the useEffect below — avoids "0 customers" flicker.
@@ -71,17 +74,18 @@ function V2DashboardInner() {
   const [mounted, setMounted] = useState<boolean>(false);
 
   // Hydration-safe: only read browser state after mount.
-  // Phase 33.A — for non-admin users, the AM is locked to session.user.am_name.
-  // For admins, the existing URL > localStorage > default fallback chain stays.
+  // Phase 33.B — for AMs the AM is locked to session.user.am_name. For admins
+  // AND managers (canSwitchAm) the existing URL > localStorage > default
+  // fallback chain stays.
   useEffect(() => {
     setMounted(true);
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    if (role === "am") {
+    if (isAm) {
       // AM-role: ignore URL + localStorage. Their book is whatever the
       // session says (which may be null if BaseSheet mapping missed them).
       if (sessionAmName) setSelectedAm(sessionAmName);
-    } else if (isAdmin) {
+    } else if (canSwitchAm) {
       const fromQuery = url.searchParams.get("am");
       const fromStorage = window.localStorage.getItem(STORAGE_AM_KEY);
       const defaultAm =
@@ -93,7 +97,7 @@ function V2DashboardInner() {
     const podFromQuery = url.searchParams.get("pod");
     if (podFromQuery) setPodFilter(podFromQuery);
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
-  }, [role, isAdmin, sessionAmName]);
+  }, [isAm, canSwitchAm, sessionAmName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,10 +127,10 @@ function V2DashboardInner() {
 
   const handleSelectAm = useCallback(
     (am: string) => {
-      // Phase 33.A — only admins can switch AMs. The picker is hidden for
-      // AM-role users; this guard is a belt-and-braces no-op in case
+      // Phase 33.B — admins AND managers can switch AMs. The picker is hidden
+      // for AM-role users; this guard is a belt-and-braces no-op in case
       // anything calls it programmatically.
-      if (!isAdmin) return;
+      if (!canSwitchAm) return;
       setSelectedAm(am);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(STORAGE_AM_KEY, am);
@@ -135,7 +139,7 @@ function V2DashboardInner() {
         window.history.replaceState({}, "", url.toString());
       }
     },
-    [isAdmin],
+    [canSwitchAm],
   );
 
   // Phase 22.B.1 — keep ?signal= in URL in sync with the signal state. We
@@ -448,10 +452,10 @@ function V2DashboardInner() {
 
   const ready = snapshot.status === "ready" ? snapshot.snapshot : null;
 
-  // Phase 33.A — AM-role user with no BaseSheet mapping = empty state.
-  // Admins (and AMs whose Google email resolved to an AM name) skip this branch.
-  const showUnmappedAmState =
-    role === "am" && !sessionAmName;
+  // Phase 33.A + 33.B — AM-role user with no BaseSheet mapping = empty state.
+  // Admins + managers (and AMs whose Google email resolved to an AM name)
+  // skip this branch.
+  const showUnmappedAmState = isAm && !sessionAmName;
 
   // ---------------------------------------------------------------------------
   // KPI tiles — RED count + MRR-at-risk computed CONSISTENTLY from this AM's

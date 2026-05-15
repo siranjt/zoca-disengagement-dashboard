@@ -5,6 +5,7 @@ import {
   writeOneOnOne,
   type OneOnOneActionItem,
 } from "@/lib/one-on-one";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +17,14 @@ type RouteCtx = { params: { am: string } };
  * GET /api/v2/manager/1on1/[am]
  *
  * Returns the full prep payload for the manager 1:1 view.
+ *
+ * Phase 33.B — admin + manager only.
  */
 export async function GET(_req: NextRequest, ctx: RouteCtx) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const amName = decodeURIComponent(ctx.params.am || "");
   if (!amName) {
     return NextResponse.json(
@@ -56,8 +63,14 @@ export async function GET(_req: NextRequest, ctx: RouteCtx) {
  * }
  *
  * Persists the 1:1 log row with a metrics_snapshot of the AM's current view.
+ *
+ * Phase 33.B — admin + manager only.
  */
 export async function POST(req: NextRequest, ctx: RouteCtx) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const amName = decodeURIComponent(ctx.params.am || "");
   if (!amName) {
     return NextResponse.json(

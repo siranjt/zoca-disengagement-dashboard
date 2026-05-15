@@ -8,8 +8,14 @@ import { resolveAmNameForEmail } from "./auth-mapping";
 // JWT cookie; the only server-side state is the in-memory BaseSheet cache
 // in lib/auth-mapping.ts.
 //
-// Domain restriction: only @zoca.ai and @zoca.com emails can sign in.
-// Anything else fails the signIn callback and the user is bounced to
+// Domain restriction (first-line filter): only @zoca.ai and @zoca.com emails
+// can sign in. Anything else fails the signIn callback immediately.
+//
+// Phase 33.B — strict allowlist mode (three roles): admin / manager / am.
+// In addition to the domain check, the email MUST appear in one of the three
+// allowlists in lib/config.ts (ADMIN_EMAILS, MANAGER_EMAILS, AM_EMAILS).
+// `getRoleForEmail(email)` returns null for unlisted emails, which is the
+// rejection signal — the signIn callback bounces those users to
 // /auth/signin?error=AccessDenied.
 //
 // Phase 33.A.2 — authOptions moved here (from app/api/auth/[...nextauth]/route.ts)
@@ -51,7 +57,19 @@ export const authOptions: NextAuthOptions = {
         }
         const domain = email.split("@")[1] || "";
         if (!ALLOWED_DOMAINS.includes(domain)) {
-          console.warn(`[auth] signIn rejected: domain=${domain} not in ${ALLOWED_DOMAINS.join(",")}`);
+          console.warn(
+            `[auth] signIn rejected: domain=${domain} not in ${ALLOWED_DOMAINS.join(",")}`,
+          );
+          return false;
+        }
+        // Phase 33.B — strict allowlist: email must resolve to one of the
+        // three roles. Unlisted emails are rejected here even if the domain
+        // check passed.
+        const role = getRoleForEmail(email);
+        if (!role) {
+          console.warn(
+            `[auth] signIn rejected: email=${email} is not in any allowlist (admin/manager/am)`,
+          );
           return false;
         }
         return true;
@@ -67,9 +85,24 @@ export const authOptions: NextAuthOptions = {
         // calls just refresh the token — keep what's already there.
         if (user) {
           const email = (user.email || "").toLowerCase();
+          const role = getRoleForEmail(email);
+          if (!role) {
+            // Defensive: signIn callback should have rejected, but if we ended
+            // up here without a role, treat the token as invalid (return as-is
+            // and let route-level guards 401/403 the request).
+            console.warn(
+              `[auth] jwt callback: email=${email} resolved to null role; token left unenriched`,
+            );
+            return token;
+          }
           token.email = email;
-          token.role = getRoleForEmail(email);
-          token.am_name = await resolveAmNameForEmail(email);
+          token.role = role;
+          // Admins + managers don't get locked to a book, so am_name is null
+          // for them. Only role="am" carries an am_name (which itself may be
+          // null if BaseSheet doesn't map them — the dashboard shows the
+          // "unmapped" empty state for that case).
+          token.am_name =
+            role === "am" ? await resolveAmNameForEmail(email) : null;
         }
         return token;
       } catch (e) {
@@ -82,7 +115,8 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       try {
         if (session.user) {
-          session.user.role = (token.role as "admin" | "am") || "am";
+          session.user.role =
+            (token.role as "admin" | "manager" | "am") || "am";
           session.user.am_name = (token.am_name as string | null) ?? null;
         }
         return session;

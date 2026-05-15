@@ -4,6 +4,7 @@ import {
   type OneOnOnePrepData,
   type TalkingPoint,
 } from "@/lib/one-on-one";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,8 +52,14 @@ function coerceRules(raw: unknown): TalkingPoint[] {
  * Returns: { ok, points: TalkingPoint[] }
  *
  * Soft-fails when ANTHROPIC_API_KEY is unset — returns rules unchanged.
+ *
+ * Phase 33.B — admin + manager only.
  */
 export async function POST(req: NextRequest, ctx: RouteCtx) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const amName = decodeURIComponent(ctx.params.am || "");
   if (!amName) {
     return NextResponse.json({ ok: false, error: "Missing AM name" }, { status: 400 });

@@ -1,13 +1,20 @@
 "use client";
 
-// Phase 33.A — Header user menu (avatar dropdown).
+// Phase 33.A → 33.B — Header user menu (avatar dropdown) with three role
+// badge variants.
 //
 // Renders the signed-in user's Google profile photo, name, email, and role
 // badge. Clicking the avatar drops a small menu with "Sign out". Uses the
 // same outside-click + Escape pattern as AmPickerPill.
+//
+// Phase 33.B role-badge variants (literal uppercase labels):
+//   • admin    → ADMIN   — pink badge   (bg-zoca-pink-cta/18, text-zoca-pink-cta)
+//   • manager  → MANAGER — blue badge   (bg-blue-500/18, text-blue-700) [NEW]
+//   • am       → AM      — neutral      (bg-zoca-bg-tint, text-zoca-text-2)
 
 import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
+import type { UserRole } from "@/lib/config";
 
 function initialsFor(name: string | null | undefined): string {
   if (!name) return "ZU";
@@ -18,6 +25,35 @@ function initialsFor(name: string | null | undefined): string {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+function badgeForRole(role: UserRole | null | undefined): {
+  label: string;
+  bg: string;
+  fg: string;
+} {
+  if (role === "admin") {
+    // Pink badge — Zoca pink CTA at 18% bg
+    return {
+      label: "ADMIN",
+      bg: "rgba(255, 79, 168, 0.18)",
+      fg: "#ff4fa8",
+    };
+  }
+  if (role === "manager") {
+    // Blue badge — new for Phase 33.B
+    return {
+      label: "MANAGER",
+      bg: "rgba(59, 130, 246, 0.18)",
+      fg: "#1d4ed8",
+    };
+  }
+  // role === "am" or unknown
+  return {
+    label: "AM",
+    bg: "var(--zoca-bg-tint, rgba(11, 5, 29, 0.06))",
+    fg: "var(--zoca-text-2, #4b5563)",
+  };
 }
 
 export function V2UserMenu() {
@@ -61,11 +97,7 @@ export function V2UserMenu() {
 
   const { name, email, image, role, am_name } = session.user;
   const displayName = name || email || "User";
-  const roleLabel = role === "admin" ? "Admin" : "AM";
-  const roleColor =
-    role === "admin"
-      ? { bg: "rgba(120, 104, 244, 0.12)", fg: "#5b4dd1" }
-      : { bg: "rgba(16, 185, 129, 0.12)", fg: "#047857" };
+  const badge = badgeForRole(role);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -131,16 +163,16 @@ export function V2UserMenu() {
         )}
         <span
           style={{
-            fontSize: "11px",
+            fontSize: "10.5px",
             fontWeight: 600,
-            color: roleColor.fg,
-            background: roleColor.bg,
+            color: badge.fg,
+            background: badge.bg,
             padding: "2px 7px",
             borderRadius: "999px",
-            letterSpacing: "0.02em",
+            letterSpacing: "0.04em",
           }}
         >
-          {roleLabel}
+          {badge.label}
         </span>
         <span style={{ fontSize: "10px", color: "var(--zoca-text-3)" }}>▾</span>
       </button>
@@ -203,13 +235,14 @@ export function V2UserMenu() {
                 style={{
                   fontSize: "10.5px",
                   fontWeight: 600,
-                  color: roleColor.fg,
-                  background: roleColor.bg,
+                  color: badge.fg,
+                  background: badge.bg,
                   padding: "2px 8px",
                   borderRadius: "999px",
+                  letterSpacing: "0.04em",
                 }}
               >
-                {roleLabel}
+                {badge.label}
               </span>
               {am_name && (
                 <span

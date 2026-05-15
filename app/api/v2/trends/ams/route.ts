@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readMultipleAmBookTrends } from "@/lib/postgres";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,8 +8,14 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/v2/trends/ams?days=14&ams=Sudha+Goutami,Apurvaa+Biswas
  *   → bundled per-AM book trend in a single SQL pass.
+ *
+ * Phase 33.B — admin + manager only (cross-AM rollup).
  */
 export async function GET(req: NextRequest) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const days = Math.max(7, Math.min(90, Number(url.searchParams.get("days") || 14)));
   const amsParam = url.searchParams.get("ams") || "";

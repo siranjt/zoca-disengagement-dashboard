@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLatestSnapshotV2, readSnapshotByDate, readPendingFollowUps } from "@/lib/postgres";
 import type { ScoredCustomerV2 } from "@/lib/types";
+import { getApiUser, requireAmScope } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,12 +11,18 @@ export const dynamic = "force-dynamic";
  *   → AM weekly briefing data: top RED to call, customers degraded since
  *     last week, customers improving since last week, scheduled follow-ups
  *     for the next 7 days.
+ *
+ * Phase 33.B — admin + manager bypass; AMs must request their own am_name.
  */
 export async function GET(
   _req: NextRequest,
   ctx: { params: { amName: string } },
 ) {
+  const user = await getApiUser();
   const am = decodeURIComponent(ctx.params.amName);
+  const denied = requireAmScope(user, am);
+  if (denied) return denied;
+
   try {
     const [latest, followUps] = await Promise.all([
       readLatestSnapshotV2(),

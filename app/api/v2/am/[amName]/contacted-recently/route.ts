@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { entitiesContactedRecently } from "@/lib/postgres";
+import { getApiUser, requireAmScope } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,14 +10,20 @@ export const dynamic = "force-dynamic";
  *   → list of entity_ids the AM has logged a 'contacted_*' action against
  *     in the last N days. Powers the dimmed-card / 'already contacted'
  *     affordance on V2AMTriage so the AM doesn't double-call.
+ *
+ * Phase 33.B — admin + manager bypass; AMs must request their own am_name.
  */
 export async function GET(
   req: NextRequest,
   ctx: { params: { amName: string } },
 ) {
+  const user = await getApiUser();
+  const am = decodeURIComponent(ctx.params.amName);
+  const denied = requireAmScope(user, am);
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const days = Math.max(1, Math.min(30, Number(url.searchParams.get("days") || 7)));
-  const am = decodeURIComponent(ctx.params.amName);
   try {
     const set = await entitiesContactedRecently(am, days);
     return NextResponse.json(

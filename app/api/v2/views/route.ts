@@ -1,19 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listViews, createView } from "@/lib/saved-views";
+import { getApiUser, requireAmScope, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 15;
 
 /**
  * GET /api/v2/views?am=<am_name>
  *   → { ok: true, views: SavedView[] }
  *
  * Lists saved filter/search/sort views for an AM.
- * Inherits basic-auth from middleware.
+ *
+ * Phase 33.B — any signed-in role. AMs scoped to their own am_name; admin
+ * + manager may pass any am_name.
  */
 export async function GET(req: NextRequest) {
-  const am = req.nextUrl.searchParams.get("am");
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let am = req.nextUrl.searchParams.get("am");
+  if (user && user.role === "am") {
+    if (!user.am_name) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Your account isn't mapped to an AM in BaseSheet yet — contact your manager",
+        },
+        { status: 403 },
+      );
+    }
+    if (am && am !== user.am_name) {
+      return NextResponse.json(
+        { ok: false, error: "Forbidden: this AM is not in your scope" },
+        { status: 403 },
+      );
+    }
+    am = user.am_name;
+  }
+
   if (!am) {
     return NextResponse.json(
       { ok: false, error: "Missing 'am' query param" },
@@ -29,6 +56,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
+type CreateBody = {
+  am?: string;
+  name?: string;
+  filter_config?: Record<string, unknown>;
+};
+
 /**
  * POST /api/v2/views
  *   body: { am: string; name: string; filter_config: object }
@@ -36,17 +69,18 @@ export async function GET(req: NextRequest) {
  *   → 409 { ok: false, error } if (am, name) already exists.
  *
  * Creates a new saved view. Names are unique per AM.
+ *
+ * Phase 33.B — AMs scoped to their own am_name; admin + manager may create
+ * for any AM (used by managers preparing canned views).
  */
 export async function POST(req: NextRequest) {
-  let body:
-    | {
-        am?: string;
-        name?: string;
-        filter_config?: Record<string, unknown>;
-      }
-    | null = null;
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let body: CreateBody | null = null;
   try {
-    body = await req.json();
+    body = (await req.json()) as CreateBody;
   } catch {
     return NextResponse.json(
       { ok: false, error: "Invalid JSON body" },
@@ -72,6 +106,10 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+
+  const scopeDenied = requireAmScope(user, am);
+  if (scopeDenied) return scopeDenied;
+
   try {
     const result = await createView(am, name.trim(), filter_config);
     if (result.ok) {

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeAmAction } from "@/lib/postgres";
 import { POD_MAP } from "@/lib/config";
+import { getApiUser, requireAmScope, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type EscalateBody = {
+  am_name?: string;
+  entity_id?: string;
+  note?: string;
+  composite_at_action?: number;
+  escalated_to?: string;
+};
 
 /**
  * POST /api/v2/actions/escalate
@@ -14,11 +23,18 @@ export const dynamic = "force-dynamic";
  * isn't the escalating AM); callers can override via `escalated_to`.
  *
  * Powers the 'Escalate to pod lead' button on V2CustomerCard.
+ *
+ * Phase 33.B — admin + manager bypass; AMs may only escalate from their own
+ * am_name. Scope check uses body.am_name.
  */
 export async function POST(req: NextRequest) {
-  let body: any;
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let body: EscalateBody | null = null;
   try {
-    body = await req.json();
+    body = (await req.json()) as EscalateBody;
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
@@ -29,6 +45,11 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Phase 33.B — AM-scope enforcement using body.am_name.
+  const scopeDenied = requireAmScope(user, am_name);
+  if (scopeDenied) return scopeDenied;
+
   // Best-effort pod-lead derivation: first other AM in the same pod
   let target = (escalated_to as string) || "";
   if (!target) {

@@ -5,6 +5,7 @@ import { ZocaLogo } from "./ZocaLogo";
 import { AmPickerPill } from "./AmPickerPill";
 import { RefreshButton } from "./RefreshButton";
 import { V2UserMenu } from "./V2UserMenu";
+import { isManagerOrAdmin } from "@/lib/config";
 import type { V2View } from "./V2Dashboard";
 
 type AmProps = {
@@ -43,26 +44,30 @@ function relativeAge(generatedAt: string | null | undefined): string {
 }
 
 /**
- * Phase 17.B.1 + 17.C + 17.D — Consolidated top nav.
+ * Phase 17.B.1 + 17.C + 17.D + 33.A.6 + 33.B — Consolidated top nav.
  *
  * SINGLE sticky bar holding the entire global chrome.
  *   mode="am":
  *     left:  ZOCA logo + "| Customer Health" + AM picker pill
- *     right: view tabs (My customers / Pod view / Leadership)
- *            + Manager link + Live status pill
+ *            (picker visible for admin OR manager — Phase 33.B)
+ *     right: peer-tab toggle (AM's view / Manager's view)
+ *            + Live status pill + user menu
  *   mode="manager" (Phase 17.D):
  *     left:  ZOCA logo + "| Customer Health · Manager"
- *     right: "← AM view" link + Refresh button + Live status pill
- *            (no AM picker, no view tabs — this is rollup-level)
+ *     right: peer-tab toggle + Refresh button + Live status pill
+ *
+ * Phase 33.B — the AM picker and the "Manager's view" tab were previously
+ * admin-only. Now they're visible to BOTH admin and manager, since manager
+ * is also a cross-AM role. AMs (role="am") still see neither.
  */
 export function V2Header(props: Props) {
   const { generatedAt, mode } = props;
   const isManager = mode === "manager";
   const { data: session } = useSession();
-  // Phase 33.A — only admin users see the AM picker. AM-role users are
-  // locked to their own book (V2Dashboard handles the data filter; here we
-  // just hide the chrome).
-  const isAdmin = session?.user?.role === "admin";
+  // Phase 33.B — admin OR manager users see the AM picker + Manager's view
+  // tab. AM-role users are locked to their own book (V2Dashboard handles the
+  // data filter; here we just hide the chrome).
+  const canSwitchAm = isManagerOrAdmin(session?.user?.role);
   const [compact, setCompact] = useState(false);
 
   useEffect(() => {
@@ -100,7 +105,7 @@ export function V2Header(props: Props) {
           </span>
         </a>
 
-        {!isManager && isAdmin && (
+        {!isManager && canSwitchAm && (
           <AmPickerPill
             selectedAm={props.selectedAm}
             allAms={props.allAms}
@@ -111,11 +116,11 @@ export function V2Header(props: Props) {
 
       {/* Right side — view tabs / manager link / live status */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Phase 33.A.6 — naming simplification restored:
-            • removed Pod view + Leadership tabs (re-introduced by Phase 33.A
-              agent rebuilding V2Header from the pre-simplification snapshot)
+        {/* Phase 33.A.6 + 33.B — naming simplification:
             • two peer tabs: "AM's view" (/v2) + "Manager's view" (/v2/manager)
-            • Manager's view tab only visible to admins (AMs are locked to /v2)
+            • Manager's view tab visible to admin OR manager
+              (Phase 33.B — previously admin-only; now both cross-AM roles)
+            • AMs (role="am") see only the "AM's view" tab
         */}
         <div
           className="inline-flex items-center gap-1 p-1 rounded-lg"
@@ -125,7 +130,7 @@ export function V2Header(props: Props) {
           }}
         >
           <NavTab href="/v2" label="AM's view" active={!isManager} />
-          {isAdmin && (
+          {canSwitchAm && (
             <NavTab href="/v2/manager" label="Manager's view" active={isManager} />
           )}
         </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readLatestSnapshotV2 } from "@/lib/postgres";
 import { readLastOneOnOneDatesByAm, type OneOnOneAmSummary } from "@/lib/one-on-one";
 import { ACTIVE_AMS, POD_MAP } from "@/lib/config";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +15,14 @@ export const maxDuration = 60;
  *   am_name, pod, last_one_on_one_date, red_count, mrr_at_risk_cents
  *
  * Read-only over the latest snapshot + one_on_one_log.
+ *
+ * Phase 33.B — admin + manager only (1:1 prep is a manager feature).
  */
 export async function GET() {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   try {
     const snap = await readLatestSnapshotV2();
     const lastDates = await readLastOneOnOneDatesByAm();

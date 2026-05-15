@@ -235,33 +235,85 @@ export const EXCLUDED_ENTITIES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Phase 33.A — Role-based access (Google OAuth via NextAuth)
+// Phase 33.B — Three-role access split with strict allowlist.
 //
-// `ADMIN_EMAILS` is the hardcoded admin allowlist. Admin users get the AM
-// picker and can navigate to /v2/manager + /admin/*. Anyone else who passes
-// the domain check (zoca.ai / zoca.com) gets the "am" role and is locked
-// to their own book.
+// Three roles:
+//   • admin   — superuser. Inherits ALL manager + AM permissions plus
+//               admin-exclusive (/admin/usage, role management, cron triggers,
+//               integration health).
+//   • manager — full cross-AM access. AM picker visible, manager view, 1:1
+//               prep, all customer detail pages, all action mutations.
+//   • am      — locked to their own book. Can ONLY view/mutate their own
+//               customers.
 //
-// To add an admin: edit this list. No DB migration required.
+// Anyone signing in with a Zoca email NOT in any of these three lists is
+// rejected at the signIn callback (strict allowlist mode).
 // ---------------------------------------------------------------------------
+
+// Admin — hardcoded, do NOT add to MANAGER_EMAILS or AM_EMAILS
 export const ADMIN_EMAILS: string[] = [
   "success@zoca.com",
   "siranjith.t@zoca.com",
 ];
 
-export type UserRole = "admin" | "am";
+// Manager — cross-AM access, all manager features, no admin-exclusive.
+// Phase 33.B.1: Siddhi Shetty promoted from AM to Manager; Kripali Suri,
+// Saibal Paul, and Vaibhav added as Managers (previously not on the list).
+export const MANAGER_EMAILS: string[] = [
+  "chetan.m@zoca.com",
+  "rinitha.a@zoca.com",
+  "robin@zoca.ai",
+  "ashish@zoca.ai",
+  "abhishek.j@zoca.com",
+  "siddhi.s@zoca.com",
+  "kripali@zoca.ai",
+  "saibal.p@zoca.com",
+  "vaibhav.v@zoca.com",
+];
+
+// AM — locked to their own book only. Phase 33.B.1: Siddhi removed (promoted
+// to Manager). Net: 12 AMs.
+export const AM_EMAILS: string[] = [
+  "anu.s@zoca.com",
+  "apurvaa.b@zoca.com",
+  "atharv.y@zoca.com",
+  "bikash.m@zoca.com",
+  "hubern.c@zoca.com",
+  "kanak.s@zoca.com",
+  "nikita.s@zoca.com",
+  "sakshi.m@zoca.com",
+  "santhosh.v@zoca.com",
+  "shruti.s@zoca.com",
+  "sudha.g@zoca.com",
+  "tanya.s@zoca.com",
+];
+
+export type UserRole = "admin" | "manager" | "am";
 
 /**
- * Resolve an email to a role. Case-insensitive match against ADMIN_EMAILS.
- * Returns "admin" if the email is in the allowlist, "am" otherwise.
- * Callers are responsible for verifying the email's domain is allowed
- * (that check lives in the NextAuth signIn callback).
+ * Resolve an email to a role. Case-insensitive. Returns null if the email
+ * isn't in ANY of the three allowlists — those users are rejected at the
+ * NextAuth signIn callback (strict allowlist mode, Phase 33.B).
  */
-export function getRoleForEmail(email: string): UserRole {
-  const normalized = (email || "").trim().toLowerCase();
-  if (!normalized) return "am";
+export function getRoleForEmail(email: string): UserRole | null {
+  const e = (email || "").trim().toLowerCase();
+  if (!e) return null;
   for (const adminEmail of ADMIN_EMAILS) {
-    if (adminEmail.trim().toLowerCase() === normalized) return "admin";
+    if (adminEmail.toLowerCase() === e) return "admin";
   }
-  return "am";
+  for (const managerEmail of MANAGER_EMAILS) {
+    if (managerEmail.toLowerCase() === e) return "manager";
+  }
+  for (const amEmail of AM_EMAILS) {
+    if (amEmail.toLowerCase() === e) return "am";
+  }
+  return null;
+}
+
+/**
+ * Helper: is a role admin OR manager? (i.e., cross-AM access)
+ * Used by both middleware and component-level rendering.
+ */
+export function isManagerOrAdmin(role: UserRole | null | undefined): boolean {
+  return role === "admin" || role === "manager";
 }

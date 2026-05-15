@@ -1,19 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listPinned, togglePinned } from "@/lib/pinned-customers";
+import { getApiUser, requireAmScope, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 15;
 
 /**
  * GET /api/v2/pinned?am=<am_name>
  *   → { ok: true, pinned: PinnedCustomer[] }
  *
  * Returns all pinned customers for the given AM, most recent first.
- * Inherits basic-auth from middleware.
+ *
+ * Phase 33.B — admin + manager bypass; AMs forced to their own am_name.
  */
 export async function GET(req: NextRequest) {
-  const am = req.nextUrl.searchParams.get("am");
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let am = req.nextUrl.searchParams.get("am");
+  if (user && user.role === "am") {
+    if (!user.am_name) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Your account isn't mapped to an AM in BaseSheet yet — contact your manager",
+        },
+        { status: 403 },
+      );
+    }
+    if (am && am !== user.am_name) {
+      return NextResponse.json(
+        { ok: false, error: "Forbidden: this AM is not in your scope" },
+        { status: 403 },
+      );
+    }
+    am = user.am_name;
+  }
+
   if (!am) {
     return NextResponse.json(
       { ok: false, error: "Missing 'am' query param" },
@@ -29,17 +55,30 @@ export async function GET(req: NextRequest) {
   }
 }
 
+type PinnedBody = {
+  am?: string;
+  entity_id?: string;
+  customer_id?: string;
+  bizname?: string;
+};
+
 /**
  * POST /api/v2/pinned
  *   body: { am: string; entity_id: string; customer_id?: string; bizname?: string }
  *   → { ok: true, pinned: boolean }
  *
  * Toggles the pin state for (am, entity_id). Returns the new state.
+ *
+ * Phase 33.B — admin + manager bypass; AMs scoped to their own am_name.
  */
 export async function POST(req: NextRequest) {
-  let body: { am?: string; entity_id?: string; customer_id?: string; bizname?: string } | null = null;
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
+  let body: PinnedBody | null = null;
   try {
-    body = await req.json();
+    body = (await req.json()) as PinnedBody;
   } catch {
     return NextResponse.json(
       { ok: false, error: "Invalid JSON body" },
@@ -53,6 +92,10 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+
+  const scopeDenied = requireAmScope(user, am);
+  if (scopeDenied) return scopeDenied;
+
   try {
     const result = await togglePinned(am, entity_id, {
       customer_id: customer_id ?? null,

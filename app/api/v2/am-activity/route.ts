@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAmOutcomeStats } from "@/lib/postgres";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Phase 15.2 — per-AM action + outcome rollup for the manager dashboard.
+ * Phase 33.B — admin + manager only (Manager view feature).
  *
  * Query: ?days=7 (default 7, max 90)
  * Returns: { ok, daysBack, generatedAt, rows: AmOutcomeStats[] }
@@ -14,6 +16,10 @@ export const dynamic = "force-dynamic";
  * not an error. The UI renders an empty-state in that case.
  */
 export async function GET(req: Request) {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const daysParam = Number(url.searchParams.get("days"));
   const daysBack = Number.isFinite(daysParam) && daysParam > 0 ? Math.min(daysParam, 90) : 7;

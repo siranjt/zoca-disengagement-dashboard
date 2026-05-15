@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { composeSnapshot } from "@/lib/refresh";
+import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,8 +14,7 @@ export const maxDuration = 300;
 /**
  * Manual refresh — invoked from the V2 dashboard "Refresh" button.
  *
- * Gated by the dashboard's HTTP Basic Auth middleware (covers `/api/v2/*`),
- * so the browser doesn't need to know CRON_SECRET.
+ * Phase 33.B — admin + manager only. AMs cannot trigger refresh.
  *
  * Compose-only: re-reads stage A/B/C/D state from pipeline_state and rebuilds
  * the dashboard_snapshots row. Stages themselves still run on the daily
@@ -22,6 +22,10 @@ export const maxDuration = 300;
  * before the next scheduled run.
  */
 export async function POST() {
+  const user = await getApiUser();
+  const denied = requireRole(user, "admin", "manager");
+  if (denied) return denied;
+
   const t0 = Date.now();
   try {
     const snap = await composeSnapshot();

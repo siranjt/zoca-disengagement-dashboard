@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readCustomerTrend, readCustomerActions, getSql } from "@/lib/postgres";
+import {
+  readCustomerTrend,
+  readCustomerActions,
+  getSql,
+  readLatestSnapshotV2,
+} from "@/lib/postgres";
 import { TIER_CUTS } from "@/lib/config";
 import type { AmActionRow } from "@/lib/types";
+import { getApiUser, requireAmScope, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +26,8 @@ export const dynamic = "force-dynamic";
  * the dashboard is a function of tier + flag_count + billing_score and lives
  * in scoring.ts; for a timeline view we want the simpler composite-derived
  * read so the bands and the line agree visually.
+ *
+ * Phase 33.B — admin + manager bypass; AMs scoped to customers in their book.
  */
 
 type StoplightT = "RED" | "YELLOW" | "GREEN";
@@ -155,6 +163,10 @@ export async function GET(
   req: NextRequest,
   ctx: { params: { entityId: string } },
 ) {
+  const user = await getApiUser();
+  const roleDenied = requireRole(user, "admin", "manager", "am");
+  if (roleDenied) return roleDenied;
+
   const entityId = ctx.params.entityId;
   const url = new URL(req.url);
   const rawDays = Number(url.searchParams.get("days") || 90);
@@ -164,6 +176,23 @@ export async function GET(
   );
 
   try {
+    const snap = await readLatestSnapshotV2();
+    if (!snap) {
+      return NextResponse.json(
+        { ok: false, error: "No snapshot available yet" },
+        { status: 503 },
+      );
+    }
+    const customer = snap.customers.find((c) => c.entity_id === entityId);
+    if (!customer) {
+      return NextResponse.json(
+        { ok: false, error: "Customer not found in latest snapshot" },
+        { status: 404 },
+      );
+    }
+    const scopeDenied = requireAmScope(user, customer.am_name);
+    if (scopeDenied) return scopeDenied;
+
     const [trendPoints, actionRows, snoozeRanges] = await Promise.all([
       readCustomerTrend(entityId, days),
       readCustomerActions(entityId, 500),
