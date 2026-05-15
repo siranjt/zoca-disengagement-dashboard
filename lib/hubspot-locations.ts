@@ -7,9 +7,9 @@
 //   2. getLocationRecordIdMap() — fast lookup; returns
 //      Map<entity_id, location_record_id> read from Postgres.
 //
-// Token: HUBSPOT_API_KEY or HUBSPOT_PRIVATE_APP_TOKEN env var (whichever is
-// already in Vercel — the existing hubspot-companies.ts integration uses
-// the same one).
+// Token: HUBSPOT_ACCESS_TOKEN env var (Phase 33.D.1 — confirmed against the
+// existing Vercel env var name). HUBSPOT_API_KEY + HUBSPOT_PRIVATE_APP_TOKEN
+// are also accepted as fallbacks in case the var gets renamed in the future.
 
 import { getSql } from "@/lib/postgres";
 import {
@@ -20,7 +20,10 @@ import {
 const BASE = "https://api.hubapi.com";
 
 function getToken(): string | null {
+  // Phase 33.D.1 — HUBSPOT_ACCESS_TOKEN is the canonical name in Vercel.
+  // The other two are kept as fallbacks for env-var renames or local dev.
   return (
+    process.env.HUBSPOT_ACCESS_TOKEN ||
     process.env.HUBSPOT_API_KEY ||
     process.env.HUBSPOT_PRIVATE_APP_TOKEN ||
     null
@@ -51,7 +54,7 @@ export async function fetchAllLocations(): Promise<HubspotLocationRecord[]> {
   const token = getToken();
   if (!token) {
     throw new Error(
-      "[hubspot-locations] HUBSPOT_API_KEY / HUBSPOT_PRIVATE_APP_TOKEN not set",
+      "[hubspot-locations] HUBSPOT_ACCESS_TOKEN / HUBSPOT_API_KEY / HUBSPOT_PRIVATE_APP_TOKEN not set",
     );
   }
 
