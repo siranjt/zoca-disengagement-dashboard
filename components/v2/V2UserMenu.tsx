@@ -1,16 +1,18 @@
 "use client";
 
-// Phase 33.A → 33.B — Header user menu (avatar dropdown) with three role
-// badge variants.
+// Phase 33.A → 33.B → 33.D — Header user menu (avatar dropdown).
 //
-// Renders the signed-in user's Google profile photo, name, email, and role
-// badge. Clicking the avatar drops a small menu with "Sign out". Uses the
-// same outside-click + Escape pattern as AmPickerPill.
-//
-// Phase 33.B role-badge variants (literal uppercase labels):
-//   • admin    → ADMIN   — pink badge   (bg-zoca-pink-cta/18, text-zoca-pink-cta)
-//   • manager  → MANAGER — blue badge   (bg-blue-500/18, text-blue-700) [NEW]
-//   • am       → AM      — neutral      (bg-zoca-bg-tint, text-zoca-text-2)
+// Phase 33.D fixes:
+//   1. Bumped z-index from 40 → 1000 so the popover sits above the
+//      Refresh/Live/AM-Manager-view tab strip (which had a higher stack).
+//   2. Dropped the duplicate role badge from the popover header. The avatar
+//      trigger already shows it — repeating it inside the menu was the
+//      "ADMIN appears twice" UI bug.
+//   3. Switched the Sign-out button to onMouseDown + signOut() so the click
+//      isn't swallowed by the outside-click handler (which also runs on
+//      mousedown), then explicitly stopPropagation() so the menu doesn't
+//      close before signOut() fires.
+//   4. AM-book pill kept (it's not a duplicate of any other chip).
 
 import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
@@ -33,7 +35,6 @@ function badgeForRole(role: UserRole | null | undefined): {
   fg: string;
 } {
   if (role === "admin") {
-    // Pink badge — Zoca pink CTA at 18% bg
     return {
       label: "ADMIN",
       bg: "rgba(255, 79, 168, 0.18)",
@@ -41,14 +42,12 @@ function badgeForRole(role: UserRole | null | undefined): {
     };
   }
   if (role === "manager") {
-    // Blue badge — new for Phase 33.B
     return {
       label: "MANAGER",
       bg: "rgba(59, 130, 246, 0.18)",
       fg: "#1d4ed8",
     };
   }
-  // role === "am" or unknown
   return {
     label: "AM",
     bg: "var(--zoca-bg-tint, rgba(11, 5, 29, 0.06))",
@@ -181,18 +180,23 @@ export function V2UserMenu() {
         <div
           role="menu"
           aria-label="User menu"
+          // Phase 33.D — z-index bumped from 40 → 1000 so the popover always
+          // sits above the sticky header / refresh strip / view-toggle pills.
           style={{
             position: "absolute",
             right: 0,
             top: "calc(100% + 8px)",
-            zIndex: 40,
+            zIndex: 1000,
             width: "260px",
             background: "#ffffff",
             border: "1px solid var(--zoca-border)",
             borderRadius: "12px",
             boxShadow: "0 12px 32px rgba(11,5,29,0.12)",
             overflow: "hidden",
+            pointerEvents: "auto",
           }}
+          // Stop bubble-up clicks from re-toggling the menu open state.
+          onClick={(e) => e.stopPropagation()}
         >
           <div
             style={{
@@ -223,28 +227,21 @@ export function V2UserMenu() {
             >
               {email || ""}
             </div>
-            <div
-              style={{
-                marginTop: "10px",
-                display: "flex",
-                gap: "6px",
-                flexWrap: "wrap",
-              }}
-            >
-              <span
+            {/*
+              Phase 33.D — the role badge ALREADY shows in the avatar trigger
+              above; removed from the popover header to fix the "ADMIN appears
+              twice" UI bug. The AM-book pill stays because it doesn't show
+              elsewhere.
+            */}
+            {am_name && (
+              <div
                 style={{
-                  fontSize: "10.5px",
-                  fontWeight: 600,
-                  color: badge.fg,
-                  background: badge.bg,
-                  padding: "2px 8px",
-                  borderRadius: "999px",
-                  letterSpacing: "0.04em",
+                  marginTop: "10px",
+                  display: "flex",
+                  gap: "6px",
+                  flexWrap: "wrap",
                 }}
               >
-                {badge.label}
-              </span>
-              {am_name && (
                 <span
                   style={{
                     fontSize: "10.5px",
@@ -258,14 +255,21 @@ export function V2UserMenu() {
                 >
                   {am_name}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
+          {/*
+            Phase 33.D — onMouseDown + stopPropagation so signOut() fires
+            BEFORE the outside-click mousedown handler runs. Previously the
+            outside-click handler could close the popover and prevent the
+            click from reaching the button, making sign-out feel "dead".
+          */}
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
+            onMouseDown={(e) => {
+              e.stopPropagation();
               void signOut({ callbackUrl: "/auth/signin" });
             }}
             style={{

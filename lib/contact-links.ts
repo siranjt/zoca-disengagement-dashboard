@@ -1,12 +1,20 @@
 /**
- * Phase 20 — One-click contact launchers.
+ * Phase 20 → 33.D — One-click contact launchers.
  *
  * Pure URL builders used by V2CustomerCard (and potentially other surfaces
  * later) to turn email / phone / HubSpot company references into clickable
  * `mailto:` / `tel:` / `https://app.hubspot.com/...` links.
  *
+ * Phase 33.D adds buildHubspotLocationUrl — points at the Zoca Locations
+ * custom object (objectTypeId 2-221793621) on the NA2 portal. The legacy
+ * buildHubspotCompanyUrl stays for backward compatibility; new code should
+ * prefer buildHubspotLocationUrl with the location_record_id resolved from
+ * hubspot_location_mapping.
+ *
  * No I/O, no state — these are pure functions of their inputs.
  */
+
+import { buildHubspotLocationUrl as _buildHubspotLocationUrl } from "@/lib/hubspot-config";
 
 /**
  * Build a mailto: URL pre-filled with a friendly subject + body using the
@@ -39,29 +47,24 @@ export function buildTelLink(phone: string): string {
 }
 
 /**
- * Build a HubSpot company-page URL for the given company id. Reads the portal
- * id from `NEXT_PUBLIC_HUBSPOT_PORTAL_ID` at build time; if unset, falls back
- * to a portal-agnostic URL that HubSpot will redirect into the right portal
- * once the user is signed in.
- *
- * TODO: set `NEXT_PUBLIC_HUBSPOT_PORTAL_ID` in `.env.local` / Vercel envs once
- *       Zoca's HubSpot portal id is known so links land on the company page
- *       directly without the auth-redirect bounce.
+ * @deprecated Phase 33.D — Use buildHubspotLocationUrl instead.
+ * Build a HubSpot company-page URL for the given company id. Kept for any
+ * legacy call sites that haven't been migrated to the Locations custom object.
  */
 export function buildHubspotCompanyUrl(companyId: string): string {
   const portal = process.env.NEXT_PUBLIC_HUBSPOT_PORTAL_ID || "";
   if (!portal) {
-    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-      // Dev-only warning so the missing env var is visible while developing.
-      // eslint-disable-next-line no-console
-      console.warn(
-        "[contact-links] NEXT_PUBLIC_HUBSPOT_PORTAL_ID is not set — HubSpot links will use the portal-agnostic fallback URL.",
-      );
-    }
     return `https://app.hubspot.com/contacts/?id=${companyId}`;
   }
   return `https://app.hubspot.com/contacts/${portal}/company/${companyId}`;
 }
+
+/**
+ * Phase 33.D — Build a HubSpot Locations record URL.
+ * Re-exports the function from lib/hubspot-config.ts so existing imports
+ * from contact-links.ts continue to work.
+ */
+export const buildHubspotLocationUrl = _buildHubspotLocationUrl;
 
 /**
  * Phase 28 — Internal app URL for the per-customer detail page.

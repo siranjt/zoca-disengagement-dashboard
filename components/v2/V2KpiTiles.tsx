@@ -1,5 +1,19 @@
 "use client";
 
+// Phase 33.D — KPI tiles with proper filter wiring.
+//
+// Previously: every tile rendered `<a href={tile.href || "#"}>` and the
+// "selected" prop was just a visual hint (no actual filter). Need to call /
+// Watch / Healthy all looked clickable but only Need-to-call had a pink
+// outline — Watch & Healthy did nothing on click.
+//
+// Phase 33.D:
+//   - `onClick` is now a first-class prop. If set, clicking the tile fires
+//     the handler instead of navigating. Existing `href` still works as a
+//     fallback for tiles that are just deep-links.
+//   - The `selected` pink-outline treatment is independent of which tile it
+//     decorates — wire it to your filter state and it'll Just Work.
+
 import { AnimatedNumber } from "./AnimatedNumber";
 import { useTilt } from "@/lib/hooks/useTilt";
 
@@ -9,11 +23,9 @@ type Tile = {
   subtitle: string;
   color: "midnight" | "pink" | "amber" | "green";
   href?: string;
-  selected?: boolean;
-  // Phase 24 — optional onClick for tiles that drive in-page state instead
-  // of (or in addition to) navigation. When supplied, the click is
-  // intercepted (e.preventDefault) and the handler runs.
+  /** Phase 33.D — fires on click. If set, prevents default <a> navigation. */
   onClick?: () => void;
+  selected?: boolean;
 };
 
 type Props = {
@@ -25,6 +37,34 @@ const COLORS: Record<Tile["color"], string> = {
   pink: "var(--zoca-pink)",
   amber: "#b45309",
   green: "#047857",
+};
+
+// Selected-state palette — kept per color so each tile glows in its own hue.
+const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; gradient: string; labelColor: string }> = {
+  midnight: {
+    border: "var(--zoca-text)",
+    shadow: "0 0 0 1px rgba(11,5,29,0.25), 0 0 24px rgba(11,5,29,0.18)",
+    gradient: "linear-gradient(180deg, rgba(11,5,29,0.04), rgba(11,5,29,0.06)), #fff",
+    labelColor: "var(--zoca-text)",
+  },
+  pink: {
+    border: "var(--zoca-pink)",
+    shadow: "0 0 0 1px rgba(255,86,187,0.35), 0 0 24px rgba(255,168,205,0.35)",
+    gradient: "linear-gradient(180deg, rgba(255,86,187,0.04), rgba(255,168,205,0.06)), #fff",
+    labelColor: "#c026d3",
+  },
+  amber: {
+    border: "#f59e0b",
+    shadow: "0 0 0 1px rgba(245,158,11,0.35), 0 0 24px rgba(252,211,77,0.35)",
+    gradient: "linear-gradient(180deg, rgba(245,158,11,0.04), rgba(252,211,77,0.06)), #fff",
+    labelColor: "#b45309",
+  },
+  green: {
+    border: "#10b981",
+    shadow: "0 0 0 1px rgba(16,185,129,0.35), 0 0 24px rgba(110,231,183,0.35)",
+    gradient: "linear-gradient(180deg, rgba(16,185,129,0.04), rgba(110,231,183,0.06)), #fff",
+    labelColor: "#047857",
+  },
 };
 
 export function V2KpiTiles({ tiles }: Props) {
@@ -41,32 +81,30 @@ export function V2KpiTiles({ tiles }: Props) {
 }
 
 function KpiTile({ tile, index }: { tile: Tile; index: number }) {
-  const isSelected = tile.selected;
-  // Phase 22.E — 3D tilt on all tiles. Replaces useMagnetic; the two
-  // effects fought on the selected tile (both setting el.style.transform).
+  const isSelected = !!tile.selected;
+  const sel = isSelected ? SELECTED_OUTLINE[tile.color] : null;
   const tiltRef = useTilt<HTMLAnchorElement>();
+
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (tile.onClick) {
       e.preventDefault();
       tile.onClick();
     }
+    // If only `href` is set, let the default navigation happen.
   };
+
   return (
     <a
       ref={tiltRef}
       href={tile.href || "#"}
       onClick={handleClick}
+      role={tile.onClick && !tile.href ? "button" : undefined}
+      aria-pressed={tile.onClick ? isSelected : undefined}
       className="block bg-white rounded-2xl px-4 py-4 no-underline transition cursor-pointer"
       style={{
-        border: isSelected
-          ? "1px solid var(--zoca-pink)"
-          : "1px solid var(--zoca-border)",
-        boxShadow: isSelected
-          ? "0 0 0 1px rgba(255,86,187,0.35), 0 0 24px rgba(255,168,205,0.35)"
-          : "0 1px 3px rgba(11,5,29,0.04)",
-        background: isSelected
-          ? "linear-gradient(180deg, rgba(255,86,187,0.04), rgba(255,168,205,0.06)), #fff"
-          : "#fff",
+        border: sel ? `1px solid ${sel.border}` : "1px solid var(--zoca-border)",
+        boxShadow: sel ? sel.shadow : "0 1px 3px rgba(11,5,29,0.04)",
+        background: sel ? sel.gradient : "#fff",
         transformStyle: "preserve-3d",
         willChange: "transform",
       }}
@@ -74,13 +112,13 @@ function KpiTile({ tile, index }: { tile: Tile; index: number }) {
       <div className="flex items-center justify-between mb-2.5">
         <span
           className="zoca-micro-label"
-          style={isSelected ? { color: "#c026d3" } : undefined}
+          style={sel ? { color: sel.labelColor } : undefined}
         >
           {tile.label}
         </span>
         <span
           className="text-[13px] text-zoca-text-3"
-          style={isSelected ? { color: "var(--zoca-pink)" } : undefined}
+          style={sel ? { color: sel.border } : undefined}
         >
           →
         </span>
