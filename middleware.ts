@@ -13,6 +13,10 @@
 //   - /api/cron                                    (cron does Bearer auth itself)
 //   - /api/auth                                    (NextAuth handler — must be reachable)
 //
+// Phase 33.B.6 — injects `x-request-path` header on every authorized request
+// so requireRole() in lib/api-auth.ts can include the path in api_call
+// activity rows. This is how usage analytics learns "which endpoint is hot".
+//
 // The old DASHBOARD_USER / DASHBOARD_PASSWORD env vars are no longer read
 // and can be removed from Vercel.
 
@@ -39,7 +43,18 @@ export default withAuth(
       }
     }
 
-    return NextResponse.next();
+    // Phase 33.B.6 — inject the request path as a header so route handlers
+    // can attribute api_call rows to a specific endpoint. We clone the
+    // original headers to avoid mutating req.headers in place (which Next.js
+    // doesn't support).
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-request-path", path);
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   },
   {
     callbacks: {

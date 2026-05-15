@@ -10,8 +10,14 @@
 //                            managers bypass. role=am must match the
 //                            customer's am_name against their session.
 //
-// Phase 33.B (usage tracking) — requireRole() now fires a logActivity() row
-// on every authorized request. Fire-and-forget; never blocks the route.
+// Phase 33.B (usage tracking) — requireRole() fires a logActivity() row on
+// every authorized request. Fire-and-forget; never blocks the route.
+//
+// Phase 33.B.6 (path capture) — the path from middleware's injected
+// `x-request-path` header is included in metadata so we can answer
+// "which endpoint is hot". Falls back to null if the header is missing
+// (which happens for /api/health, /api/cron, /api/auth/* — those bypass
+// middleware on purpose).
 //
 // Pattern for routes:
 //
@@ -36,6 +42,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth-options";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import type { UserRole } from "./config";
 import { logActivity } from "./activity";
 
@@ -60,10 +67,25 @@ export async function getApiUser(): Promise<ApiUser | null> {
 }
 
 /**
+ * Read the request path injected by middleware.ts. Returns null if the header
+ * isn't available — either because middleware didn't run on this route (e.g.
+ * /api/health, /api/cron) or because we're in a non-request context (tests).
+ */
+function getRequestPath(): string | null {
+  try {
+    return headers().get("x-request-path");
+  } catch {
+    // headers() throws outside a request scope — safe fallback.
+    return null;
+  }
+}
+
+/**
  * Reject the request if the user's role isn't in the allowed list.
  * Returns a NextResponse with 401/403, or null if access is allowed.
  *
  * Phase 33.B (usage tracking): fire-and-forget activity log row on success.
+ * Phase 33.B.6 (path capture): metadata.path captures the endpoint URL.
  */
 export function requireRole(
   user: ApiUser | null,
@@ -85,13 +107,15 @@ export function requireRole(
     );
   }
 
-  // Phase 33.B — log every authorized API call. Fire-and-forget; never blocks.
+  // Phase 33.B / 33.B.6 — log every authorized API call with the route path.
+  // Fire-and-forget; never blocks.
+  const path = getRequestPath();
   void logActivity({
     email: user.email,
     role: user.role,
     am_name: user.am_name,
     event_name: "api_call",
-    // surface intentionally left null — caller's context lives in the route path
+    metadata: path ? { path } : null,
   });
 
   return null;
