@@ -52,9 +52,9 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
 function V2CustomerCardInner({
+ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
   // Phase 33.B.8 — usage tracking
   const logEvent = useActivityLogger();
- customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
   const primaryCtaRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 80 });
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
