@@ -25,6 +25,7 @@ import { BookHealthDonut } from "./charts/BookHealthDonut";
 import { SignalMixPie } from "./charts/SignalMixPie";
 import { RedTrendLine } from "./charts/RedTrendLine";
 import {
+import { useActivityLogger } from "@/hooks/use-activity-logger";
   SIGNAL_LABELS,
   isSignalKey,
   type SignalKey,
@@ -50,6 +51,8 @@ export default function V2Dashboard() {
 
 function V2DashboardInner() {
   const { showToast } = useToast();
+  // Phase 33.B.8 — usage tracking
+  const logEvent = useActivityLogger();
   // Phase 33.A + 33.B — role-aware AM scoping. Admins + managers keep the
   // existing picker + localStorage flow (both are cross-AM roles); AM-role
   // users are pinned to their own am_name.
@@ -104,6 +107,11 @@ function V2DashboardInner() {
     }
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, [isAm, canSwitchAm, sessionAmName]);
+
+  // Phase 33.B.8 — log page_view once per mount
+  useEffect(() => {
+    logEvent("page_view", { surface: "v2_dashboard" });
+  }, [logEvent]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +183,18 @@ function V2DashboardInner() {
     else url.searchParams.set("pod", next);
     window.history.replaceState({}, "", url.toString());
   }, [podFilter]);
+
+  // Phase 33.D — mirror tierFilter into ?tier= URL param (shareable links)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("tier");
+    const next = tierFilter ?? null;
+    if (next === current) return;
+    if (next === null) url.searchParams.delete("tier");
+    else url.searchParams.set("tier", next);
+    window.history.replaceState({}, "", url.toString());
+  }, [tierFilter]);
 
   // Phase 33.D — mirror tierFilter into ?tier= URL param (shareable links)
   useEffect(() => {

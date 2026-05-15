@@ -10,6 +10,7 @@ import V2BillingPanel from "./V2BillingPanel";
 import V2TicketsPanel from "./V2TicketsPanel";
 import V2HubspotPanel from "./V2HubspotPanel";
 import V2CommsThreadPanel from "./V2CommsThreadPanel";
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 
 type TrendPoint = { date: string; composite: number };
 
@@ -30,6 +31,16 @@ function V2CustomerDetailClient({ entityId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [actions, setActions] = useState<AmActionRow[]>([]);
+  // Phase 33.B.8 — usage tracking
+  const logEvent = useActivityLogger();
+
+  // Phase 33.B.8 — log page_view per entity_id visited
+  useEffect(() => {
+    logEvent("page_view", {
+      surface: "v2_customer_detail",
+      entity_id: entityId,
+    });
+  }, [logEvent, entityId]);
 
   useEffect(() => {
     let cancelled = false;

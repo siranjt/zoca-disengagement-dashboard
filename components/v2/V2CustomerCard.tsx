@@ -14,6 +14,7 @@ import {
   buildHubspotCompanyUrl, buildHubspotLocationUrl} from "@/lib/contact-links";
 import type { SignalKey } from "@/lib/signal-taxonomy";
 import { useMagnetic } from "@/lib/hooks/useMagnetic";
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 
 type CompositeTrendPoint = { date: string; composite: number };
 
@@ -50,7 +51,10 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
-function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
+function V2CustomerCardInner({
+  // Phase 33.B.8 — usage tracking
+  const logEvent = useActivityLogger();
+ customer, trend, recentlyContacted, isPinned, onTogglePinned, amName, isSnoozed, snoozedUntil, onSnooze, onUnsnooze, index, onSignalChipClick }: Props) {
   const primaryCtaRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 80 });
   // Phase 18.B — selected AM from parent, fall back to the card's own AM if not passed.
   const notesAmName = amName ?? customer.am_name;
@@ -349,7 +353,17 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
               href={`/v2/customer/${encodeURIComponent(customer.entity_id)}`}
               className="text-[10px] font-medium text-zoca-text-2 hover:text-zoca-pink-cta transition-colors"
               title="Open full detail page for this customer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                logEvent("customer_opened", {
+                  surface: "v2_dashboard",
+                  entity_id: customer.entity_id,
+                  metadata: {
+                    tier: customer.signals_v2?.stoplight,
+                    am_name: customer.am_name,
+                  },
+                });
+              }}
               aria-label={`Open detail page for ${customer.company || customer.entity_id.slice(0, 8)}`}
             >
               ↗ Open detail
