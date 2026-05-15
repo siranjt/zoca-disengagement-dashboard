@@ -10,6 +10,9 @@
 //                            managers bypass. role=am must match the
 //                            customer's am_name against their session.
 //
+// Phase 33.B (usage tracking) — requireRole() now fires a logActivity() row
+// on every authorized request. Fire-and-forget; never blocks the route.
+//
 // Pattern for routes:
 //
 //   import { getApiUser, requireRole, requireAmScope } from "@/lib/api-auth";
@@ -34,6 +37,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./auth-options";
 import { NextResponse } from "next/server";
 import type { UserRole } from "./config";
+import { logActivity } from "./activity";
 
 export type ApiUser = {
   email: string;
@@ -58,6 +62,8 @@ export async function getApiUser(): Promise<ApiUser | null> {
 /**
  * Reject the request if the user's role isn't in the allowed list.
  * Returns a NextResponse with 401/403, or null if access is allowed.
+ *
+ * Phase 33.B (usage tracking): fire-and-forget activity log row on success.
  */
 export function requireRole(
   user: ApiUser | null,
@@ -78,6 +84,16 @@ export function requireRole(
       { status: 403 },
     );
   }
+
+  // Phase 33.B — log every authorized API call. Fire-and-forget; never blocks.
+  void logActivity({
+    email: user.email,
+    role: user.role,
+    am_name: user.am_name,
+    event_name: "api_call",
+    // surface intentionally left null — caller's context lives in the route path
+  });
+
   return null;
 }
 

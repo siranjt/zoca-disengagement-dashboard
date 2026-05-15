@@ -2,6 +2,7 @@ import { type NextAuthOptions } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getRoleForEmail } from "./config";
 import { resolveAmNameForEmail } from "./auth-mapping";
+import { logActivity } from "./activity";
 
 // Phase 33.A — NextAuth v4 + Google OAuth.
 // JWT session strategy (no database adapter). Sessions live in a signed
@@ -22,6 +23,9 @@ import { resolveAmNameForEmail } from "./auth-mapping";
 // because Next.js 14 App Router route handlers can only export GET/POST/etc.
 // Exporting `authOptions` from the route file triggers a TypeScript error:
 // "authOptions is not a valid Route export field." This file is import-only.
+//
+// Phase 33.B (usage tracking) — events.signIn writes one row per successful
+// login to am_activity_log so we can answer "who's actually using this".
 
 const ALLOWED_DOMAINS = ["zoca.ai", "zoca.com"];
 
@@ -124,6 +128,30 @@ export const authOptions: NextAuthOptions = {
         const msg = e instanceof Error ? e.message : String(e);
         console.warn(`[auth] session callback threw: ${msg}`);
         return session;
+      }
+    },
+  },
+  // Phase 33.B (usage tracking) — fires once per successful sign-in.
+  // NextAuth runs this AFTER the signIn callback returns true, so by here
+  // the email is guaranteed to be on the allowlist + have a resolved role.
+  events: {
+    signIn: async ({ user }) => {
+      try {
+        const email = (user.email || "").toLowerCase();
+        if (!email) return;
+        const role = getRoleForEmail(email);
+        if (!role) return;  // shouldn't happen — signIn already rejected unlisted emails
+        const am_name = role === "am" ? await resolveAmNameForEmail(email) : null;
+        void logActivity({
+          email,
+          role,
+          am_name,
+          event_name: "sign_in",
+          surface: "auth",
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`[auth] events.signIn logActivity threw: ${msg}`);
       }
     },
   },
