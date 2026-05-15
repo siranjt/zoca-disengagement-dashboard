@@ -2,7 +2,7 @@
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
-import { buildMailto, buildTelLink } from "@/lib/contact-links";
+import { buildMailto, buildTelLink, buildHubspotLocationUrl} from "@/lib/contact-links";
 import V2SnapshotTimeline from "./V2SnapshotTimeline";
 
 type TrendPoint = { date: string; composite: number };
@@ -90,9 +90,32 @@ function V2DetailHeader({ customer, trend }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <h1 className="text-2xl font-semibold text-zoca-text">
-              {customer.company || customer.entity_id.slice(0, 8)}
-            </h1>
+            {(() => {
+              const loc = (customer.hubspot as any)?.hubspot_location_record_id as string | undefined;
+              const label = customer.company || customer.entity_id.slice(0, 8);
+              const titleText = `Open ${label} in HubSpot Locations (new tab)`;
+              if (!loc) {
+                return (
+                  <h1 className="text-2xl font-semibold text-zoca-text">{label}</h1>
+                );
+              }
+              return (
+                <a
+                  href={buildHubspotLocationUrl(loc)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={titleText}
+                  className="group/biztitle inline-flex items-baseline gap-1 text-2xl font-semibold text-zoca-text no-underline hover:text-zoca-pink-cta"
+                >
+                  <h1 className="m-0 inline">{label}</h1>
+                  <i
+                    className="ti ti-external-link opacity-0 transition-opacity group-hover/biztitle:opacity-100"
+                    aria-hidden
+                    style={{ fontSize: "14px" }}
+                  />
+                </a>
+              );
+            })()}
             <span
               className={`rounded-zoca-pill border px-2 py-0.5 text-[11px] font-semibold ${STOPLIGHT_TONE[s.stoplight]}`}
               title={STOPLIGHT_LABEL[s.stoplight]}
@@ -157,10 +180,23 @@ function V2DetailHeader({ customer, trend }: Props) {
             {customer.pod && <span>· {customer.pod}</span>}
             {customer.entity_id && (
               <span
-                className="font-mono text-[10px] text-zoca-text-2"
-                title="Entity ID"
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-zoca-text-2"
+                title="Location entity_id (BaseSheet / HubSpot Locations record link)"
               >
-                · {customer.entity_id.slice(0, 8)}
+                · <span className="select-all">{customer.entity_id}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== "undefined" && navigator.clipboard) {
+                      void navigator.clipboard.writeText(customer.entity_id);
+                    }
+                  }}
+                  className="rounded-zoca-pill border border-zoca-border bg-white px-1.5 py-0 text-[9px] font-medium text-zoca-text-2 hover:bg-zoca-bg-tint hover:text-zoca-text"
+                  title="Copy entity_id"
+                  aria-label="Copy entity_id"
+                >
+                  copy
+                </button>
               </span>
             )}
           </div>

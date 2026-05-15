@@ -92,6 +92,7 @@ function V2CustomerDetailClient({ entityId }: Props) {
       <Breadcrumb
         amName={customer?.am_name || ""}
         company={customer?.company || ""}
+        locationRecordId={(customer?.hubspot as any)?.hubspot_location_record_id}
       />
 
       {error && !loading && (
@@ -139,7 +140,7 @@ function V2CustomerDetailClient({ entityId }: Props) {
   );
 }
 
-function Breadcrumb({ amName, company }: { amName: string; company: string }) {
+function Breadcrumb({ amName, company, locationRecordId }: { amName: string; company: string; locationRecordId?: string }) {
   return (
     <nav
       aria-label="Breadcrumb"
@@ -165,9 +166,21 @@ function Breadcrumb({ amName, company }: { amName: string; company: string }) {
       {company && (
         <>
           <span aria-hidden>/</span>
-          <span className="px-2 py-0.5 font-medium text-zoca-text">
-            {company}
-          </span>
+          {locationRecordId ? (
+            <a
+              href={`https://app-na2.hubspot.com/contacts/243752563/record/2-221793621/${locationRecordId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Open ${company} in HubSpot Locations (new tab)`}
+              className="rounded-zoca-pill px-2 py-0.5 font-medium text-zoca-text hover:bg-zoca-bg-tint hover:text-zoca-pink-cta"
+            >
+              {company} ↗
+            </a>
+          ) : (
+            <span className="px-2 py-0.5 font-medium text-zoca-text">
+              {company}
+            </span>
+          )}
         </>
       )}
     </nav>
