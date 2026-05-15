@@ -259,11 +259,15 @@ export const ADMIN_EMAILS: string[] = [
 // Manager — cross-AM access, all manager features, no admin-exclusive.
 // Phase 33.B.1: Siddhi Shetty promoted from AM to Manager; Kripali Suri,
 // Saibal Paul, and Vaibhav added as Managers (previously not on the list).
+// Phase 33.B.7: ashish@zoca.com added alongside existing ashish@zoca.ai
+// (both addresses now have manager access — collapse to one once Ashish
+// confirms which is primary).
 export const MANAGER_EMAILS: string[] = [
   "chetan.m@zoca.com",
   "rinitha.a@zoca.com",
   "robin@zoca.ai",
   "ashish@zoca.ai",
+  "ashish@zoca.com",
   "abhishek.j@zoca.com",
   "siddhi.s@zoca.com",
   "kripali@zoca.ai",
