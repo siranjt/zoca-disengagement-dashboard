@@ -200,6 +200,18 @@ function V2DashboardInner() {
     window.history.replaceState({}, "", url.toString());
   }, [tierFilter]);
 
+  // Phase 33.D — mirror tierFilter into ?tier= URL param (shareable links)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("tier");
+    const next = tierFilter ?? null;
+    if (next === current) return;
+    if (next === null) url.searchParams.delete("tier");
+    else url.searchParams.set("tier", next);
+    window.history.replaceState({}, "", url.toString());
+  }, [tierFilter]);
+
   // Phase 22.B.1 — chip click handler. Toggles the active signal and
   // surfaces a toast confirming the filter state. Passed down to
   // V2CustomerCard via V2AMTriage so chip clicks route through here.

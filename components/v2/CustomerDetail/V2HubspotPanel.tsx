@@ -1,7 +1,7 @@
 "use client";
 
 import type { ScoredCustomerV2 } from "@/lib/types";
-import { buildMailto, buildHubspotCompanyUrl } from "@/lib/contact-links";
+import { buildMailto, buildHubspotLocationUrl } from "@/lib/contact-links";
 
 type Props = {
   customer: ScoredCustomerV2;
@@ -19,7 +19,7 @@ function V2HubspotPanel({ customer }: Props) {
   const lastCall = customer.hubspot?.last_call ?? null;
   const bizname = customer.company || undefined;
   const amName = customer.am_name || undefined;
-  const companyId = customer.hubspot?.hubspot_company_id;
+  const locationRecordId = (customer.hubspot as any)?.hubspot_location_record_id as string | undefined;
 
   return (
     <div className="space-y-4">
@@ -32,9 +32,9 @@ function V2HubspotPanel({ customer }: Props) {
           <h3 className="text-[13px] font-semibold uppercase tracking-wider text-zoca-text-2">
             Contacts · {contacts.length}
           </h3>
-          {companyId && (
+          {locationRecordId && (
             <a
-              href={buildHubspotCompanyUrl(companyId)}
+              href={buildHubspotLocationUrl(locationRecordId)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[11px] font-medium text-zoca-pink-cta hover:underline"
