@@ -299,6 +299,8 @@ export type ScoredCustomer = {
  *  HubSpot Stage D didn't run or no matching company was found by bizname. */
 export type HubspotJoinFields = {
   hubspot_company_id?: string;
+    /** Phase 33.D — HubSpot Locations custom object record id (replaces company id for URL). */
+    hubspot_location_record_id?: string;
   icp_tier?: "Tier 1" | "Tier 2" | "Tier 3" | null;
   lifecycle_drift?: boolean;                // HubSpot lifecycle ≠ "customer" but Chargebee says active
   open_deal_count?: number;

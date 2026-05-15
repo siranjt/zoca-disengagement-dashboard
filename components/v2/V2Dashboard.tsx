@@ -70,6 +70,8 @@ function V2DashboardInner() {
   // the V2ManagerDashboard signal-heatmap cell-click flow that navigates
   // here as /v2?pod=Pod+4&signal=we_silent.
   const [podFilter, setPodFilter] = useState<string | null>(null);
+  // Phase 33.D — KPI tile filter (RED / YELLOW / GREEN / null)
+  const [tierFilter, setTierFilter] = useState<"RED" | "YELLOW" | "GREEN" | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -96,6 +98,10 @@ function V2DashboardInner() {
     if (isSignalKey(sigFromQuery)) setSignal(sigFromQuery);
     const podFromQuery = url.searchParams.get("pod");
     if (podFromQuery) setPodFilter(podFromQuery);
+    const tierFromQuery = url.searchParams.get("tier");
+    if (tierFromQuery === "RED" || tierFromQuery === "YELLOW" || tierFromQuery === "GREEN") {
+      setTierFilter(tierFromQuery);
+    }
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
   }, [isAm, canSwitchAm, sessionAmName]);
 
@@ -169,6 +175,18 @@ function V2DashboardInner() {
     else url.searchParams.set("pod", next);
     window.history.replaceState({}, "", url.toString());
   }, [podFilter]);
+
+  // Phase 33.D — mirror tierFilter into ?tier= URL param (shareable links)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("tier");
+    const next = tierFilter ?? null;
+    if (next === current) return;
+    if (next === null) url.searchParams.delete("tier");
+    else url.searchParams.set("tier", next);
+    window.history.replaceState({}, "", url.toString());
+  }, [tierFilter]);
 
   // Phase 22.B.1 — chip click handler. Toggles the active signal and
   // surfaces a toast confirming the filter state. Passed down to
@@ -436,8 +454,13 @@ function V2DashboardInner() {
 
   const amCustomers = useMemo<ScoredCustomerV2[]>(() => {
     if (snapshot.status !== "ready" || !selectedAm) return [];
-    return snapshot.snapshot.customers.filter((c) => c.am_name === selectedAm);
-  }, [snapshot, selectedAm]);
+    return snapshot.snapshot.customers.filter((c) => {
+      if (c.am_name !== selectedAm) return false;
+      // Phase 33.D — tier filter from KPI tile clicks
+      if (tierFilter && c.signals_v2?.stoplight !== tierFilter) return false;
+      return true;
+    });
+  }, [snapshot, selectedAm, tierFilter]);
 
   const allAms = useMemo(() => {
     const set = new Set<string>(ACTIVE_AMS);
@@ -525,25 +548,32 @@ function V2DashboardInner() {
             value: scopeCustomerCount,
             subtitle: "in your book",
             color: "midnight",
+            onClick: () => setTierFilter(null),
+            selected: tierFilter === null,
           },
           {
             label: "Need to call",
             value: redCountForAm,
             subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
             color: "pink",
-            selected: true,
+            onClick: () => setTierFilter(tierFilter === "RED" ? null : "RED"),
+            selected: tierFilter === "RED",
           },
           {
             label: "Watch",
             value: yellowCountForAm,
             subtitle: "likely save calls",
             color: "amber",
+            onClick: () => setTierFilter(tierFilter === "YELLOW" ? null : "YELLOW"),
+            selected: tierFilter === "YELLOW",
           },
           {
             label: "Healthy",
             value: greenCountForAm,
             subtitle: "in your book",
             color: "green",
+            onClick: () => setTierFilter(tierFilter === "GREEN" ? null : "GREEN"),
+            selected: tierFilter === "GREEN",
           },
         ]}
       />

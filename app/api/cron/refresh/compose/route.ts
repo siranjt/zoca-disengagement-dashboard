@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getLocationRecordIdMap } from "@/lib/hubspot-locations";
 import { requireCronAuth } from "@/lib/cron-auth";
 import { composeSnapshot } from "@/lib/refresh";
 

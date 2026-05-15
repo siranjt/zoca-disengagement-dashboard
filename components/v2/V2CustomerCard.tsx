@@ -11,8 +11,7 @@ import { AmLink } from "./AmLink";
 import {
   buildMailto,
   buildTelLink,
-  buildHubspotCompanyUrl,
-} from "@/lib/contact-links";
+  buildHubspotCompanyUrl, buildHubspotLocationUrl} from "@/lib/contact-links";
 import type { SignalKey } from "@/lib/signal-taxonomy";
 import { useMagnetic } from "@/lib/hooks/useMagnetic";
 
@@ -339,7 +338,7 @@ function V2CustomerCardInner({ customer, trend, recentlyContacted, isPinned, onT
           <div className="flex flex-wrap items-center gap-2">
             <BiznameLink
               bizname={customer.company || customer.entity_id.slice(0, 8)}
-              hubspotCompanyId={customer.hubspot?.hubspot_company_id}
+              hubspotLocationRecordId={customer.hubspot?.hubspot_location_record_id}
             >
               <h3 className="text-[15px] font-semibold text-zoca-text md:text-base">
                 {customer.company || customer.entity_id.slice(0, 8)}
@@ -1534,17 +1533,18 @@ function performanceChipSummary(p: NonNullable<ScoredCustomerV2["performance"]>)
 
 type BiznameLinkProps = {
   bizname: string;
-  hubspotCompanyId?: string;
+  /** Phase 33.D — HubSpot Locations record id (replaces hubspotCompanyId). */
+  hubspotLocationRecordId?: string;
   children: React.ReactNode;
 };
 
-function BiznameLink({ bizname, hubspotCompanyId, children }: BiznameLinkProps) {
-  if (!hubspotCompanyId) {
+function BiznameLink({ bizname, hubspotLocationRecordId, children }: BiznameLinkProps) {
+  if (!hubspotLocationRecordId) {
     return <>{children}</>;
   }
   return (
     <a
-      href={buildHubspotCompanyUrl(hubspotCompanyId)}
+      href={buildHubspotLocationUrl(hubspotLocationRecordId)}
       target="_blank"
       rel="noopener noreferrer"
       className="group/biz inline-flex items-baseline gap-1"
@@ -1553,7 +1553,7 @@ function BiznameLink({ bizname, hubspotCompanyId, children }: BiznameLinkProps) 
         textDecoration: "none",
         cursor: "pointer",
       }}
-      title={`Open ${bizname} in HubSpot (new tab)`}
+      title={`Open ${bizname} in HubSpot Locations (new tab)`}
     >
       {children}
       <i
