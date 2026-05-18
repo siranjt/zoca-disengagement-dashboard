@@ -585,6 +585,54 @@ function V2CustomerCardInner({
           {onSignalChipClick && (
             <SignalChipRow customer={customer} onChipClick={onSignalChipClick} tone={s.stoplight} />
           )}
+          {/* Phase G6 — Refund / adjustment / promo / credits in last 60 days */}
+          {(() => {
+            const f60 = (customer as any).metabase_health?.finance_60d;
+            if (!f60) return null;
+            const fmt = (n: number | null | undefined) =>
+              n !== null && n !== undefined && Number.isFinite(Number(n))
+                ? `$${Math.round(Number(n)).toLocaleString()}`
+                : "";
+            let primary: { variant: string; icon: string; label: string; amount: string } | null = null;
+            if (f60.has_refund) {
+              primary = { variant: "refund", icon: "\u{1F4B0}", label: "Refund", amount: fmt(f60.refund_amount) };
+            } else if (f60.has_adjustment) {
+              primary = { variant: "adjustment", icon: "\u{1F4B0}", label: "Adjusted", amount: fmt(f60.adjustment_amount) };
+            } else if (f60.has_promotion) {
+              primary = { variant: "promo", icon: "\u{1F381}", label: "Promo applied", amount: fmt(f60.discount_amount) };
+            } else if (f60.has_credits_applied) {
+              primary = { variant: "credits", icon: "\u{1FA99}", label: "Credits", amount: fmt(f60.credits_applied) };
+            }
+            if (!primary) return null;
+            const concerning = primary.variant === "refund" || primary.variant === "adjustment";
+            const bg = concerning ? "rgba(245, 158, 11, 0.18)" : "rgba(20, 110, 245, 0.14)";
+            const fg = concerning ? "#b45309" : "#1d4ed8";
+            const titleParts: string[] = [];
+            if (f60.has_refund) titleParts.push(`Refund 60d: ${fmt(f60.refund_amount) || "(amount unknown)"}`);
+            if (f60.has_adjustment) titleParts.push(`Adjustment 60d: ${fmt(f60.adjustment_amount) || "(amount unknown)"}`);
+            if (f60.has_promotion) titleParts.push(`Promotion 60d: ${fmt(f60.discount_amount) || "(amount unknown)"}`);
+            if (f60.has_credits_applied) titleParts.push(`Credits applied 60d: ${fmt(f60.credits_applied) || "(amount unknown)"}`);
+            const totalEvents =
+              (f60.has_refund ? 1 : 0) +
+              (f60.has_adjustment ? 1 : 0) +
+              (f60.has_promotion ? 1 : 0) +
+              (f60.has_credits_applied ? 1 : 0);
+            return (
+              <div
+                data-finance-chip="1"
+                className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-zoca-pill px-2.5 py-0.5 text-[10px] font-semibold"
+                style={{ background: bg, color: fg }}
+                title={titleParts.join(" \u00b7 ")}
+              >
+                <span aria-hidden>{primary.icon}</span>
+                <span>{primary.label}</span>
+                {primary.amount && <span className="font-mono">{primary.amount}</span>}
+                {totalEvents > 1 && (
+                  <span className="opacity-70" aria-label="more financial events">+more</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Right side: action button (state machine) */}
