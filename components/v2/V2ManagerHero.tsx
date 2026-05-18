@@ -93,7 +93,7 @@ export function V2ManagerHero({
         }}
       >
         {needsCall > 0
-          ? `Cross-AM and cross-pod rollup. ${needsCall} customer${needsCall === 1 ? "" : "s"} flagged RED today — click a pod card to filter the rollup, or a heatmap cell to drill into a pod-signal pair.`
+          ? `Cross-AM and cross-pod rollup. ${needsCall} customer${needsCall === 1 ? "" : "s"} need a call today — click a pod card to filter the rollup, or a heatmap cell to drill into a pod-signal pair.`
           : "Cross-AM and cross-pod view of customer health. Click a pod card to filter the rollup, or a heatmap cell to drill into a pod-signal pair."}
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">

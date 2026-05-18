@@ -391,6 +391,11 @@ function V2ManagerDashboardInner() {
     let RED = 0;
     let YELLOW = 0;
     let GREEN = 0;
+    // Phase 33.H.1 — 4-tier health_tier counts (MONITOR fallback for missing metabase_health)
+    let critical = 0;
+    let atRisk = 0;
+    let monitor = 0;
+    let healthy = 0;
     let mrr = 0;
     let mrrAtRisk = 0;
     const actionAmsSet = new Set<string>();
@@ -403,8 +408,20 @@ function V2ManagerDashboardInner() {
       if (sl === "RED") RED += 1;
       else if (sl === "YELLOW") YELLOW += 1;
       else GREEN += 1;
+      // Phase 33.H.1 — read metabase_health tier; missing/null falls back to MONITOR
+      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _ht =
+        _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+        : _htRaw === "AT-RISK" ? "AT-RISK"
+        : _htRaw === "HEALTHY" ? "HEALTHY"
+        : "MONITOR";
+      if (_ht === "CRITICAL") critical += 1;
+      else if (_ht === "AT-RISK") atRisk += 1;
+      else if (_ht === "HEALTHY") healthy += 1;
+      else monitor += 1;
       mrr += c.plan_amount || 0;
-      if (sl === "RED") {
+      // Phase 33.H.1 — MRR-at-risk now uses Critical+At-risk (the "needs call" semantic)
+      if (_ht === "CRITICAL" || _ht === "AT-RISK") {
         mrrAtRisk += c.plan_amount || 0;
         if (c.am_name) actionAmsSet.add(c.am_name);
       }
@@ -413,14 +430,23 @@ function V2ManagerDashboardInner() {
       if (c.performance?.flag) flagged += 1;
       if (c.signals_v2.pre_launch) preLaunch += 1;
     }
+    const needsCall = critical + atRisk;
     return {
       total,
       RED,
       YELLOW,
       GREEN,
+      critical,
+      atRisk,
+      monitor,
+      healthy,
+      needsCall,
       mrr,
       mrrAtRisk,
       pctRed: total ? (RED / total) * 100 : 0,
+      pctNeedsCall: total ? (needsCall / total) * 100 : 0,
+      pctCritical: total ? (critical / total) * 100 : 0,
+      pctAtRisk: total ? (atRisk / total) * 100 : 0,
       amsWithAction: actionAmsSet.size,
       podsRepresented: podSet.size,
       flagged,
@@ -434,6 +460,10 @@ function V2ManagerDashboardInner() {
     let RED = 0;
     let YELLOW = 0;
     let GREEN = 0;
+    let critical = 0;
+    let atRisk = 0;
+    let monitor = 0;
+    let healthy = 0;
     let mrrAtRisk = 0;
     const actionAmsSet = new Set<string>();
     for (const c of compareSnapshot.customers) {
@@ -442,25 +472,50 @@ function V2ManagerDashboardInner() {
       if (sl === "RED") RED += 1;
       else if (sl === "YELLOW") YELLOW += 1;
       else GREEN += 1;
-      if (sl === "RED") {
+      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _ht =
+        _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+        : _htRaw === "AT-RISK" ? "AT-RISK"
+        : _htRaw === "HEALTHY" ? "HEALTHY"
+        : "MONITOR";
+      if (_ht === "CRITICAL") critical += 1;
+      else if (_ht === "AT-RISK") atRisk += 1;
+      else if (_ht === "HEALTHY") healthy += 1;
+      else monitor += 1;
+      if (_ht === "CRITICAL" || _ht === "AT-RISK") {
         mrrAtRisk += c.plan_amount || 0;
         if (c.am_name) actionAmsSet.add(c.am_name);
       }
     }
-    return { total, RED, YELLOW, GREEN, mrrAtRisk, amsWithAction: actionAmsSet.size };
+    const needsCall = critical + atRisk;
+    return { total, RED, YELLOW, GREEN, critical, atRisk, monitor, healthy, needsCall, mrrAtRisk, amsWithAction: actionAmsSet.size };
   }, [compareSnapshot]);
 
-  const compareRedByAm = useMemo(() => {
-    if (!compareSnapshot) return new Map<string, number>();
-    const m = new Map<string, number>();
+  // Phase 33.H.1 — track both legacy red and new needsCall counts per AM for deltas
+  const compareCountsByAm = useMemo(() => {
+    if (!compareSnapshot) return new Map<string, { red: number; needsCall: number }>();
+    const m = new Map<string, { red: number; needsCall: number }>();
     for (const c of compareSnapshot.customers) {
       if (!c.am_name) continue;
-      if (c.signals_v2.stoplight === "RED") {
-        m.set(c.am_name, (m.get(c.am_name) || 0) + 1);
-      }
+      const entry = m.get(c.am_name) || { red: 0, needsCall: 0 };
+      if (c.signals_v2.stoplight === "RED") entry.red += 1;
+      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _ht =
+        _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+        : _htRaw === "AT-RISK" ? "AT-RISK"
+        : _htRaw === "HEALTHY" ? "HEALTHY"
+        : "MONITOR";
+      if (_ht === "CRITICAL" || _ht === "AT-RISK") entry.needsCall += 1;
+      m.set(c.am_name, entry);
     }
     return m;
   }, [compareSnapshot]);
+  // Legacy alias retained so any downstream readers keep working
+  const compareRedByAm = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [am, v] of compareCountsByAm) m.set(am, v.red);
+    return m;
+  }, [compareCountsByAm]);
 
   // Phase 23.B — full-team customer list + per-AM stoplight rollup for the
   // three manager-view charts (AmStoplightStack, OutcomeBreakdownDonut,
@@ -502,26 +557,44 @@ function V2ManagerDashboardInner() {
       byAm.get(c.am_name)!.push(c);
     }
     const rows = Array.from(byAm.entries()).map(([am, customers]) => {
+      // Phase 33.H.1 topMovers — track legacy red and new needsCall (Critical + At-risk)
       let red = 0;
+      let needsCall = 0;
+      let critical = 0;
+      let atRisk = 0;
       let mrrAtRisk = 0;
       let flagged = 0;
       for (const c of customers) {
-        if (c.signals_v2.stoplight === "RED") {
-          red += 1;
+        if (c.signals_v2.stoplight === "RED") red += 1;
+        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _ht =
+          _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+          : _htRaw === "AT-RISK" ? "AT-RISK"
+          : _htRaw === "HEALTHY" ? "HEALTHY"
+          : "MONITOR";
+        if (_ht === "CRITICAL") critical += 1;
+        if (_ht === "AT-RISK") atRisk += 1;
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") {
+          needsCall += 1;
           mrrAtRisk += c.plan_amount || 0;
         }
         if (c.performance?.flag) flagged += 1;
       }
-      const redPrev = compareRedByAm.get(am);
+      const prev = compareCountsByAm.get(am);
+      const needsCallPrev = prev?.needsCall;
       return {
         am,
         pod: POD_MAP[am] || "Floating",
         total: customers.length,
         red,
+        needsCall,
+        critical,
+        atRisk,
         flagged,
         pctRed: customers.length ? (red / customers.length) * 100 : 0,
+        pctNeedsCall: customers.length ? (needsCall / customers.length) * 100 : 0,
         mrrAtRisk,
-        delta: redPrev !== undefined ? red - redPrev : null,
+        delta: needsCallPrev !== undefined ? needsCall - needsCallPrev : null,
       };
     });
     if (moverMode === "trajectory") {
@@ -534,13 +607,13 @@ function V2ManagerDashboardInner() {
         .slice(0, 5);
     }
     return rows
-      .filter((r) => r.red > 0)
+      .filter((r) => r.needsCall > 0)
       .sort((a, b) => {
-        if (b.red !== a.red) return b.red - a.red;
+        if (b.needsCall !== a.needsCall) return b.needsCall - a.needsCall;
         return b.mrrAtRisk - a.mrrAtRisk;
       })
       .slice(0, 5);
-  }, [snapshot, compareRedByAm, moverMode]);
+  }, [snapshot, compareCountsByAm, moverMode]);
 
   // Fetch per-AM 14-day trend for the top movers (single bundled request)
   useEffect(() => {
@@ -704,12 +777,12 @@ function V2ManagerDashboardInner() {
   // Comparison summary text
   const compareSummary = useMemo(() => {
     if (!kpis || !compareKpis) return null;
-    const dRed = kpis.RED - compareKpis.RED;
+    const dNeedsCall = kpis.needsCall - compareKpis.needsCall;
     const dMrr = kpis.mrrAtRisk - compareKpis.mrrAtRisk;
     const dAms = kpis.amsWithAction - compareKpis.amsWithAction;
     const fmtSigned = (n: number) => (n > 0 ? `+${n}` : `${n}`);
     const fmtMoneySigned = (n: number) => (n >= 0 ? `+${formatMoney(n)}` : `-${formatMoney(-n)}`);
-    return `vs ${compareDays}d ago: ${fmtSigned(dRed)} RED · ${fmtMoneySigned(dMrr)} MRR @ risk · ${fmtSigned(dAms)} AMs w/ action`;
+    return `vs ${compareDays}d ago: ${fmtSigned(dNeedsCall)} needs call · ${fmtMoneySigned(dMrr)} MRR @ risk · ${fmtSigned(dAms)} AMs w/ action`;
   }, [kpis, compareKpis, compareDays]);
 
   return (
@@ -729,7 +802,7 @@ function V2ManagerDashboardInner() {
       {snapshot.status === "ready" && <ScopeStrip scope={snapshot.snapshot.scope} />}
 
       <V2ManagerHero
-        redCount={kpis?.RED}
+        redCount={kpis?.needsCall}
         customerCount={kpis?.total}
         amCount={kpis?.amsWithAction}
         podCount={kpis?.podsRepresented}
@@ -837,7 +910,7 @@ function V2ManagerDashboardInner() {
                     <AnimatedNumber value={kpis.mrrAtRisk} duration={900} format={formatMoney} />
                   </div>
                   <div className="mt-1 text-[12px] text-zoca-text-2" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {kpis.RED} RED customer{kpis.RED === 1 ? "" : "s"} ·{" "}
+                    {kpis.needsCall} customer{kpis.needsCall === 1 ? "" : "s"} need a call ·{" "}
                     {kpis.amsWithAction} AM{kpis.amsWithAction === 1 ? "" : "s"} with action ·{" "}
                     {kpis.podsRepresented} pod{kpis.podsRepresented === 1 ? "" : "s"} affected
                   </div>
@@ -856,7 +929,7 @@ function V2ManagerDashboardInner() {
                 )}
               </div>
               {tierTrend.length > 1 && (
-                <div className="mt-3" title={`RED-count trend last ${tierTrend.length} days (proxy for MRR-at-risk)`}>
+                <div className="mt-3" title={`Needs-call trend last ${tierTrend.length} days (proxy for MRR-at-risk)`}>
                   <V2Sparkline
                     values={tierTrend.map((r) => r.total_high_risk)}
                     width={300}
@@ -879,39 +952,44 @@ function V2ManagerDashboardInner() {
                   gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
                 }}
               >
+                {/* Phase 33.H.1 — 4 tier tiles: Critical / At-risk / Monitor / Healthy */}
+                  <Kpi
+                    label="Critical"
+                    value={String(kpis.critical)}
+                    tone="crimson"
+                    sub={`${kpis.pctCritical.toFixed(0)}% of book`}
+                    delta={compareKpis ? kpis.critical - compareKpis.critical : null}
+                    deltaUnit="vs prev"
+                    deltaSemantic="lowerIsBetter"
+                    sparkValues={tierTrend.map((r) => r.total_high_risk)}
+                    sparkColor="var(--zoca-crimson, #dc2626)"
+                  />
+                  <Kpi
+                    label="At-risk"
+                    value={String(kpis.atRisk)}
+                    tone="rose"
+                    sub={`${kpis.pctAtRisk.toFixed(0)}% of book`}
+                    delta={compareKpis ? kpis.atRisk - compareKpis.atRisk : null}
+                    deltaUnit="vs prev"
+                    deltaSemantic="lowerIsBetter"
+                    sparkValues={tierTrend.map((r) => r.total_watch)}
+                    sparkColor="var(--zoca-pink)"
+                  />
                 <Kpi
-                  label="Customers"
-                  value={String(kpis.total)}
-                  sub={kpis.preLaunch > 0 ? `${kpis.preLaunch} 🚀 pre-launch` : undefined}
-                  sparkValues={tierTrend.map((r) => r.total_customers)}
-                  sparkColor="var(--zoca-text-3)"
-                />
+                    label="Monitor"
+                    value={String(kpis.monitor)}
+                    tone="amber"
+                    delta={compareKpis ? kpis.monitor - compareKpis.monitor : null}
+                    deltaUnit="vs prev"
+                    deltaSemantic="neutral"
+                    sparkValues={tierTrend.map((r) => r.total_medium)}
+                    sparkColor="var(--zoca-amber)"
+                  />
                 <Kpi
-                  label="RED"
-                  value={String(kpis.RED)}
-                  tone="rose"
-                  sub={`${kpis.pctRed.toFixed(0)}% of book${kpis.flagged > 0 ? ` · ${kpis.flagged} ⛑ flagged` : ""}`}
-                  delta={compareKpis ? kpis.RED - compareKpis.RED : null}
-                  deltaUnit="vs prev"
-                  deltaSemantic="lowerIsBetter"
-                  sparkValues={tierTrend.map((r) => r.total_high_risk)}
-                  sparkColor="var(--zoca-pink)"
-                />
-                <Kpi
-                  label="YELLOW"
-                  value={String(kpis.YELLOW)}
-                  tone="amber"
-                  delta={compareKpis ? kpis.YELLOW - compareKpis.YELLOW : null}
-                  deltaUnit="vs prev"
-                  deltaSemantic="neutral"
-                  sparkValues={tierTrend.map((r) => r.total_watch)}
-                  sparkColor="var(--zoca-amber)"
-                />
-                <Kpi
-                  label="GREEN"
-                  value={String(kpis.GREEN)}
-                  tone="emerald"
-                  delta={compareKpis ? kpis.GREEN - compareKpis.GREEN : null}
+                    label="Healthy"
+                    value={String(kpis.healthy)}
+                    tone="emerald"
+                    delta={compareKpis ? kpis.healthy - compareKpis.healthy : null}
                   deltaUnit="vs prev"
                   deltaSemantic="higherIsBetter"
                   sparkValues={tierTrend.map((r) => r.total_healthy)}
@@ -993,7 +1071,7 @@ function V2ManagerDashboardInner() {
                       Top {topMovers.length} AM{topMovers.length === 1 ? "" : "s"} by{" "}
                       {moverMode === "trajectory"
                         ? "performance-flagged count"
-                        : "RED-stoplight count"}
+                        : "needs-call count (Critical + At-risk)"}
                       , MRR-at-risk tiebreaker.
                       {compareDays > 0 && compareSnapshot
                         ? ` Delta vs ${compareDays}d ago.`
@@ -1020,7 +1098,7 @@ function V2ManagerDashboardInner() {
                           : { background: "transparent", color: "var(--zoca-text-2)", fontWeight: 500 }
                       }
                     >
-                      By RED
+                      Needs call
                     </button>
                     <button
                       onClick={() => setMoverMode("trajectory")}
@@ -1084,27 +1162,27 @@ function V2ManagerDashboardInner() {
                           className="zoca-chip-pink ml-auto tabular-nums"
                           style={{ textTransform: "none", letterSpacing: "0.02em" }}
                         >
-                          {m.red} RED
+                          {m.needsCall} NEEDS CALL
                           <span className="font-normal opacity-70 ml-1">
-                            ({m.pctRed.toFixed(0)}%)
+                            ({m.pctNeedsCall.toFixed(0)}%)
                           </span>
                         </span>
                       )}
                       {m.delta !== null && (
-                        <DeltaBadge delta={m.delta} unit="RED" lowerIsBetter />
+                        <DeltaBadge delta={m.delta} unit="needs call" lowerIsBetter />
                       )}
                       {amTrends[m.am]?.length > 1 && (
                         <span
                           className="hidden md:inline"
                           style={{ color: "var(--zoca-pink)" }}
-                          title={`${m.am} RED-count trend, last ${amTrends[m.am].length} days`}
+                          title={`${m.am} needs-call trend (RED proxy), last ${amTrends[m.am].length} days`}
                         >
                           <V2Sparkline
                             values={amTrends[m.am].map((p) => p.red)}
                             width={60}
                             height={18}
                             color="var(--zoca-pink)"
-                            label={`${m.am} RED-count trend`}
+                            label={`${m.am} needs-call trend`}
                           />
                         </span>
                       )}
@@ -1234,7 +1312,7 @@ function Kpi({
 }: {
   label: string;
   value: string;
-  tone?: "rose" | "amber" | "emerald";
+  tone?: "rose" | "amber" | "emerald" | "crimson";
   sub?: string;
   delta?: number | null;
   deltaUnit?: string;
@@ -1243,13 +1321,15 @@ function Kpi({
   sparkColor?: string;
 }) {
   const valueColor =
-    tone === "rose"
-      ? "var(--zoca-pink)"
-      : tone === "amber"
-        ? "var(--zoca-amber)"
-        : tone === "emerald"
-          ? "var(--zoca-green)"
-          : "var(--zoca-text)";
+    tone === "crimson"
+      ? "var(--zoca-crimson, #dc2626)"
+      : tone === "rose"
+        ? "var(--zoca-pink)"
+        : tone === "amber"
+          ? "var(--zoca-amber)"
+          : tone === "emerald"
+            ? "var(--zoca-green)"
+            : "var(--zoca-text)";
   return (
     <div className="zoca-card print:border-zinc-300 print:bg-white">
       <div className="zoca-micro-label print:text-zinc-600">{label}</div>
