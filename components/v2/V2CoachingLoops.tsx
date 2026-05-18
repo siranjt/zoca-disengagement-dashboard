@@ -27,10 +27,10 @@ type MetricDef = {
 const METRICS: MetricDef[] = [
   {
     key: "untouched_7d",
-    label: "RED untouched >7d",
+    label: "Untouched >7d",
     short: "Untouched 7d",
     explainer:
-      "RED customers in this AM's book where no am_action was logged AND no comms recorded in the last 7 days. These are the ones falling through.",
+      "Customers in this AM's book that need a call today (Critical or At-risk) where no am_action was logged AND no comms recorded in the last 7 days. These are the ones falling through.",
     tone: {
       fg: "#e11d48", // rose-600
       bg: "rgba(244,63,94,0.08)",
@@ -39,10 +39,10 @@ const METRICS: MetricDef[] = [
   },
   {
     key: "stale_14d",
-    label: "Stale RED >14d",
+    label: "Stale >14d",
     short: "Stale 14d",
     explainer:
-      "RED customers whose last_any_iso is null or more than 14 days old — they've been RED a long time without a reset. (v1 uses last-comms recency as a proxy for 'RED 14+ days running'.)",
+      "Customers that need a call today whose last_any_iso is null or more than 14 days old — they've been on the needs-call list a long time without a reset. (v1 uses last-comms recency as a proxy for 'stale 14+ days running'.)",
     tone: {
       fg: "#b45309", // amber-700
       bg: "rgba(245,158,11,0.08)",
@@ -148,7 +148,7 @@ function CoachingTable({
             </span>
           </h3>
           <p className="mt-0.5 text-[11px] text-zoca-text-2">
-            Per-AM behavioral signals: who has RED customers falling through. Click a non-zero cell to filter the rollup below.
+            Per-AM behavioral signals: who has needs-call (Critical + At-risk) customers falling through. Click a non-zero cell to filter the rollup below.
           </p>
         </div>
       </header>
@@ -183,7 +183,7 @@ function CoachingTable({
                       {m.short}
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-right font-medium">Total RED</th>
+                  <th className="px-3 py-2 text-right font-medium">Needs call</th>
                   <th className="px-3 py-2 text-right font-medium">MRR @ risk</th>
                 </tr>
               </thead>

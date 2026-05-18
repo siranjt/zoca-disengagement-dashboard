@@ -3,6 +3,7 @@ import { ACTIVE_AMS } from "./config";
 import type { SnapshotV2, ScoredCustomerV2 } from "./types";
 
 import { normalizeHealthTier } from "@/lib/config";
+import { getHealthCardMap } from "@/lib/health-card";
 /**
  * Phase 27 — Coaching loops.
  *
@@ -91,14 +92,21 @@ export async function getCoachingPerAm(
     const byAm = new Map<string, CoachingRow>();
     for (const am of ACTIVE_AMS) byAm.set(am, emptyRow(am));
 
+    // Phase 33.E.6.2 — pull the health-card map directly. Snapshot.customers
+    // don't carry metabase_health when read via readLatestSnapshotV2() (the
+    // enrichment lives in /api/v2/snapshot/route.ts only).
+    const _healthMap = await getHealthCardMap().catch(() => new Map());
+
     const redByAm = new Map<string, ScoredCustomerV2[]>();
     for (const c of snapshot.customers || []) {
       if (!c?.am_name) continue;
-      // Phase 33.E.6 — needs-call-today filter.
-      // Prefer Metabase health tier: CRITICAL or AT-RISK count as "needs call".
-      // Fall back to legacy stoplight === "RED" only when metabase_health is
-      // absent (the ~13 orphans without health-card coverage).
-      const _ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+      // Phase 33.E.6 / 33.E.6.2 — needs-call-today filter.
+      // Look up tier from the health-card map (keyed on lowercase entity_id).
+      // Fall back to legacy stoplight === "RED" only when entity isn't in the
+      // map (the ~13 orphans without health-card coverage).
+      const _eid = (c.entity_id || "").toLowerCase();
+      const _hcRow: any = _healthMap.get(_eid);
+      const _ht = normalizeHealthTier(_hcRow?.health_tier);
       const _needsCall =
         _ht === "CRITICAL" || _ht === "AT-RISK" ||
         (_ht === null && c.signals_v2?.stoplight === "RED");

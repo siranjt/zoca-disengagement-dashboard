@@ -4,6 +4,7 @@ import { readLastOneOnOneDatesByAm, type OneOnOneAmSummary } from "@/lib/one-on-
 import { ACTIVE_AMS, POD_MAP, normalizeHealthTier} from "@/lib/config";
 import { getApiUser, requireRole } from "@/lib/api-auth";
 
+import { getHealthCardMap } from "@/lib/health-card";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -29,12 +30,15 @@ export async function GET() {
 
     const byAm = new Map<string, { red: number; mrr: number }>();
     if (snap) {
+      // Phase 33.E.6.2 — pull health-card map directly (snapshot doesn't carry it)
+      const _healthMap = await getHealthCardMap().catch(() => new Map());
+
       for (const c of snap.customers || []) {
         if (!c?.am_name) continue;
-        // Phase 33.E.8 — Need-to-call filter: CRITICAL + AT-RISK from health tier.
-        // Falls back to legacy stoplight === "RED" only when metabase_health is
-        // absent (orphans without health-card coverage).
-        const _ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+        // Phase 33.E.8 / 33.E.6.2 — Need-to-call filter via direct map lookup.
+        const _eid = (c.entity_id || "").toLowerCase();
+        const _hcRow: any = _healthMap.get(_eid);
+        const _ht = normalizeHealthTier(_hcRow?.health_tier);
         const _needsCall =
           _ht === "CRITICAL" || _ht === "AT-RISK" ||
           (_ht === null && c.signals_v2?.stoplight === "RED");
