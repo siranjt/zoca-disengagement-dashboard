@@ -715,9 +715,9 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           />
         )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="basis-full flex items-center gap-2 mt-2">
           {/* Search */}
-          <label className="relative inline-flex items-center">
+          <label className="relative inline-flex items-center flex-1">
             <span className="absolute left-3 text-zoca-text-soft" aria-hidden>
               ⌕
             </span>
@@ -728,7 +728,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search business name…"
               aria-label="Search business name"
-              className="rounded-full border py-1.5 pl-8 pr-3 text-[12px] focus:outline-none"
+              className="w-full rounded-full border py-1.5 pl-8 pr-3 text-[12px] focus:outline-none"
               style={{
                 borderColor: "var(--zoca-border)",
                 background: "#ffffff",
