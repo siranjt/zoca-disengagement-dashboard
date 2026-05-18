@@ -86,6 +86,12 @@ function V2CustomerCardInner({
     setSnoozing(true);
     await new Promise((r) => setTimeout(r, 250));
     onSnooze(days);
+      // Phase 33.B.9 — fire deeper event for admin/usage funnels
+      logEvent("snooze_set", {
+        surface: "v2_dashboard",
+        entity_id: customer.entity_id,
+        metadata: { days, am: customer.am_name },
+      });
   }
 
   // Feedback flow ("this signal is wrong" report)
@@ -190,6 +196,12 @@ function V2CustomerCardInner({
         return;
       }
       setActionState({ kind: "done", choice, at: Date.now() });
+      // Phase 33.B.9 — fire deeper event for admin/usage funnels
+      logEvent("mark_contacted", {
+        surface: "v2_dashboard",
+        entity_id: customer.entity_id,
+        metadata: { choice, reason: reason || null, am: customer.am_name },
+      });
     } catch (e) {
       setActionState({
         kind: "error",

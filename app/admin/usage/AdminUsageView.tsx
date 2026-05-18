@@ -79,6 +79,16 @@ const eventColor = (event: string): string => {
   if (event === "page_view") return "#146ef5";
   if (event === "customer_opened") return "#ff56bb";
   if (event === "mark_contacted") return "#f59e0b";
+  if (event === "note_saved") return "#047857";
+  if (event === "snooze_set") return "#d97706";
+  if (event === "coaching_acted") return "#8b5cf6";
+  if (event === "one_on_one_opened") return "#3b82f6";
+  if (event === "coaching_dismissed") return "rgba(255,255,255,0.35)";
+  if (event === "filter_changed") return "rgba(255,255,255,0.55)";
+  if (event === "sort_changed") return "rgba(255,255,255,0.55)";
+  if (event === "view_switched") return "rgba(255,255,255,0.55)";
+  if (event === "am_switched") return "rgba(255,255,255,0.55)";
+  if (event === "refresh_clicked") return "rgba(255,255,255,0.55)";
   return "rgba(255,255,255,0.5)";
 };
 

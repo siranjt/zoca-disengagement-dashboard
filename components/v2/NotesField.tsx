@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 
 /**
  * Phase 18.B — private notes per (AM, customer).
@@ -43,6 +44,7 @@ export function NotesField({ amName, entityId, customerId, bizname }: Props) {
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const lastSavedRef = useRef<string>("");
   const [, setTick] = useState(0); // re-render so "Saved · Xs ago" ticks up
+  const logEvent = useActivityLogger();
 
   // Load existing note on mount / when key inputs change
   useEffect(() => {
@@ -106,6 +108,12 @@ export function NotesField({ amName, entityId, customerId, bizname }: Props) {
       lastSavedRef.current = note;
       setUpdatedAt((data.updated_at as string) ?? null);
       setState("saved");
+      // Phase 33.B.9 — fire deeper event for admin/usage funnels
+      logEvent("note_saved", {
+        surface: "v2_customer_detail",
+        entity_id: entityId,
+        metadata: { am: amName, note_length: note.length },
+      });
     } catch (e) {
       setState("error");
       setErrMsg(e instanceof Error ? e.message : String(e));

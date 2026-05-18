@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import type { CoachingRow, CoachingMetric } from "@/lib/coaching";
 
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 type Mode = "manager" | "am";
 
 type Props = {
@@ -104,6 +105,7 @@ function formatMrr(cents: number): string {
 }
 
 export default function V2CoachingLoops({ mode, rows, onMetricClick }: Props) {
+  const logEvent = useActivityLogger();
   if (mode === "am") return <CoachingPills row={rows[0]} onMetricClick={onMetricClick} />;
   return <CoachingTable rows={rows} onMetricClick={onMetricClick} />;
 }
@@ -249,6 +251,11 @@ function CoachingTable({
                               type="button"
                               disabled={!active}
                               onClick={() =>
+                                // Phase 33.B.9 — fire deeper event for admin/usage funnels
+                                logEvent("coaching_acted", {
+                                  surface: mode === "manager" ? "v2_manager_1on1" : "v2_coaching",
+                                  metadata: { args: [row.am_name, m.key].map(String) },
+                                });
                                 active && onMetricClick?.(row.am_name, m.key)
                               }
                               title={

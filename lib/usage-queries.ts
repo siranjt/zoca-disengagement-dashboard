@@ -29,6 +29,8 @@ export interface PerUserRow {
   total_events: number;
   customer_opens: number;
   pages_viewed: number;
+  actions_taken: number;
+  filter_changes: number;
 }
 
 export interface TopPathRow {
@@ -114,7 +116,9 @@ export async function getPerUserStats(): Promise<PerUserRow[]> {
       COUNT(*) FILTER (WHERE event_name = 'sign_in')::int          AS sign_ins,
       COUNT(*)::int                                                AS total_events,
       COUNT(*) FILTER (WHERE event_name = 'customer_opened')::int  AS customer_opens,
-      COUNT(*) FILTER (WHERE event_name = 'page_view')::int        AS pages_viewed
+      COUNT(*) FILTER (WHERE event_name = 'page_view')::int        AS pages_viewed,
+      COUNT(*) FILTER (WHERE event_name IN ('mark_contacted', 'note_saved', 'snooze_set', 'coaching_acted'))::int AS actions_taken,
+      COUNT(*) FILTER (WHERE event_name = 'filter_changed')::int   AS filter_changes
     FROM am_activity_log
     WHERE ts > NOW() - INTERVAL '30 days'
     GROUP BY email
@@ -129,6 +133,8 @@ export async function getPerUserStats(): Promise<PerUserRow[]> {
     total_events: r.total_events,
     customer_opens: r.customer_opens,
     pages_viewed: r.pages_viewed,
+    actions_taken: r.actions_taken ?? 0,
+    filter_changes: r.filter_changes ?? 0,
   }));
 }
 

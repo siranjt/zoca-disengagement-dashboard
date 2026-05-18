@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   Chart as ChartJS,
@@ -19,6 +19,7 @@ import type { ScoredCustomer, Snapshot } from "@/lib/types";
 import type { Tier } from "@/lib/config";
 import { TIER_COLORS, TIER_ORDER, CHANNEL_COLORS } from "@/lib/config";
 
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 ChartJS.register(
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
   ArcElement, Filler, Title, Tooltip, Legend,
@@ -230,6 +231,29 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("overview");
   const [filters, setFilters] = useState<Filters>(emptyFilters());
+  // Phase 33.B.9 — debounced filter_changed logger
+  const logEvent = useActivityLogger();
+  const filterLogFirstRunRef = useRef(true);
+  useEffect(() => {
+    if (filterLogFirstRunRef.current) {
+      filterLogFirstRunRef.current = false;
+      return;
+    }
+    const id = setTimeout(() => {
+      logEvent("filter_changed", {
+        surface: "v2_dashboard",
+        metadata: {
+          tier: filters.tier ?? null,
+          am: filters.am ?? null,
+          signal: filters.signal ?? null,
+          windowDays: filters.windowDays,
+          sort: filters.sort ?? null,
+          hasSearch: !!(filters.search && filters.search.length > 0),
+        },
+      });
+    }, 500);
+    return () => clearTimeout(id);
+  }, [filters, logEvent]);
   const [modal, setModal] = useState<ScoredCustomer | null>(null);
 
   async function load(rebuild = false) {
