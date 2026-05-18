@@ -424,6 +424,41 @@ function V2DetailHeader({ customer, trend }: Props) {
           </div>
         );
       })()}
+      {/* Phase G7 — Win Agent stats (for the ~2.8% of customers with it enabled) */}
+      {(() => {
+        const wa: any = (customer as any).metabase_health?.win_agent;
+        if (!wa || wa.enabled !== true) return null;
+        const total = Number(wa.total_leads_30d ?? 0);
+        const booked = Number(wa.booked_leads_30d ?? 0);
+        const rate = Number(wa.booking_rate_pct ?? 0);
+        return (
+          <div data-detail-winagent="1" className="mt-3 rounded-zoca border border-violet-300/60 bg-violet-500/5 px-3 py-2">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-violet-700 font-semibold">
+                Win Agent · 30d
+              </span>
+              <span className="text-[10px] text-zoca-text-3">Booking automation</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+                <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Leads</div>
+                <div className="text-[14px] font-semibold tabular-nums text-zoca-text">{total}</div>
+              </div>
+              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+                <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Booked</div>
+                <div className="text-[14px] font-semibold tabular-nums text-zoca-text">{booked}</div>
+              </div>
+              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+                <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Rate</div>
+                <div className={`text-[14px] font-semibold tabular-nums ${rate >= 60 ? "text-emerald-700" : rate >= 30 ? "text-amber-700" : "text-rose-700"}`}>
+                  {Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
 
 
       {/* Phase 30 — Inline snapshot timeline (replaces the tiny sparkline). */}
