@@ -92,6 +92,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Beacon — sticky filter bar pinned state (true when scrolled past hero).
+  const [_stickyPinned, _setStickyPinned] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => _setStickyPinned(window.scrollY > 80);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Fetch the set of entities this AM has contacted in the last 7 days so we
   // can dim those cards and show a 'Contacted Xd ago' chip.
   useEffect(() => {
@@ -581,6 +591,21 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       )}
       {/* Book trend strip — last 14 days */}
       {amName && <V2AMBookTrendStrip amName={amName} days={14} />}
+      {/* Beacon — sticky filter container starts here */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderBottom: "0.5px solid var(--zoca-border)",
+          padding: _stickyPinned ? "10px 0 4px" : "16px 0 0",
+          boxShadow: _stickyPinned ? "0 4px 14px -8px rgba(11,5,29,0.18)" : "none",
+          transition: "padding 0.2s ease, box-shadow 0.2s ease",
+        }}
+      >
       {/* Hero */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         {heroLabelRich !== null ? (
@@ -734,6 +759,9 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           </label>
         </div>
       </div>
+
+      </div>
+      {/* Beacon — sticky filter container ends here */}
 
       {/* Phase 22.B.1 + 22.B.3 — sticky filter banners (signal and pod).
           They sit side-by-side in a flex row, each independently dismissible.
