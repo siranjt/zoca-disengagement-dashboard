@@ -22,16 +22,25 @@ const POD_COLOR_DOT: Record<string, string> = {
 type PodSummary = {
   pod: string;
   ams: string[];
-  topAms: { am: string; red: number }[];
+  // Phase 33.H.3a — topAms now ranks by needsCall (Critical + At-risk) count
+  topAms: { am: string; needsCall: number }[];
   total: number;
   RED: number;
   YELLOW: number;
   GREEN: number;
+  // Phase 33.H.3a — 4-tier health_tier counts (MONITOR fallback)
+  critical: number;
+  atRisk: number;
+  monitor: number;
+  healthy: number;
+  needsCall: number;
   pctRed: number;
+  pctNeedsCall: number;
   mrr: number;
   mrrAtRisk: number;
   topSignal: TopSignal | null;
   redDelta: number | null;
+  needsCallDelta: number | null;
   flagged: number;
 };
 
@@ -99,18 +108,26 @@ export default function V2PodSummaryGrid({
   const router = useRouter();
   const { showToast } = useToast();
   const summaries = useMemo<PodSummary[]>(() => {
-    // Comparison RED counts by pod
-    const compareRedByPod = new Map<string, number>();
+    // Phase 33.H.3a — track both legacy red AND new needsCall (Critical + At-risk) per pod
+    const compareCountsByPod = new Map<string, { red: number; needsCall: number }>();
     if (comparison) {
       for (const c of comparison.customers) {
-        if (c.signals_v2.stoplight === "RED") {
-          const pod = POD_MAP[c.am_name] || "Floating";
-          compareRedByPod.set(pod, (compareRedByPod.get(pod) || 0) + 1);
-        }
+        const pod = POD_MAP[c.am_name] || "Floating";
+        const entry = compareCountsByPod.get(pod) || { red: 0, needsCall: 0 };
+        if (c.signals_v2.stoplight === "RED") entry.red += 1;
+        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _ht =
+          _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+          : _htRaw === "AT-RISK" ? "AT-RISK"
+          : _htRaw === "HEALTHY" ? "HEALTHY"
+          : "MONITOR";
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") entry.needsCall += 1;
+        compareCountsByPod.set(pod, entry);
       }
     }
 
     const byPod = new Map<string, ScoredCustomerV2[]>();
+    // Phase 33.H.3a — per-AM needsCall tally (replaces former red-based tally)
     const amsByPod = new Map<string, Map<string, number>>();
     for (const c of snapshot.customers) {
       const pod = POD_MAP[c.am_name] || "Floating";
@@ -120,12 +137,23 @@ export default function V2PodSummaryGrid({
       if (c.am_name) {
         const amMap = amsByPod.get(pod)!;
         const prev = amMap.get(c.am_name) || 0;
-        amMap.set(c.am_name, prev + (c.signals_v2.stoplight === "RED" ? 1 : 0));
+        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _ht =
+          _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+          : _htRaw === "AT-RISK" ? "AT-RISK"
+          : _htRaw === "HEALTHY" ? "HEALTHY"
+          : "MONITOR";
+        amMap.set(c.am_name, prev + ((_ht === "CRITICAL" || _ht === "AT-RISK") ? 1 : 0));
       }
     }
     return POD_ORDER.map<PodSummary>((pod) => {
       const list = byPod.get(pod) || [];
       const counts: Record<Stoplight, number> = { RED: 0, YELLOW: 0, GREEN: 0 };
+      // Phase 33.H.3a — 4-tier counts (MONITOR fallback for missing metabase_health)
+      let critical = 0;
+      let atRisk = 0;
+      let monitor = 0;
+      let healthy = 0;
       let mrr = 0;
       let mrrAtRisk = 0;
       let flagged = 0;
@@ -134,16 +162,28 @@ export default function V2PodSummaryGrid({
         counts[sl] += 1;
         const plan = c.plan_amount || 0;
         mrr += plan;
-        if (sl === "RED") mrrAtRisk += plan;
+        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _ht =
+          _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+          : _htRaw === "AT-RISK" ? "AT-RISK"
+          : _htRaw === "HEALTHY" ? "HEALTHY"
+          : "MONITOR";
+        if (_ht === "CRITICAL") critical += 1;
+        else if (_ht === "AT-RISK") atRisk += 1;
+        else if (_ht === "HEALTHY") healthy += 1;
+        else monitor += 1;
+        // MRR-at-risk now uses Critical + At-risk (the "needs call" semantic)
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") mrrAtRisk += plan;
         if (c.performance?.flag) flagged += 1;
       }
+      const needsCall = critical + atRisk;
       const amMap = amsByPod.get(pod) || new Map();
       const ams = Array.from(amMap.keys()).sort();
       const topAms = Array.from(amMap.entries())
-        .map(([am, red]) => ({ am, red }))
-        .sort((a, b) => b.red - a.red)
+        .map(([am, needsCall]) => ({ am, needsCall }))
+        .sort((a, b) => b.needsCall - a.needsCall)
         .slice(0, 3);
-      const prevRed = compareRedByPod.get(pod);
+      const prevCounts = compareCountsByPod.get(pod);
       return {
         pod,
         ams,
@@ -152,11 +192,18 @@ export default function V2PodSummaryGrid({
         RED: counts.RED,
         YELLOW: counts.YELLOW,
         GREEN: counts.GREEN,
+        critical,
+        atRisk,
+        monitor,
+        healthy,
+        needsCall,
         pctRed: list.length ? (counts.RED / list.length) * 100 : 0,
+        pctNeedsCall: list.length ? (needsCall / list.length) * 100 : 0,
         mrr,
         mrrAtRisk,
         topSignal: classifyTopSignal(list),
-        redDelta: comparison && prevRed !== undefined ? counts.RED - prevRed : null,
+        redDelta: comparison && prevCounts ? counts.RED - prevCounts.red : null,
+        needsCallDelta: comparison && prevCounts ? needsCall - prevCounts.needsCall : null,
         flagged,
       };
     });
@@ -195,12 +242,17 @@ export default function V2PodSummaryGrid({
           const r = s.total ? (s.RED / s.total) * 100 : 0;
           const y = s.total ? (s.YELLOW / s.total) * 100 : 0;
           const g = s.total ? (s.GREEN / s.total) * 100 : 0;
+            // Phase 33.H.3a — 4-tier percentages for the spread bar
+            const cr = s.total ? (s.critical / s.total) * 100 : 0;
+            const ar = s.total ? (s.atRisk / s.total) * 100 : 0;
+            const mo = s.total ? (s.monitor / s.total) * 100 : 0;
+            const he = s.total ? (s.healthy / s.total) * 100 : 0;
           return (
             <button
               key={s.pod}
               onClick={() => onSelectPod(active ? "All" : s.pod)}
               aria-pressed={active}
-              aria-label={`${s.pod}: ${s.total} customers, ${s.RED} red, ${formatMoney(s.mrrAtRisk)} MRR at risk. Click to ${active ? "clear" : "filter"}.`}
+              aria-label={`${s.pod}: ${s.total} customers, ${s.needsCall} needs call, ${formatMoney(s.mrrAtRisk)} MRR at risk. Click to ${active ? "clear" : "filter"}.`}
               className="group flex flex-col rounded-2xl px-3 py-3 text-left transition-all duration-150 ease-out focus:outline-none"
               style={
                 active
@@ -256,10 +308,15 @@ export default function V2PodSummaryGrid({
                 className="mt-1 flex h-1 w-full overflow-hidden rounded-full"
                 style={{ background: "var(--zoca-bg-soft)" }}
                 role="img"
-                aria-label={`Tier spread: ${s.RED} red, ${s.YELLOW} yellow, ${s.GREEN} green`}
-                title={`${s.RED} RED · ${s.YELLOW} YEL · ${s.GREEN} GRN`}
+                aria-label={`Tier spread: ${s.critical} Critical, ${s.atRisk} At-risk, ${s.monitor} Monitor, ${s.healthy} Healthy`}
+                title={`${s.critical} CRIT · ${s.atRisk} AT-RISK · ${s.monitor} MONITOR · ${s.healthy} HEALTHY`}
               >
-                {r > 0 && <div style={{ width: `${r}%`, background: "var(--zoca-pink)" }} />}
+                {cr > 0 && <div style={{ width: `${cr}%`, background: "var(--zoca-crimson, #dc2626)" }} />}
+                  {ar > 0 && <div style={{ width: `${ar}%`, background: "var(--zoca-pink)" }} />}
+                  {/* legacy r/y/g vars kept for back-compat but not rendered (replaced by cr/ar/mo/he) */}
+                  {/* r/y/g unused on render path */}
+                  {mo > 0 && <div style={{ width: `${mo}%`, background: "var(--zoca-amber)" }} />}
+                  {he > 0 && <div style={{ width: `${he}%`, background: "var(--zoca-green)" }} />}
                 {y > 0 && <div style={{ width: `${y}%`, background: "var(--zoca-amber)" }} />}
                 {g > 0 && <div style={{ width: `${g}%`, background: "var(--zoca-green)" }} />}
               </div>
@@ -267,7 +324,7 @@ export default function V2PodSummaryGrid({
                 <div
                   className="mt-2 print:hidden"
                   style={{ color: "var(--zoca-pink)" }}
-                  title={`RED-count trend for ${s.pod} over the last ${trends[s.pod].length} days`}
+                  title={`Needs-call trend (RED proxy) for ${s.pod} over the last ${trends[s.pod].length} days`}
                 >
                   <V2Sparkline
                     values={trends[s.pod].map((pt) => pt.red)}
@@ -275,15 +332,15 @@ export default function V2PodSummaryGrid({
                     height={18}
                     color="var(--zoca-pink)"
                     gradient
-                    label={`${s.pod} RED trend`}
+                    label={`${s.pod} needs-call trend`}
                   />
                 </div>
               )}
 
               <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
-                <div className="text-zoca-text-2">RED</div>
+                <div className="text-zoca-text-2">Needs call</div>
                 <div className="text-right font-semibold tabular-nums" style={{ color: "var(--zoca-pink)" }}>
-                  {s.RED} <span className="text-zoca-text-2">({s.pctRed.toFixed(0)}%)</span>
+                  {s.needsCall} <span className="text-zoca-text-2">({s.pctNeedsCall.toFixed(0)}%)</span>
                 </div>
                 <div className="text-zoca-text-2">MRR</div>
                 <div className="text-right tabular-nums text-zoca-text">
@@ -306,9 +363,9 @@ export default function V2PodSummaryGrid({
                 </div>
               </div>
 
-              {s.redDelta !== null && (
+              {s.needsCallDelta !== null && (
                 <div className="mt-2">
-                  <PodDeltaPill delta={s.redDelta} />
+                  <PodDeltaPill delta={s.needsCallDelta} />
                 </div>
               )}
 
@@ -350,17 +407,17 @@ export default function V2PodSummaryGrid({
                 </div>
               )}
 
-              {s.topAms.length > 0 && s.topAms[0].red > 0 && (
+              {s.topAms.length > 0 && s.topAms[0].needsCall > 0 && (
                 <div
                   className="mt-1 truncate text-[10px] text-zoca-text-2"
-                  title={`Top AMs by RED: ${s.topAms.map((a) => `${a.am} (${a.red})`).join(", ")}`}
+                  title={`Top AMs by needs call: ${s.topAms.map((a) => `${a.am} (${a.needsCall})`).join(", ")}`}
                 >
                   Hotspot:{" "}
                   <span className="font-medium text-zoca-text">
                     {s.topAms
-                      .filter((a) => a.red > 0)
+                      .filter((a) => a.needsCall > 0)
                       .slice(0, 2)
-                      .map((a) => `${a.am.split(" ")[0]} (${a.red})`)
+                      .map((a) => `${a.am.split(" ")[0]} (${a.needsCall})`)
                       .join(" · ")}
                   </span>
                 </div>
@@ -384,7 +441,7 @@ function PodDeltaPill({ delta }: { delta: number }) {
           border: "1px solid var(--zoca-border)",
         }}
       >
-        ± 0 RED
+        ± 0 needs call
       </span>
     );
   }
@@ -404,9 +461,9 @@ function PodDeltaPill({ delta }: { delta: number }) {
     <span
       className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
       style={style}
-      title={`${worse ? "+" : ""}${delta} RED vs comparison`}
+      title={`${worse ? "+" : ""}${delta} needs call vs comparison`}
     >
-      {worse ? "▲" : "▼"} {Math.abs(delta)} RED
+      {worse ? "▲" : "▼"} {Math.abs(delta)} needs call
     </span>
   );
 }
