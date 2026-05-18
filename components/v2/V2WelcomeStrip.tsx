@@ -11,6 +11,15 @@ type Props = {
 export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) {
   const redCount = customers.filter((c) => c.signals_v2.stoplight === "RED").length;
   const yellowCount = customers.filter((c) => c.signals_v2.stoplight === "YELLOW").length;
+  // Phase 33.H.2 — tier-based counts (MONITOR fallback for missing metabase_health)
+  const needsCallCount = customers.filter((c) => {
+    const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+    return _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" || _htRaw === "AT-RISK";
+  }).length;
+  const watchingCount = customers.filter((c) => {
+    const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+    return _htRaw !== "CRITICAL - DEAL BREAKER" && _htRaw !== "CRITICAL" && _htRaw !== "AT-RISK" && _htRaw !== "HEALTHY";
+  }).length;
   const total = customers.length;
 
   return (
@@ -20,9 +29,9 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
         <span className="text-zoca-text-muted">
           {total === 0
             ? "No customers in your book yet."
-            : redCount === 0 && yellowCount === 0
+            : needsCallCount === 0 && watchingCount === 0
               ? `${total} customers in your book — all doing fine right now.`
-              : `${redCount} needs attention, ${yellowCount} to keep an eye on${
+              : `${needsCallCount} need a call, ${watchingCount} to watch${
                   total > 0 ? `, out of ${total} in your book.` : "."
                 }`}
         </span>

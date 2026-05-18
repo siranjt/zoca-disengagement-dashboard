@@ -52,7 +52,7 @@ function StoplightChip({ tier }: { tier: "RED" | "YELLOW" | "GREEN" }) {
   };
   return (
     <span className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-semibold ${map[tier]}`}>
-      {tier}
+      {tier === "RED" ? "NEEDS CALL" : tier === "YELLOW" ? "MONITOR" : "HEALTHY"}
     </span>
   );
 }
@@ -181,17 +181,17 @@ export default function V2MondayBriefing() {
           <>
             {/* KPI strip */}
             <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiBox label="RED" value={String(state.data.totals.RED)} tone="rose" />
-              <KpiBox label="YELLOW" value={String(state.data.totals.YELLOW)} tone="amber" />
-              <KpiBox label="GREEN" value={String(state.data.totals.GREEN)} tone="emerald" />
+              <KpiBox label="Needs call" value={String(state.data.totals.RED)} tone="rose" />
+              <KpiBox label="Monitor" value={String(state.data.totals.YELLOW)} tone="amber" />
+              <KpiBox label="Healthy" value={String(state.data.totals.GREEN)} tone="emerald" />
               <KpiBox label="MRR @ risk" value={formatMoney(state.data.totals.mrrAtRisk)} tone="rose" />
             </section>
 
             {/* Top RED */}
             <Panel
               title="🔥 Call these first"
-              hint={`Top ${state.data.top_red.length} RED-stoplight customer${state.data.top_red.length === 1 ? "" : "s"} by composite. Click to open the card.`}
-              emptyText="No RED customers in your book this week. Nice."
+              hint={`Top ${state.data.top_red.length} needs-call customer${state.data.top_red.length === 1 ? "" : "s"} by composite. Click to open the card.`}
+              emptyText="No needs-call customers in your book this week. Nice."
               empty={state.data.top_red.length === 0}
             >
               <ul className="divide-y divide-zoca-border">
@@ -245,7 +245,7 @@ export default function V2MondayBriefing() {
             <Panel
               title="⬆ Recoveries this week"
               hint="Customers whose stoplight improved. Celebrate or call to lock the gain."
-              emptyText="No recoveries this week — focus on the top RED list."
+              emptyText="No recoveries this week — focus on the top needs-call list."
               empty={state.data.improved_this_week.length === 0}
               tone="emerald"
             >
