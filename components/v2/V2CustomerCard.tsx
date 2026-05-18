@@ -16,6 +16,7 @@ import type { SignalKey } from "@/lib/signal-taxonomy";
 import { useMagnetic } from "@/lib/hooks/useMagnetic";
 
 import { useActivityLogger } from "@/hooks/use-activity-logger";
+import { normalizeHealthTier, HEALTH_TIER_COLORS, HEALTH_TIER_LABELS } from "@/lib/config";
 type CompositeTrendPoint = { date: string; composite: number };
 
 type Props = {
@@ -322,7 +323,11 @@ function V2CustomerCardInner({
   return (
     <article
       role="article"
-      aria-label={`${customer.company} — ${STOPLIGHT_TITLE[s.stoplight]}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`}
+      aria-label={(() => {
+        const _ht = normalizeHealthTier((customer as any).metabase_health?.health_tier);
+        const _tl = _ht ? HEALTH_TIER_LABELS[_ht] : STOPLIGHT_TITLE[s.stoplight];
+        return `${customer.company} — ${_tl}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`;
+      })()}
       data-entity-id={customer.entity_id}
       className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}`}
       style={{
@@ -335,7 +340,7 @@ function V2CustomerCardInner({
     >
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3 p-4 md:gap-4 md:p-5">
         {/* Stoplight dot — with hover title */}
-        <StoplightDot light={s.stoplight} />
+        <StoplightDot light={s.stoplight} healthTier={(customer as any).metabase_health?.health_tier} />
 
         {/* Body */}
         <div className="min-w-0">
@@ -531,6 +536,17 @@ function V2CustomerCardInner({
             >
               {renderReason(narrativeText)}
               <FeedbackButton state={feedbackState} setState={setFeedbackState} submit={submitFeedback} />
+            </div>
+          )}
+          {/* Phase 33.E.3 — Metabase recommended action callout */}
+          {(customer as any).metabase_health?.recommended_action && (
+            <div
+              data-recommended-action="1"
+              className="mt-2 rounded-zoca border border-zoca-border bg-zoca-bg-tint/40 px-3 py-1.5 text-[11px] leading-snug text-zoca-text-2"
+              title="Recommended next action from Metabase Customer Health"
+            >
+              <span className="font-semibold text-zoca-text">→ </span>
+              {(customer as any).metabase_health.recommended_action}
             </div>
           )}
           {/* Modifier flag chips */}
@@ -977,10 +993,14 @@ function V2CustomerCardInner({
 // Stoplight dot — with hover tooltip
 // ---------------------------------------------------------------------------
 
-function StoplightDot({ light }: { light: Stoplight }) {
-  const color =
-    light === "RED" ? "#ef4444" : light === "YELLOW" ? "#f59e0b" : "#10b981";
-  const label = STOPLIGHT_TITLE[light];
+function StoplightDot({ light, healthTier }: { light: Stoplight; healthTier?: string | null }) {
+  // Phase 33.E.3 — when the customer has a metabase_health tier, color the
+  // dot with the 4-tier palette. Falls back to old 3-tier when unmapped.
+  const normTier = healthTier ? normalizeHealthTier(healthTier) : null;
+  const color = normTier
+    ? HEALTH_TIER_COLORS[normTier]
+    : (light === "RED" ? "#ef4444" : light === "YELLOW" ? "#f59e0b" : "#10b981");
+  const label = normTier ? HEALTH_TIER_LABELS[normTier] : STOPLIGHT_TITLE[light];
   return (
     <span
       role="img"
