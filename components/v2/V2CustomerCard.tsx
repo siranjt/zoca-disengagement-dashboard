@@ -136,7 +136,14 @@ function V2CustomerCardInner({
   // ---------------------------------------------------------------------------
 
   // Auto-expand defaults per tier
+  // Phase 33.E.3.3 — auto-expand triggers on the new tier model (CRITICAL or
+  // AT-RISK from Metabase health card) in addition to the legacy stoplight
+  // conditions. Both paths kept so the ~13 orphans without metabase_health
+  // still auto-expand on old-RED via the fallback.
+  const _ht_for_expand = normalizeHealthTier((customer as any).metabase_health?.health_tier);
   const autoExpand =
+    _ht_for_expand === "CRITICAL" ||
+    _ht_for_expand === "AT-RISK" ||
     s.stoplight === "RED" ||
     (s.stoplight === "YELLOW" && !!customer.performance?.flag);
   const [expanded, setExpanded] = useState<boolean>(autoExpand);
