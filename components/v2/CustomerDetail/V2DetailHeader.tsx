@@ -367,6 +367,64 @@ function V2DetailHeader({ customer, trend }: Props) {
           </div>
         );
       })()}
+      {/* Phase G5 — incoming comms by channel (90d) */}
+      {(() => {
+        const comms: any = (customer as any).metabase_health?.comms;
+        if (!comms) return null;
+        const fmtDaysAgo = (iso: string | null | undefined): string => {
+          if (!iso || typeof iso !== "string") return "—";
+          const ms = Date.parse(iso);
+          if (!Number.isFinite(ms)) return "—";
+          const days = Math.max(0, Math.floor((Date.now() - ms) / 86400_000));
+          if (days === 0) return "today";
+          if (days === 1) return "1d ago";
+          if (days < 30) return `${days}d ago`;
+          const months = Math.floor(days / 30);
+          return months === 1 ? "1mo ago" : `${months}mo ago`;
+        };
+        const channels: Array<{ label: string; count: number; last: string | null }> = [
+          { label: "SMS",   count: Number(comms.sms_count ?? 0),   last: comms.last_sms_date   ?? null },
+          { label: "Call",  count: Number(comms.calls_count ?? 0), last: comms.last_call_date  ?? null },
+          { label: "Chat",  count: Number(comms.chat_count ?? 0),  last: comms.last_chat_date  ?? null },
+          { label: "Email", count: Number(comms.email_count ?? 0), last: comms.last_email_date ?? null },
+        ];
+        const total = Number(comms.total_incoming ?? channels.reduce((s, c) => s + (Number.isFinite(c.count) ? c.count : 0), 0));
+        const allZero = channels.every((c) => !Number.isFinite(c.count) || c.count === 0);
+        return (
+          <div data-detail-comms="1" className="mt-3 rounded-zoca border border-zoca-border bg-white px-3 py-2">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">
+                Incoming comms · 90d
+              </span>
+              <span className={`text-[11px] tabular-nums font-semibold ${allZero ? "text-rose-700" : "text-zoca-text"}`}>
+                {total} total{allZero ? " — no incoming activity" : ""}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {channels.map((ch, i) => {
+                const hasActivity = Number.isFinite(ch.count) && ch.count > 0;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-zoca border px-2 py-1.5 ${hasActivity ? "border-zoca-border bg-white" : "border-zoca-border bg-zoca-bg-tint/50"}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zoca-text-2">{ch.label}</span>
+                      <span className={`text-[11px] font-semibold tabular-nums ${hasActivity ? "text-zoca-text" : "text-zoca-text-3"}`}>
+                        {ch.count}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-zoca-text-2">
+                      {hasActivity ? fmtDaysAgo(ch.last) : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
 
       {/* Phase 30 — Inline snapshot timeline (replaces the tiny sparkline). */}
       <div className="mt-4 rounded-zoca-lg border border-zoca-border bg-white p-3 md:p-4">
