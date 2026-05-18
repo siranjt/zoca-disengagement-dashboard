@@ -1,29 +1,24 @@
-// Phase 33.D.3 — Snapshot route enriched with HubSpot Locations record id.
+// Phase 33.D.3 + 33.E.1 — Snapshot route with read-time enrichment.
 //
-// Strategy: enrich at READ time, not at compose time. This avoids needing to
-// regenerate the snapshot for every HubSpot Locations sync — the mapping
-// changes more often than the snapshot does. Cost is one extra Postgres read
-// (already cached for the page lifetime by the route handler).
+// Two enrichments:
+//   1. HubSpot Locations record id (33.D.3)
+//   2. Metabase Customer Health card (33.E.1) — composite, tier, sub-scores,
+//      alerts, recommended action, refunds 60d, deeper engagement, etc.
+//
+// Both are cheap Postgres reads. The snapshot blob in dashboard_snapshots
+// stays untouched; we merge at READ time so mapping refreshes propagate
+// immediately without recompose.
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildSnapshotV2 } from "@/lib/refresh";
 import { readLatestSnapshotV2 } from "@/lib/postgres";
 import { getLocationRecordIdMap } from "@/lib/hubspot-locations";
+import { getHealthCardMap } from "@/lib/health-card";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/**
- * GET /api/v2/snapshot
- *   → latest v2 snapshot (from Postgres, or rebuilt if missing)
- *
- * GET /api/v2/snapshot?rebuild=1
- *   → forces a rebuild
- *
- * Phase 33.D.3 — each customer in the response now carries
- * `hubspot.hubspot_location_record_id` (when present in hubspot_location_mapping).
- */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const wantRebuild = url.searchParams.get("rebuild") === "1";
@@ -34,16 +29,12 @@ export async function GET(req: NextRequest) {
       snap = await buildSnapshotV2();
     }
 
-    // Phase 33.D.3 — enrich each customer with their HubSpot Locations record
-    // id from the cached mapping table. Fire-and-forget on miss (entities
-    // without a Locations record stay un-enriched and the card falls back to
-    // plain text, same as before).
+    // 33.D.3 — HubSpot Locations enrichment
     try {
       const locMap = await getLocationRecordIdMap();
       if (locMap.size > 0 && Array.isArray(snap.customers)) {
         for (const c of snap.customers) {
-          const eid = (c.entity_id || "").toLowerCase();
-          const rec = locMap.get(eid);
+          const rec = locMap.get((c.entity_id || "").toLowerCase());
           if (rec) {
             c.hubspot = c.hubspot || ({} as any);
             (c.hubspot as any).hubspot_location_record_id = rec;
@@ -51,10 +42,26 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (e) {
-      // Don't fail the snapshot if the location mapping read errors —
-      // worst case the cards show plain biznames instead of links.
       console.warn(
-        "[snapshot] could not enrich with HubSpot Locations mapping:",
+        "[snapshot] Locations enrichment skipped:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+
+    // 33.E.1 — Metabase health card enrichment
+    try {
+      const hcMap = await getHealthCardMap();
+      if (hcMap.size > 0 && Array.isArray(snap.customers)) {
+        for (const c of snap.customers) {
+          const h = hcMap.get((c.entity_id || "").toLowerCase());
+          if (h) {
+            (c as any).metabase_health = h;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "[snapshot] Health card enrichment skipped:",
         e instanceof Error ? e.message : String(e),
       );
     }

@@ -40,6 +40,10 @@
     {
       "path": "/api/cron/sync-hubspot-locations",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-health-card",
+      "schedule": "0 3 * * *"
     }
   ],
   "functions": {
@@ -98,6 +102,10 @@
     "app/api/cron/sync-hubspot-locations/route.ts": {
       "memory": 512,
       "maxDuration": 60
+    },
+    "app/api/cron/sync-health-card/route.ts": {
+      "memory": 1024,
+      "maxDuration": 120
     }
   }
 }
