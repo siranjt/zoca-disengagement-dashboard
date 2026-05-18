@@ -30,10 +30,12 @@
   --zoca-border: rgba(0, 0, 0, 0.08);
   --zoca-border-2: rgba(0, 0, 0, 0.12);
 
-  /* Zoca brand — stoplight (semantic) */
-  --zoca-red: #ff56bb;        /* RED status uses brand pink */
-  --zoca-amber: #f59e0b;
-  --zoca-green: #10b981;
+  /* Zoca brand — 4-tier health palette (Phase 33.E.9 extends old stoplight) */
+  --zoca-crimson: #dc2626;     /* CRITICAL tier — deep red */
+  --zoca-red: #ff56bb;         /* AT-RISK tier (legacy name = brand pink) */
+  --zoca-amber: #f59e0b;       /* MONITOR tier */
+  --zoca-green: #10b981;       /* HEALTHY tier */
+  --zoca-crimson-soft: rgba(220, 38, 38, 0.10);
   --zoca-red-soft: rgba(255, 134, 225, 0.12);
   --zoca-amber-soft: rgba(245, 158, 11, 0.10);
   --zoca-green-soft: rgba(16, 185, 129, 0.10);

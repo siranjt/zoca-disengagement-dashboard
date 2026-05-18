@@ -29,7 +29,7 @@ const STEPS: TourStep[] = [
     selector: "[data-tour-target='step2']",
     title: "One-line narrative",
     body:
-      "Each customer has a one-line explanation of why they're in this tier. The pink/amber/emerald tint matches the stoplight.",
+      "Each customer has a one-line explanation of why they're in this tier. The crimson/pink/amber/emerald tint matches the four-tier health model (Critical / At-risk / Monitor / Healthy).",
   },
   {
     selector: "[data-tour-target='step3']",
