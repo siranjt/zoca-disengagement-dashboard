@@ -35,11 +35,11 @@ export async function GET(
     // Filter to this AM's book
     const book = latest.customers.filter((c) => c.am_name === am);
 
-    // Top 5 RED needing call (sorted by composite desc, exclude pre-launch)
+    // Top 5 customers needing call (Critical + At-risk), sorted by composite desc, exclude pre-launch
     const topRed = book
       .filter(
         (c) =>
-          c.signals_v2.stoplight === "RED" &&
+          (["CRITICAL - DEAL BREAKER", "CRITICAL", "AT-RISK"].includes(String(((c as any).metabase_health?.tier) || ""))) &&
           !c.signals_v2.pre_launch,
       )
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
@@ -77,12 +77,18 @@ export async function GET(
     // Aggregate book-level stats
     const totals = book.reduce(
       (acc, c) => {
-        const sl = c.signals_v2.stoplight;
-        if (sl === "RED") acc.RED += 1;
-        else if (sl === "YELLOW") acc.YELLOW += 1;
+        // Phase 33.H.5 — repurpose totals.RED/YELLOW/GREEN to count tiers (MONITOR fallback)
+        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _ht =
+          _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+          : _htRaw === "AT-RISK" ? "AT-RISK"
+          : _htRaw === "HEALTHY" ? "HEALTHY"
+          : "MONITOR";
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") acc.RED += 1;
+        else if (_ht === "MONITOR") acc.YELLOW += 1;
         else acc.GREEN += 1;
         if (c.signals_v2.pre_launch) acc.preLaunch += 1;
-        if (c.signals_v2.stoplight === "RED") acc.mrrAtRisk += c.plan_amount || 0;
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") acc.mrrAtRisk += c.plan_amount || 0;
         return acc;
       },
       { RED: 0, YELLOW: 0, GREEN: 0, preLaunch: 0, mrrAtRisk: 0 },
