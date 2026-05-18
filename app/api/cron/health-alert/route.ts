@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     if (!ok && webhook) {
       try {
         const lines: string[] = [
-          `:rotating_light: *Customer Health Dashboard — health check failed*`,
+          `:rotating_light: *Beacon — health check failed*`,
           `<${base}/api/health|Open /api/health> · ${new Date().toISOString()}`,
         ];
         for (const [name, p] of failingProbes) {

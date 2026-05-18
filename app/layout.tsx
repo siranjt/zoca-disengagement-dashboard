@@ -16,7 +16,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Customer Disengagement — Zoca",
+  title: "Beacon — Zoca",
   description:
     "Nightly-scored comms-quality review across Zoca's live Chargebee book. Surfaces customers at risk from silence, response drops, and volume collapse.",
 };

@@ -1,4 +1,4 @@
-# Zoca Customer Disengagement Dashboard
+# Beacon
 
 A Next.js 14 App Router dashboard that scores Zoca's live Chargebee customer book against four disengagement signals — refreshed nightly by Vercel Cron, cached in Vercel KV, served hot to the UI.
 

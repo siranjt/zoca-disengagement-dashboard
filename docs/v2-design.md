@@ -1,4 +1,4 @@
-# Zoca Customer Disengagement Dashboard — v2 Rework Design
+# Beacon — v2 Rework Design
 
 **Author:** Siranjith
 **Date:** 2026-05-12

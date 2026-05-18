@@ -113,10 +113,10 @@ export default function V2MondayBriefing() {
     <div className="min-h-screen bg-zoca-body text-zoca-text-primary">
       <nav className="sticky top-0 z-50 border-b border-zoca-border bg-zoca-bg-nav backdrop-blur-xl">
         <div className="mx-auto flex max-w-[920px] flex-wrap items-center gap-3 px-4 py-3 md:gap-4 md:px-6">
-          <a href="/v2" className="flex items-center gap-2 text-zoca-light-purple-2" aria-label="Customer Health home">
+          <a href="/v2" className="flex items-center gap-2 text-zoca-light-purple-2" aria-label="Beacon home">
             <ZocaLogo height={20} />
             <span className="hidden text-[11px] font-medium uppercase tracking-wider text-zoca-text-soft sm:inline">
-              Customer Health · Monday Brief
+              Beacon · Monday Brief
             </span>
           </a>
           {mounted && (
@@ -300,7 +300,7 @@ export default function V2MondayBriefing() {
         <div className="flex flex-col items-center gap-2 opacity-70">
           <ZocaLogo height={18} />
           <p className="text-xs text-zoca-text-soft">
-            Customer Health · Monday brief · refreshed daily at 22:00 UTC
+            Beacon · Monday brief · refreshed daily at 22:00 UTC
           </p>
         </div>
       </footer>

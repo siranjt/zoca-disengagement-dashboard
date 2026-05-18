@@ -1,8 +1,8 @@
 {
-  "name": "zoca-disengagement-dashboard",
-  "version": "2.0.0",
+  "name": "beacon",
+  "version": "3.0.0",
   "private": true,
-  "description": "Zoca Customer Disengagement Dashboard — v2 rework with hybrid signals (comms + usage + billing + performance/tickets flags), pod rollups, Postgres snapshot history.",
+  "description": "Beacon \u2014 Zoca's internal AM console. AI-assisted churn and expansion signals that surface the next action.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

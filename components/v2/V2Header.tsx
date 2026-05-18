@@ -48,12 +48,12 @@ function relativeAge(generatedAt: string | null | undefined): string {
  *
  * SINGLE sticky bar holding the entire global chrome.
  *   mode="am":
- *     left:  ZOCA logo + "| Customer Health" + AM picker pill
+ *     left:  ZOCA logo + "| Beacon" + AM picker pill
  *            (picker visible for admin OR manager — Phase 33.B)
  *     right: peer-tab toggle (AM's view / Manager's view)
  *            + Live status pill + user menu
  *   mode="manager" (Phase 17.D):
- *     left:  ZOCA logo + "| Customer Health · Manager"
+ *     left:  ZOCA logo + "| Beacon · Manager"
  *     right: peer-tab toggle + Refresh button + Live status pill
  *
  * Phase 33.B — the AM picker and the "Manager's view" tab were previously
@@ -93,7 +93,7 @@ export function V2Header(props: Props) {
         <a
           href="/v2"
           className="flex items-center gap-3 no-underline"
-          aria-label="Zoca Customer Health home"
+          aria-label="Zoca Beacon home"
         >
           <ZocaLogo height={20} color="var(--zoca-text)" />
           <span className="text-zoca-text-3 text-xs">|</span>
@@ -101,7 +101,7 @@ export function V2Header(props: Props) {
             className="text-zoca-text text-[13px] font-medium"
             style={{ letterSpacing: "-0.005em" }}
           >
-            {isManager ? "Customer Health · Manager" : "Customer Health"}
+            {isManager ? "Beacon · Manager" : "Beacon"}
           </span>
         </a>
 
