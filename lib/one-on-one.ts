@@ -292,7 +292,7 @@ function bookSummaryFor(customers: ScoredCustomerV2[]): OneOnOneBookSummary {
     const planCents = Math.round((c.plan_amount || 0) * 100);
     mrrTotal += planCents;
     // Phase 33.H.7 — read metabase_health.tier (MONITOR fallback for missing data)
-      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
       const _ht =
         _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
         : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -631,7 +631,7 @@ export function generateRuleBasedTalkingPoints(
     let topAccounts = "";
     if (customers && customers.length) {
       const topRed = customers
-        .filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
+        .filter((c) => { const _ht = String(((c as any).metabase_health?.health_tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
         .sort((a, b) => (b.plan_amount || 0) - (a.plan_amount || 0))
         .slice(0, 2)
         .map((c) => c.company || c.entity_id.slice(0, 8));
@@ -661,7 +661,7 @@ export function generateRuleBasedTalkingPoints(
   // -- ASK --------------------------------------------------------------------
   if (customers && customers.length) {
     const topRedNames = customers
-      .filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
+      .filter((c) => { const _ht = String(((c as any).metabase_health?.health_tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
       .sort((a, b) => (b.plan_amount || 0) - (a.plan_amount || 0))
       .slice(0, 3)
       .map((c) => c.company || c.entity_id.slice(0, 8));

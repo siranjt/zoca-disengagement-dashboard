@@ -115,7 +115,7 @@ export default function V2PodSummaryGrid({
         const pod = POD_MAP[c.am_name] || "Floating";
         const entry = compareCountsByPod.get(pod) || { red: 0, needsCall: 0 };
         if (c.signals_v2.stoplight === "RED") entry.red += 1;
-        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
         const _ht =
           _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
           : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -137,7 +137,7 @@ export default function V2PodSummaryGrid({
       if (c.am_name) {
         const amMap = amsByPod.get(pod)!;
         const prev = amMap.get(c.am_name) || 0;
-        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
         const _ht =
           _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
           : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -162,7 +162,7 @@ export default function V2PodSummaryGrid({
         counts[sl] += 1;
         const plan = c.plan_amount || 0;
         mrr += plan;
-        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
         const _ht =
           _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
           : _htRaw === "AT-RISK" ? "AT-RISK"

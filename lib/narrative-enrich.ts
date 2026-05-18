@@ -149,7 +149,7 @@ export async function enrichRedNarratives(snap: SnapshotV2): Promise<{
 
   // Only RED + not pre-launch (pre-launch customers have benign narratives)
   const candidates = snap.customers.filter(
-    (c) => (["CRITICAL - DEAL BREAKER", "CRITICAL", "AT-RISK"].includes(String(((c as any).metabase_health?.tier) || ""))) && !c.signals_v2.pre_launch,
+    (c) => (["CRITICAL - DEAL BREAKER", "CRITICAL", "AT-RISK"].includes(String(((c as any).metabase_health?.health_tier) || ""))) && !c.signals_v2.pre_launch,
   );
 
   if (!candidates.length) {

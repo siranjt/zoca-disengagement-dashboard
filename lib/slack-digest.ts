@@ -264,8 +264,8 @@ export async function runDigestForAllAms(opts?: {
     const snoozed = await loadSnoozedEntityIds(amName);
     const visible = customers.filter((c) => !snoozed.has(c.entity_id));
 
-    const red = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; });
-    const yellow = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "MONITOR" || _ht === ""; });
+    const red = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.health_tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; });
+    const yellow = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.health_tier) || ""); return _ht === "MONITOR" || _ht === ""; });
 
     // All-clear branch
     if (red.length === 0 && yellow.length === 0) {

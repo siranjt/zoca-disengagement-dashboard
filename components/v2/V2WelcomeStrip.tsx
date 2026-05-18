@@ -13,11 +13,11 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
   const yellowCount = customers.filter((c) => c.signals_v2.stoplight === "YELLOW").length;
   // Phase 33.H.2 — tier-based counts (MONITOR fallback for missing metabase_health)
   const needsCallCount = customers.filter((c) => {
-    const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+    const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
     return _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" || _htRaw === "AT-RISK";
   }).length;
   const watchingCount = customers.filter((c) => {
-    const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+    const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
     return _htRaw !== "CRITICAL - DEAL BREAKER" && _htRaw !== "CRITICAL" && _htRaw !== "AT-RISK" && _htRaw !== "HEALTHY";
   }).length;
   const total = customers.length;

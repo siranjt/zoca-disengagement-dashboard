@@ -409,7 +409,7 @@ function V2ManagerDashboardInner() {
       else if (sl === "YELLOW") YELLOW += 1;
       else GREEN += 1;
       // Phase 33.H.1 — read metabase_health tier; missing/null falls back to MONITOR
-      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
       const _ht =
         _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
         : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -472,7 +472,7 @@ function V2ManagerDashboardInner() {
       if (sl === "RED") RED += 1;
       else if (sl === "YELLOW") YELLOW += 1;
       else GREEN += 1;
-      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
       const _ht =
         _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
         : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -499,7 +499,7 @@ function V2ManagerDashboardInner() {
       if (!c.am_name) continue;
       const entry = m.get(c.am_name) || { red: 0, needsCall: 0 };
       if (c.signals_v2.stoplight === "RED") entry.red += 1;
-      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
       const _ht =
         _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
         : _htRaw === "AT-RISK" ? "AT-RISK"
@@ -566,7 +566,7 @@ function V2ManagerDashboardInner() {
       let flagged = 0;
       for (const c of customers) {
         if (c.signals_v2.stoplight === "RED") red += 1;
-        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
         const _ht =
           _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
           : _htRaw === "AT-RISK" ? "AT-RISK"

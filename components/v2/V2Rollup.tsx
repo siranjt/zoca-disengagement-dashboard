@@ -236,7 +236,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         mrr += plan;
         if (sl === "RED") mrrAtRisk += plan;
           // Phase 33.H.3b — classify by metabase_health.tier (MONITOR fallback)
-          const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+          const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
           const _ht =
             _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
             : _htRaw === "AT-RISK" ? "AT-RISK"

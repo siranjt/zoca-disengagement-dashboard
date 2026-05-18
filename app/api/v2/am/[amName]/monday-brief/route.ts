@@ -39,7 +39,7 @@ export async function GET(
     const topRed = book
       .filter(
         (c) =>
-          (["CRITICAL - DEAL BREAKER", "CRITICAL", "AT-RISK"].includes(String(((c as any).metabase_health?.tier) || ""))) &&
+          (["CRITICAL - DEAL BREAKER", "CRITICAL", "AT-RISK"].includes(String(((c as any).metabase_health?.health_tier) || ""))) &&
           !c.signals_v2.pre_launch,
       )
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite)
@@ -78,7 +78,7 @@ export async function GET(
     const totals = book.reduce(
       (acc, c) => {
         // Phase 33.H.5 — repurpose totals.RED/YELLOW/GREEN to count tiers (MONITOR fallback)
-        const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+        const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
         const _ht =
           _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
           : _htRaw === "AT-RISK" ? "AT-RISK"
