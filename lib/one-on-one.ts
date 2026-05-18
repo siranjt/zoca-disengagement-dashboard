@@ -291,13 +291,19 @@ function bookSummaryFor(customers: ScoredCustomerV2[]): OneOnOneBookSummary {
   for (const c of customers) {
     const planCents = Math.round((c.plan_amount || 0) * 100);
     mrrTotal += planCents;
-    const sl = c.signals_v2?.stoplight;
-    if (sl === "RED") {
+    // Phase 33.H.7 — read metabase_health.tier (MONITOR fallback for missing data)
+      const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+      const _ht =
+        _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+        : _htRaw === "AT-RISK" ? "AT-RISK"
+        : _htRaw === "HEALTHY" ? "HEALTHY"
+        : "MONITOR";
+    if (_ht === "CRITICAL" || _ht === "AT-RISK") {
       red += 1;
       mrrAtRisk += planCents;
-    } else if (sl === "YELLOW") {
+    } else if (_ht === "MONITOR") {
       yellow += 1;
-    } else if (sl === "GREEN") {
+    } else if (_ht === "HEALTHY") {
       green += 1;
     }
   }
@@ -519,7 +525,7 @@ export function generateRuleBasedTalkingPoints(
       makePoint(
         "celebrate",
         `Action rate this week: ${actions.action_rate_pct}% — keep this cadence`,
-        `${actions.total} actions logged against ${book.red} RED customers. Top of the team on coverage.`,
+        `${actions.total} actions logged against ${book.red} needs-call customers. Top of the team on coverage.`,
         { label: "Action rate", value: `${actions.action_rate_pct}%` },
       ),
     );
@@ -531,7 +537,7 @@ export function generateRuleBasedTalkingPoints(
     constructive.push(
       makePoint(
         "constructive",
-        `${c} RED customers untouched for 7+ days`,
+        `${c} needs-call customers untouched for 7+ days`,
         `These are accounts where no comms and no am_action have been logged in the last 7 days. Trend vs last 1:1 unknown until we wire snapshot-diffing — for now, prioritize triage on the top-MRR ones.`,
         { label: "Untouched 7d", value: String(c) },
       ),
@@ -543,7 +549,7 @@ export function generateRuleBasedTalkingPoints(
     constructive.push(
       makePoint(
         "constructive",
-        `${c} customers RED for 14+ days — escalate or change approach`,
+        `${c} customers in Critical/At-risk for 14+ days — escalate or change approach`,
         `Stale RED is the strongest churn predictor in our cohort. If touch hasn't worked, try escalating to AE/pod lead or switching channel.`,
         { label: "Stale 14d", value: String(c) },
       ),
@@ -580,7 +586,7 @@ export function generateRuleBasedTalkingPoints(
       makePoint(
         "constructive",
         `Action rate is ${actions.action_rate_pct}% — below 50% baseline`,
-        `${actions.total} actions logged against ${book.red} RED customers in the last 7 days. Open question: what's blocking? Capacity, prioritization, or system access?`,
+        `${actions.total} actions logged against ${book.red} needs-call customers in the last 7 days. Open question: what's blocking? Capacity, prioritization, or system access?`,
         { label: "Action rate", value: `${actions.action_rate_pct}%` },
       ),
     );
@@ -591,9 +597,9 @@ export function generateRuleBasedTalkingPoints(
     constructive.push(
       makePoint(
         "constructive",
-        `${pct}% of book is RED — may need rebalancing`,
-        `${book.red} of ${book.total} accounts in RED. If the load is structural rather than situational, consider redistributing accounts or pairing with a co-AM.`,
-        { label: "% RED", value: `${pct}%` },
+        `${pct}% of book needs a call — may need rebalancing`,
+        `${book.red} of ${book.total} accounts in Critical/At-risk. If the load is structural rather than situational, consider redistributing accounts or pairing with a co-AM.`,
+        { label: "% Needs call", value: `${pct}%` },
       ),
     );
   }
@@ -625,7 +631,7 @@ export function generateRuleBasedTalkingPoints(
     let topAccounts = "";
     if (customers && customers.length) {
       const topRed = customers
-        .filter((c) => c.signals_v2?.stoplight === "RED")
+        .filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
         .sort((a, b) => (b.plan_amount || 0) - (a.plan_amount || 0))
         .slice(0, 2)
         .map((c) => c.company || c.entity_id.slice(0, 8));
@@ -634,7 +640,7 @@ export function generateRuleBasedTalkingPoints(
     warning.push(
       makePoint(
         "warning",
-        `${fmtMoney(book.mrr_at_risk_cents)} MRR sitting in the RED tier`,
+        `${fmtMoney(book.mrr_at_risk_cents)} MRR sitting in the Needs-call tier`,
         `Material churn exposure on this book.${topAccounts} Prioritize a save plan or escalate to AE.`,
         { label: "MRR at risk", value: `${fmtMoney(book.mrr_at_risk_cents)}/mo` },
       ),
@@ -655,7 +661,7 @@ export function generateRuleBasedTalkingPoints(
   // -- ASK --------------------------------------------------------------------
   if (customers && customers.length) {
     const topRedNames = customers
-      .filter((c) => c.signals_v2?.stoplight === "RED")
+      .filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; })
       .sort((a, b) => (b.plan_amount || 0) - (a.plan_amount || 0))
       .slice(0, 3)
       .map((c) => c.company || c.entity_id.slice(0, 8));
@@ -663,9 +669,9 @@ export function generateRuleBasedTalkingPoints(
       ask.push(
         makePoint(
           "ask",
-          `Anything blocking on the top RED accounts?`,
+          `Anything blocking on the top Needs-call accounts?`,
           `Open-ended check on: ${topRedNames.join(", ")}. Ask what's needed from you (escalation, exec sponsor, pricing room).`,
-          { label: "Top RED", value: String(topRedNames.length) },
+          { label: "Top Needs-call", value: String(topRedNames.length) },
         ),
       );
     }

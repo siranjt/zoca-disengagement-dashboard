@@ -137,7 +137,7 @@ function buildDigestBlocks(
       elements: [
         {
           type: "mrkdwn",
-          text: `${pod} · ${redCount} RED · ${yellowCount} watch · auto-scored by Claude`,
+          text: `${pod} · ${redCount} RED · ${yellowCount} watching · auto-scored by Claude`,
         },
       ],
     },
@@ -189,7 +189,7 @@ function buildDigestFallbackText(
   const pod = POD_MAP[amName] || "—";
   const lines: string[] = [
     `*${amName}'s planner — ${redCount} need a call today*`,
-    `${pod} · ${redCount} RED · ${yellowCount} watch`,
+    `${pod} · ${redCount} RED · ${yellowCount} watching`,
   ];
   if (top3.length > 0) {
     lines.push("");
@@ -211,7 +211,7 @@ function buildAllClearBlocks(amName: string): SlackBlock[] {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `:white_check_mark: *${amName} — all clear today*\n${pod} · 0 RED · 0 watch. Nice work.`,
+        text: `:white_check_mark: *${amName} — all clear today*\n${pod} · 0 need a call · 0 watching. Nice work.`,
       },
     },
     {
@@ -264,13 +264,13 @@ export async function runDigestForAllAms(opts?: {
     const snoozed = await loadSnoozedEntityIds(amName);
     const visible = customers.filter((c) => !snoozed.has(c.entity_id));
 
-    const red = visible.filter((c) => c.signals_v2?.stoplight === "RED");
-    const yellow = visible.filter((c) => c.signals_v2?.stoplight === "YELLOW");
+    const red = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "CRITICAL - DEAL BREAKER" || _ht === "CRITICAL" || _ht === "AT-RISK"; });
+    const yellow = visible.filter((c) => { const _ht = String(((c as any).metabase_health?.tier) || ""); return _ht === "MONITOR" || _ht === ""; });
 
     // All-clear branch
     if (red.length === 0 && yellow.length === 0) {
       const blocks = buildAllClearBlocks(amName);
-      const text = `:white_check_mark: ${amName} — all clear today. 0 RED · 0 watch.`;
+      const text = `:white_check_mark: ${amName} — all clear today. 0 need a call · 0 watching.`;
       const post = dryRun ? { sent: false } : await postSlack({ text, blocks });
       results.push({
         am_name: amName,
