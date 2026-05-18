@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import ZocaLogo from "@/components/ZocaLogo";
-import { ACTIVE_AMS, INCOMING_AMS, POD_MAP } from "@/lib/config";
+import { ACTIVE_AMS, INCOMING_AMS, POD_MAP, normalizeHealthTier, HEALTH_TIER_ORDER} from "@/lib/config";
+import type { HealthTier } from "@/lib/config";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
 import V2WelcomeStrip from "./V2WelcomeStrip";
 import V2AMTriage from "./V2AMTriage";
@@ -74,7 +75,7 @@ function V2DashboardInner() {
   // here as /v2?pod=Pod+4&signal=we_silent.
   const [podFilter, setPodFilter] = useState<string | null>(null);
   // Phase 33.D — KPI tile filter (RED / YELLOW / GREEN / null)
-  const [tierFilter, setTierFilter] = useState<"RED" | "YELLOW" | "GREEN" | null>(null);
+  const [tierFilter, setTierFilter] = useState<HealthTier | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
 
@@ -102,7 +103,7 @@ function V2DashboardInner() {
     const podFromQuery = url.searchParams.get("pod");
     if (podFromQuery) setPodFilter(podFromQuery);
     const tierFromQuery = url.searchParams.get("tier");
-    if (tierFromQuery === "RED" || tierFromQuery === "YELLOW" || tierFromQuery === "GREEN") {
+    if (tierFromQuery === "CRITICAL" || tierFromQuery === "AT-RISK" || tierFromQuery === "MONITOR" || tierFromQuery === "HEALTHY") {
       setTierFilter(tierFromQuery);
     }
     setWelcomeDismissed(window.localStorage.getItem(STORAGE_WELCOME_DISMISSED) === "1");
@@ -500,8 +501,11 @@ function V2DashboardInner() {
     if (snapshot.status !== "ready" || !selectedAm) return [];
     return snapshot.snapshot.customers.filter((c) => {
       if (c.am_name !== selectedAm) return false;
-      // Phase 33.D — tier filter from KPI tile clicks
-      if (tierFilter && c.signals_v2?.stoplight !== tierFilter) return false;
+      // Phase 33.E.2 — tier filter now reads metabase_health.health_tier
+      if (tierFilter) {
+        const tier = normalizeHealthTier((c as any).metabase_health?.health_tier);
+        if (tier !== tierFilter) return false;
+      }
       return true;
     });
   }, [snapshot, selectedAm, tierFilter]);
@@ -530,28 +534,39 @@ function V2DashboardInner() {
   // filtered to selectedAm → ratio looked nonsensical. Both now filter the
   // same way: only `am_name === selectedAm` customers contribute to either.
   // ---------------------------------------------------------------------------
-  const { redCountForAm, yellowCountForAm, greenCountForAm, mrrAtRisk } = useMemo(() => {
+  // Phase 33.E.2 — tier counts now come from Metabase health card.
+  // Old stoplight counts retained as aliases (redCountForAm = critical) for
+  // compatibility with downstream code that still reads them.
+  const { criticalForAm, atRiskForAm, monitorForAm, healthyForAm, mrrAtRisk,
+          redCountForAm, yellowCountForAm, greenCountForAm } = useMemo(() => {
     if (!ready) {
-      return { redCountForAm: 0, yellowCountForAm: 0, greenCountForAm: 0, mrrAtRisk: 0 };
+      return { criticalForAm: 0, atRiskForAm: 0, monitorForAm: 0, healthyForAm: 0, mrrAtRisk: 0,
+               redCountForAm: 0, yellowCountForAm: 0, greenCountForAm: 0 };
     }
-    let red = 0;
-    let yellow = 0;
-    let green = 0;
-    let mrr = 0;
+    let critical = 0, atRisk = 0, monitor = 0, healthy = 0, mrr = 0;
     for (const c of ready.customers) {
       if (c.am_name !== selectedAm) continue;
-      const light = c.signals_v2?.stoplight;
-      if (light === "RED") {
-        red++;
-        const amt = Number(c.plan_amount);
-        if (Number.isFinite(amt) && amt > 0) mrr += amt;
-      } else if (light === "YELLOW") {
-        yellow++;
-      } else if (light === "GREEN") {
-        green++;
+      const tier = normalizeHealthTier((c as any).metabase_health?.health_tier);
+      const amt = Number(c.plan_amount);
+      const validAmt = Number.isFinite(amt) && amt > 0 ? amt : 0;
+      if (tier === "CRITICAL") {
+        critical++;
+        mrr += validAmt;
+      } else if (tier === "AT-RISK") {
+        atRisk++;
+        mrr += validAmt;
+      } else if (tier === "MONITOR") {
+        monitor++;
+      } else if (tier === "HEALTHY") {
+        healthy++;
       }
     }
-    return { redCountForAm: red, yellowCountForAm: yellow, greenCountForAm: green, mrrAtRisk: mrr };
+    return {
+      criticalForAm: critical, atRiskForAm: atRisk, monitorForAm: monitor, healthyForAm: healthy,
+      mrrAtRisk: mrr,
+      // Aliases for backward compatibility with downstream charts/components
+      redCountForAm: critical, yellowCountForAm: atRisk + monitor, greenCountForAm: healthy,
+    };
   }, [ready, selectedAm]);
 
   const scopeCustomerCount = amCustomers.length;
@@ -596,28 +611,36 @@ function V2DashboardInner() {
             selected: tierFilter === null,
           },
           {
-            label: "Need to call",
-            value: redCountForAm,
+            label: "Critical",
+            value: criticalForAm,
             subtitle: `$${Math.round(mrrAtRisk).toLocaleString()} at risk`,
-            color: "pink",
-            onClick: () => setTierFilter(tierFilter === "RED" ? null : "RED"),
-            selected: tierFilter === "RED",
+            color: "crimson",
+            onClick: () => setTierFilter(tierFilter === "CRITICAL" ? null : "CRITICAL"),
+            selected: tierFilter === "CRITICAL",
           },
           {
-            label: "Watch",
-            value: yellowCountForAm,
-            subtitle: "likely save calls",
+            label: "At risk",
+            value: atRiskForAm,
+            subtitle: "needs check-in",
+            color: "pink",
+            onClick: () => setTierFilter(tierFilter === "AT-RISK" ? null : "AT-RISK"),
+            selected: tierFilter === "AT-RISK",
+          },
+          {
+            label: "Monitor",
+            value: monitorForAm,
+            subtitle: "keep watching",
             color: "amber",
-            onClick: () => setTierFilter(tierFilter === "YELLOW" ? null : "YELLOW"),
-            selected: tierFilter === "YELLOW",
+            onClick: () => setTierFilter(tierFilter === "MONITOR" ? null : "MONITOR"),
+            selected: tierFilter === "MONITOR",
           },
           {
             label: "Healthy",
-            value: greenCountForAm,
+            value: healthyForAm,
             subtitle: "in your book",
             color: "green",
-            onClick: () => setTierFilter(tierFilter === "GREEN" ? null : "GREEN"),
-            selected: tierFilter === "GREEN",
+            onClick: () => setTierFilter(tierFilter === "HEALTHY" ? null : "HEALTHY"),
+            selected: tierFilter === "HEALTHY",
           },
         ]}
       />

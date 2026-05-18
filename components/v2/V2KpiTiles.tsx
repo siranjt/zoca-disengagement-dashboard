@@ -21,7 +21,7 @@ type Tile = {
   label: string;
   value: number | string;
   subtitle: string;
-  color: "midnight" | "pink" | "amber" | "green";
+  color: "midnight" | "pink" | "amber" | "green" | "crimson";
   href?: string;
   /** Phase 33.D — fires on click. If set, prevents default <a> navigation. */
   onClick?: () => void;
@@ -37,6 +37,7 @@ const COLORS: Record<Tile["color"], string> = {
   pink: "var(--zoca-pink)",
   amber: "#b45309",
   green: "#047857",
+  crimson: "#dc2626",
 };
 
 // Selected-state palette — kept per color so each tile glows in its own hue.
@@ -64,6 +65,12 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
     shadow: "0 0 0 1px rgba(16,185,129,0.35), 0 0 24px rgba(110,231,183,0.35)",
     gradient: "linear-gradient(180deg, rgba(16,185,129,0.04), rgba(110,231,183,0.06)), #fff",
     labelColor: "#047857",
+  },
+  crimson: {
+    border: "#dc2626",
+    shadow: "0 0 0 1px rgba(220,38,38,0.35), 0 0 24px rgba(252,165,165,0.35)",
+    gradient: "linear-gradient(180deg, rgba(220,38,38,0.04), rgba(252,165,165,0.06)), #fff",
+    labelColor: "#b91c1c",
   },
 };
 

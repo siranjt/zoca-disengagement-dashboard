@@ -321,3 +321,35 @@ export function getRoleForEmail(email: string): UserRole | null {
 export function isManagerOrAdmin(role: UserRole | null | undefined): boolean {
   return role === "admin" || role === "manager";
 }
+
+// ---------------------------------------------------------------------------
+// Phase 33.E.2 — Metabase Customer Health card 4-tier model
+// ---------------------------------------------------------------------------
+export type HealthTier = "CRITICAL" | "AT-RISK" | "MONITOR" | "HEALTHY";
+
+export const HEALTH_TIER_ORDER: HealthTier[] = ["CRITICAL", "AT-RISK", "MONITOR", "HEALTHY"];
+
+export const HEALTH_TIER_LABELS: Record<HealthTier, string> = {
+  "CRITICAL": "Critical — deal breaker",
+  "AT-RISK":  "At risk",
+  "MONITOR":  "Keep watching",
+  "HEALTHY":  "Healthy",
+};
+
+export const HEALTH_TIER_COLORS: Record<HealthTier, string> = {
+  "CRITICAL": "#dc2626",
+  "AT-RISK":  "#ff56bb",
+  "MONITOR":  "#f59e0b",
+  "HEALTHY":  "#10b981",
+};
+
+/** Normalize the raw tier string from Metabase ("CRITICAL - DEAL BREAKER", etc.) to our HealthTier union. */
+export function normalizeHealthTier(raw: string | null | undefined): HealthTier | null {
+  if (!raw) return null;
+  const t = String(raw).toUpperCase().trim();
+  if (t === "CRITICAL - DEAL BREAKER" || t === "CRITICAL") return "CRITICAL";
+  if (t === "AT-RISK" || t === "ATRISK" || t === "AT_RISK") return "AT-RISK";
+  if (t === "MONITOR") return "MONITOR";
+  if (t === "HEALTHY") return "HEALTHY";
+  return null;
+}
