@@ -5,6 +5,7 @@ import type { Stoplight } from "@/lib/config";
 import { buildMailto, buildTelLink, buildHubspotLocationUrl} from "@/lib/contact-links";
 import V2SnapshotTimeline from "./V2SnapshotTimeline";
 
+import { normalizeHealthTier, HEALTH_TIER_COLORS, HEALTH_TIER_LABELS } from "@/lib/config";
 type TrendPoint = { date: string; composite: number };
 
 type Props = {
@@ -85,6 +86,10 @@ function V2DetailHeader({ customer, trend }: Props) {
   return (
     <section
       className={`rounded-zoca-lg border bg-white p-5 md:p-6 ${STOPLIGHT_BORDER[s.stoplight]}`}
+      style={(() => {
+        const _ht = normalizeHealthTier((customer as any).metabase_health?.health_tier);
+        return _ht ? { borderColor: HEALTH_TIER_COLORS[_ht] } : undefined;
+      })()}
       aria-label="Customer detail header"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -116,12 +121,30 @@ function V2DetailHeader({ customer, trend }: Props) {
                 </a>
               );
             })()}
-            <span
-              className={`rounded-zoca-pill border px-2 py-0.5 text-[11px] font-semibold ${STOPLIGHT_TONE[s.stoplight]}`}
-              title={STOPLIGHT_LABEL[s.stoplight]}
-            >
-              {s.stoplight} · {STOPLIGHT_LABEL[s.stoplight]}
-            </span>
+            {(() => {
+              const _ht = normalizeHealthTier((customer as any).metabase_health?.health_tier);
+              if (_ht) {
+                const color = HEALTH_TIER_COLORS[_ht];
+                const label = HEALTH_TIER_LABELS[_ht];
+                return (
+                  <span
+                    className="rounded-zoca-pill border px-2 py-0.5 text-[11px] font-semibold"
+                    style={{ borderColor: color, color: color, background: `${color}22` }}
+                    title={label}
+                  >
+                    {_ht} · {label}
+                  </span>
+                );
+              }
+              return (
+                <span
+                  className={`rounded-zoca-pill border px-2 py-0.5 text-[11px] font-semibold ${STOPLIGHT_TONE[s.stoplight]}`}
+                  title={STOPLIGHT_LABEL[s.stoplight]}
+                >
+                  {s.stoplight} · {STOPLIGHT_LABEL[s.stoplight]}
+                </span>
+              );
+            })()}
             {customer.hubspot?.icp_tier && (
               <span
                 className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
@@ -258,9 +281,15 @@ function V2DetailHeader({ customer, trend }: Props) {
           <div className="flex items-baseline gap-2">
             <span
               className="text-3xl font-semibold tabular-nums text-zoca-text"
-              title="Current composite score"
+              title="Composite score (Metabase Customer Health when available)"
             >
-              {s.composite}
+              {(() => {
+                const mc = (customer as any).metabase_health?.composite_health_score;
+                if (mc !== null && mc !== undefined && Number.isFinite(Number(mc))) {
+                  return Math.round(Number(mc));
+                }
+                return s.composite;
+              })()}
             </span>
             <span
               className={`text-[14px] font-semibold ${traj.className}`}
@@ -280,6 +309,64 @@ function V2DetailHeader({ customer, trend }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Phase 33.E.4 — Metabase health sub-scores + reasons + recommended action */}
+      {(() => {
+        const mh: any = (customer as any).metabase_health;
+        if (!mh) return null;
+        const subScores: Array<{ label: string; value: number | null }> = [
+          { label: "Engagement", value: mh.score_engagement !== undefined && mh.score_engagement !== null ? Number(mh.score_engagement) : null },
+          { label: "Value", value: mh.score_value_realization !== undefined && mh.score_value_realization !== null ? Number(mh.score_value_realization) : null },
+          { label: "Product", value: mh.score_product_stability !== undefined && mh.score_product_stability !== null ? Number(mh.score_product_stability) : null },
+        ];
+        const hasAnySubScore = subScores.some(sc => sc.value !== null && Number.isFinite(sc.value as number));
+        const reasonNames = typeof mh.health_tier_reason_names === "string" ? mh.health_tier_reason_names.trim() : "";
+        const reasonChips = reasonNames ? reasonNames.split(",").map((str: string) => str.trim()).filter(Boolean) : [];
+        const recommended = typeof mh.recommended_action === "string" ? mh.recommended_action.trim() : "";
+        if (!hasAnySubScore && reasonChips.length === 0 && !recommended) return null;
+        return (
+          <div data-detail-subscores="1" className="mt-4 flex flex-col gap-3">
+            {hasAnySubScore && (
+              <div className="grid grid-cols-3 gap-3">
+                {subScores.map((sc, i) => {
+                  const v = sc.value !== null && Number.isFinite(sc.value as number) ? Math.max(0, Math.min(100, sc.value as number)) : null;
+                  const pct = v === null ? 0 : v;
+                  const barColor = v === null ? "#cbd5e1" : (v >= 70 ? "#10b981" : v >= 40 ? "#f59e0b" : "#dc2626");
+                  return (
+                    <div key={i} className="rounded-zoca border border-zoca-border bg-white px-3 py-2">
+                      <div className="flex items-baseline justify-between gap-1">
+                        <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">{sc.label}</span>
+                        <span className="text-[12px] font-semibold tabular-nums text-zoca-text" title={`${sc.label} sub-score`}>
+                          {v === null ? "—" : Math.round(v)}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full rounded-full bg-zoca-bg-tint overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {reasonChips.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold mr-1">Why flagged</span>
+                {reasonChips.map((r: string, i: number) => (
+                  <span key={i} className="rounded-zoca-pill border border-zoca-border bg-zoca-bg-tint/60 px-2 py-0.5 text-[11px] text-zoca-text-2">
+                    {r}
+                  </span>
+                ))}
+              </div>
+            )}
+            {recommended && (
+              <div className="rounded-zoca-lg border border-zoca-border bg-white px-3 py-2 text-[12px] leading-snug text-zoca-text">
+                <span className="font-semibold text-zoca-text">→ Recommended action: </span>
+                <span className="text-zoca-text-2">{recommended}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Phase 30 — Inline snapshot timeline (replaces the tiny sparkline). */}
       <div className="mt-4 rounded-zoca-lg border border-zoca-border bg-white p-3 md:p-4">
