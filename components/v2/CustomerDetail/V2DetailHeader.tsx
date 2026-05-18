@@ -178,6 +178,24 @@ function V2DetailHeader({ customer, trend }: Props) {
               </span>
             )}
             {customer.pod && <span>· {customer.pod}</span>}
+            {customer.performance && (customer.performance.active_ranking_count ?? 0) > 0 && (
+              <span
+                data-keyword-meta="1"
+                className="inline-flex items-center gap-1"
+                title={`Active local-SEO keywords. Distribution: ${customer.performance.rankings_top_3 ?? 0} top-3 / ${customer.performance.rankings_top_10 ?? 0} top-10 / ${customer.performance.rankings_outside_10 ?? 0} outside top-10`}
+              >
+                <span aria-hidden>🔑</span>
+                <span className="font-semibold tabular-nums text-zoca-text">
+                  {(customer.performance.active_ranking_count ?? 0).toLocaleString()}
+                </span>
+                keywords
+                <span className="text-zoca-text-3" aria-hidden>·</span>
+                <span className="tabular-nums text-emerald-700 font-semibold">
+                  {customer.performance.rankings_top_3 ?? 0}
+                </span>
+                <span className="text-zoca-text-3">top-3</span>
+              </span>
+            )}
             {customer.entity_id && (
               <span
                 className="inline-flex items-center gap-1 font-mono text-[10px] text-zoca-text-2"
