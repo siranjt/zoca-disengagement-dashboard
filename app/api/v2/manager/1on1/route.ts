@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readLatestSnapshotV2 } from "@/lib/postgres";
 import { readLastOneOnOneDatesByAm, type OneOnOneAmSummary } from "@/lib/one-on-one";
-import { ACTIVE_AMS, POD_MAP } from "@/lib/config";
+import { ACTIVE_AMS, POD_MAP, normalizeHealthTier} from "@/lib/config";
 import { getApiUser, requireRole } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -31,7 +31,14 @@ export async function GET() {
     if (snap) {
       for (const c of snap.customers || []) {
         if (!c?.am_name) continue;
-        if (c.signals_v2?.stoplight !== "RED") continue;
+        // Phase 33.E.8 — Need-to-call filter: CRITICAL + AT-RISK from health tier.
+        // Falls back to legacy stoplight === "RED" only when metabase_health is
+        // absent (orphans without health-card coverage).
+        const _ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+        const _needsCall =
+          _ht === "CRITICAL" || _ht === "AT-RISK" ||
+          (_ht === null && c.signals_v2?.stoplight === "RED");
+        if (!_needsCall) continue;
         const cur = byAm.get(c.am_name) ?? { red: 0, mrr: 0 };
         cur.red += 1;
         cur.mrr += Math.round((c.plan_amount || 0) * 100);

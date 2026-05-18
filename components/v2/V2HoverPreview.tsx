@@ -4,6 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import type { ScoredCustomerV2 } from "@/lib/types";
 
+import { normalizeHealthTier, HEALTH_TIER_COLORS, HEALTH_TIER_LABELS } from "@/lib/config";
 type Props = {
   customer: ScoredCustomerV2;
   anchorRef: React.RefObject<HTMLElement>;
@@ -74,14 +75,18 @@ export default function V2HoverPreview({ customer, anchorRef, visible, onClose }
   if (!mounted || !visible || !pos) return null;
 
   const s = customer.signals_v2;
-  const stoplightColor =
-    s.stoplight === "RED" ? "#ef4444" : s.stoplight === "YELLOW" ? "#f59e0b" : "#10b981";
-  const stoplightLabel =
-    s.stoplight === "RED"
-      ? "Needs attention"
-      : s.stoplight === "YELLOW"
-        ? "Keep an eye on"
-        : "Doing fine";
+  // Phase 33.E.8 — prefer Metabase health tier when present; fall back to legacy stoplight.
+  const _ht = normalizeHealthTier((customer as any).metabase_health?.health_tier);
+  const stoplightColor = _ht
+    ? HEALTH_TIER_COLORS[_ht]
+    : (s.stoplight === "RED" ? "#ef4444" : s.stoplight === "YELLOW" ? "#f59e0b" : "#10b981");
+  const stoplightLabel = _ht
+    ? HEALTH_TIER_LABELS[_ht]
+    : (s.stoplight === "RED"
+        ? "Needs attention"
+        : s.stoplight === "YELLOW"
+          ? "Keep an eye on"
+          : "Doing fine");
 
   const lastTouch =
     customer.metrics.last_any_iso === null
