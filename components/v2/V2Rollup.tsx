@@ -235,6 +235,18 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         const plan = c.plan_amount || 0;
         mrr += plan;
         if (sl === "RED") mrrAtRisk += plan;
+          // Phase 33.H.3b — classify by metabase_health.tier (MONITOR fallback)
+          const _htRaw = ((c as any).metabase_health?.tier as string | null | undefined) || "";
+          const _ht =
+            _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" ? "CRITICAL"
+            : _htRaw === "AT-RISK" ? "AT-RISK"
+            : _htRaw === "HEALTHY" ? "HEALTHY"
+            : "MONITOR";
+          if (_ht === "CRITICAL") critical += 1;
+          else if (_ht === "AT-RISK") atRisk += 1;
+          else if (_ht === "HEALTHY") healthy += 1;
+          else monitor += 1;
+          if (_ht === "CRITICAL" || _ht === "AT-RISK") mrrAtRiskNeedsCall += plan;
         scoreSum += c.signals_v2.composite || 0;
         if (c.performance?.flag) flagged += 1;
       }
@@ -248,9 +260,16 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         action: counts.RED,
         pctRed: list.length ? (counts.RED / list.length) * 100 : 0,
         mrr,
-        mrrAtRisk,
+        mrrAtRisk: mrrAtRiskNeedsCall,
         avgComposite: list.length ? Math.round(scoreSum / list.length) : 0,
         topSignal: classifyTopSignal(list),
+          // Phase 33.H.3b — 4-tier fields
+          critical,
+          atRisk,
+          monitor,
+          healthy,
+          needsCall: critical + atRisk,
+          pctNeedsCall: list.length ? ((critical + atRisk) / list.length) * 100 : 0,
         flagged,
       });
     }
@@ -286,24 +305,24 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           bv = b.total;
           break;
         case "red":
-          av = a.RED;
-          bv = b.RED;
+          av = a.needsCall;
+          bv = b.needsCall;
           break;
         case "yellow":
-          av = a.YELLOW;
-          bv = b.YELLOW;
+          av = a.monitor;
+          bv = b.monitor;
           break;
         case "green":
-          av = a.GREEN;
-          bv = b.GREEN;
+          av = a.healthy;
+          bv = b.healthy;
           break;
         case "action":
           av = a.action;
           bv = b.action;
           break;
         case "pctRed":
-          av = a.pctRed;
-          bv = b.pctRed;
+          av = a.pctNeedsCall;
+          bv = b.pctNeedsCall;
           break;
         case "mrr":
           av = a.mrr;
@@ -339,6 +358,12 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         acc.RED += r.RED;
         acc.YELLOW += r.YELLOW;
         acc.GREEN += r.GREEN;
+          // Phase 33.H.3b — 4-tier accumulators
+          acc.critical += r.critical;
+          acc.atRisk += r.atRisk;
+          acc.monitor += r.monitor;
+          acc.healthy += r.healthy;
+          acc.needsCall += r.needsCall;
         acc.action += r.action;
         acc.mrr += r.mrr;
         acc.mrrAtRisk += r.mrrAtRisk;
@@ -511,7 +536,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-amber)" }}
           >
-            {totals.YELLOW}
+            {totals.monitor}
           </div>
         </div>
         <div>
@@ -520,7 +545,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-green)" }}
           >
-            {totals.GREEN}
+            {totals.healthy}
           </div>
         </div>
         <div title="Total MRR across the customers shown">
@@ -582,7 +607,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 tooltip="Customers needing action today (Critical + At-risk). Click to sort."
               />
               <Th
-                label="% RED"
+                label="% NEEDS CALL"
                 col="pctRed"
                 sortKey={sortKey}
                 sortDir={sortDir}
@@ -591,7 +616,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 tooltip="Needs-call (Critical + At-risk) as a percentage of the AM's book. Compares fairly across books of different sizes."
               />
               <Th
-                label="RED"
+                label="NEEDS CALL"
                 col="red"
                 sortKey={sortKey}
                 sortDir={sortDir}
@@ -599,7 +624,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 align="right"
               />
               <Th
-                label="YEL"
+                label="MONITOR"
                 col="yellow"
                 sortKey={sortKey}
                 sortDir={sortDir}
@@ -607,7 +632,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 align="right"
               />
               <Th
-                label="GRN"
+                label="HEALTHY"
                 col="green"
                 sortKey={sortKey}
                 sortDir={sortDir}
@@ -711,9 +736,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 </td>
                 <td className="px-3 py-2.5">
                   <TierSpreadBar
-                    red={r.RED}
-                    yellow={r.YELLOW}
-                    green={r.GREEN}
+                    red={r.needsCall}
+                    yellow={r.monitor}
+                    green={r.healthy}
                     total={r.total}
                   />
                 </td>
@@ -749,7 +774,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 >
                   {r.needsCall > 0 ? (
                     <AmLink amName={r.am} filter="act" showArrow={false} style={{ color: "var(--zoca-pink)" }}>
-                      {r.RED}
+                      {r.needsCall}
                     </AmLink>
                   ) : (
                     <span className="text-zoca-text-3">·</span>
