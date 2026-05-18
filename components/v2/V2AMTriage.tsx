@@ -17,7 +17,7 @@ import {
   customerHasSignal,
   type SignalKey,
 } from "@/lib/signal-taxonomy";
-import { POD_MAP } from "@/lib/config";
+import { POD_MAP, normalizeHealthTier} from "@/lib/config";
 
 type CustomerTrendPoint = { date: string; composite: number };
 
@@ -205,12 +205,17 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     // YELLOW capped at top-N, which caused a visible mismatch ("10 to act on"
     // vs KPI "3"). Now both are RED-only — pre-launch RED still excluded.
     const act = customers
-      .filter(
-        (c) =>
-          !c.signals_v2.pre_launch &&
-          c.signals_v2.stoplight === "RED" &&
-          !isSnoozed(c.entity_id),
-      )
+      .filter((c) => {
+        // Phase 33.E.5 — Need-to-call-today lane.
+        // CRITICAL + AT-RISK from Metabase health card are urgent.
+        // Falls back to old "stoplight === RED" when metabase_health is absent.
+        if (c.signals_v2.pre_launch) return false;
+        if (isSnoozed(c.entity_id)) return false;
+        const _ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+        if (_ht === "CRITICAL" || _ht === "AT-RISK") return true;
+        if (_ht === null && c.signals_v2.stoplight === "RED") return true;
+        return false;
+      })
       .sort((a, b) => b.signals_v2.composite - a.signals_v2.composite);
 
     // Phase 32.1 — new primary buckets that mirror the KPI-tile tiers exactly,
