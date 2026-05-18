@@ -2,6 +2,7 @@ import { getSql } from "./postgres";
 import { ACTIVE_AMS } from "./config";
 import type { SnapshotV2, ScoredCustomerV2 } from "./types";
 
+import { normalizeHealthTier } from "@/lib/config";
 /**
  * Phase 27 — Coaching loops.
  *
@@ -93,8 +94,16 @@ export async function getCoachingPerAm(
     const redByAm = new Map<string, ScoredCustomerV2[]>();
     for (const c of snapshot.customers || []) {
       if (!c?.am_name) continue;
-      if (c.signals_v2?.stoplight !== "RED") continue;
-      // Skip pre-launch RED — those aren't real churn risk.
+      // Phase 33.E.6 — needs-call-today filter.
+      // Prefer Metabase health tier: CRITICAL or AT-RISK count as "needs call".
+      // Fall back to legacy stoplight === "RED" only when metabase_health is
+      // absent (the ~13 orphans without health-card coverage).
+      const _ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+      const _needsCall =
+        _ht === "CRITICAL" || _ht === "AT-RISK" ||
+        (_ht === null && c.signals_v2?.stoplight === "RED");
+      if (!_needsCall) continue;
+      // Skip pre-launch — those aren't real churn risk regardless of tier.
       if (c.signals_v2?.pre_launch) continue;
       if (!redByAm.has(c.am_name)) redByAm.set(c.am_name, []);
       redByAm.get(c.am_name)!.push(c);
