@@ -106,11 +106,11 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
             Your book over the last {days} days
           </h3>
           <p className="mt-1 text-[11px] text-zoca-text-3">
-            Stoplight counts + MRR-at-risk trend across your {last.total} customers.
+            Tier counts (RED-proxy) + MRR-at-risk trend across your {last.total} customers.
           </p>
         </div>
         <div className="flex items-center gap-2 text-[11px]">
-          <DeltaBadge label="RED" delta={redDelta} lowerIsBetter />
+          <DeltaBadge label="Needs call" delta={redDelta} lowerIsBetter />
           <DeltaBadge label="MRR @ risk" delta={mrrDelta} lowerIsBetter unit="$" />
         </div>
       </div>
@@ -122,13 +122,13 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
           lastValue={last.red}
         />
         <TrendRow
-          label="YELLOW"
+          label="Monitor"
           values={points.map((p) => p.yellow)}
           color="rgb(245 158 11)"
           lastValue={last.yellow}
         />
         <TrendRow
-          label="GREEN"
+          label="Healthy"
           values={points.map((p) => p.green)}
           color="rgb(16 185 129)"
           lastValue={last.green}
