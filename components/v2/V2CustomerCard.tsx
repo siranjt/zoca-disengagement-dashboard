@@ -633,6 +633,28 @@ function V2CustomerCardInner({
               </div>
             );
           })()}
+          {/* Phase 33.D.5b — always-visible keyword chip (no expansion needed) */}
+          {customer.performance && (customer.performance.active_ranking_count ?? 0) > 0 && (
+            <div
+              data-keyword-chip="1"
+              className="mt-1.5 inline-flex flex-wrap items-center gap-2 rounded-zoca-pill border border-zoca-border bg-zoca-bg-tint/60 px-2.5 py-0.5 text-[10px] text-zoca-text-2"
+              title={`Active local-SEO keywords. Distribution: ${customer.performance.rankings_top_3 ?? 0} top-3 / ${customer.performance.rankings_top_10 ?? 0} top-10 / ${customer.performance.rankings_outside_10 ?? 0} outside top-10`}
+            >
+              <span aria-hidden>🔑</span>
+              <span className="font-semibold tabular-nums text-zoca-text">
+                {(customer.performance.active_ranking_count ?? 0).toLocaleString()}
+              </span>
+              <span>keywords</span>
+              <span className="text-zoca-text-3" aria-hidden>·</span>
+              <span className="tabular-nums">
+                <span className="text-emerald-700 font-semibold">{customer.performance.rankings_top_3 ?? 0}</span>
+                <span className="text-zoca-text-3"> top-3</span>
+                <span className="text-zoca-text-3"> · </span>
+                <span className="text-amber-700 font-semibold">{customer.performance.rankings_top_10 ?? 0}</span>
+                <span className="text-zoca-text-3"> top-10</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right side: action button (state machine) */}
