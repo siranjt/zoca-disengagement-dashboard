@@ -54,6 +54,7 @@ import type {
 } from "./types";
 import type { Tier, Stoplight } from "./config";
 
+import { getHealthCardMap } from "@/lib/health-card";
 const todayMs = () => Date.now();
 
 // ---------------------------------------------------------------------------
@@ -1121,6 +1122,41 @@ export async function composeSnapshot(
   memSnap("compose before write");
   if (pgConfigured()) {
     try {
+
+      // Phase G2 — enrich snapshot with metabase health tier before persisting.
+
+      // Defensive: any downstream consumer that reads dashboard_snapshots directly
+
+      // (vs. through /api/v2/snapshot's read-time enrichment) gets the tier for free.
+
+      try {
+
+        const _hcMap = await getHealthCardMap();
+
+        if (_hcMap.size > 0) {
+
+          for (const _c of (snapshot as any)?.customers || [] as any[]) {
+
+            const _eid = (_c?.entity_id || "").toLowerCase();
+
+            const _row: any = _hcMap.get(_eid);
+
+            if (_row) {
+
+              (_c as any).metabase_health = _row;
+
+            }
+
+          }
+
+        }
+
+      } catch (_e) {
+
+        console.warn("[compose] health-card enrichment skipped:", _e instanceof Error ? _e.message : String(_e));
+
+      }
+
       await writeSnapshotV2(snapshot);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
