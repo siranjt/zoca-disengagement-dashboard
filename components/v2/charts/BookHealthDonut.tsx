@@ -1,14 +1,13 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// Phase 23.A — book health donut.
+// Phase 33.E.7 — 4-tier book health donut (Critical / At-risk / Monitor / Healthy)
 //
-// Renders the RED / Yellow / Green distribution of the current AM's book as
-// a clickable doughnut. Each slice routes to /v2 with a stoplight filter so
-// the user can drill into the cohort they just clicked.
+// Renders the 4-tier distribution of the current AM's book as a clickable
+// doughnut. Each slice routes to /v2 with a tier filter so the user can
+// drill into the cohort they just clicked.
 //
-// Reuses AnimatedNumber + Toast from Phase 22.A and the shared chart-theme
-// constants so animation cadence matches every other Phase-22 surface.
+// Replaces the Phase 23.A 3-segment donut (RED/Yellow/Green).
 // ---------------------------------------------------------------------------
 
 import { Doughnut } from "react-chartjs-2";
@@ -26,35 +25,39 @@ import {
   CHART_TOOLTIP_STYLE,
 } from "@/lib/chart-theme";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { HEALTH_TIER_COLORS } from "@/lib/config";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 type Props = {
-  redCount: number;
-  yellowCount: number;
-  greenCount: number;
+  criticalCount: number;
+  atRiskCount: number;
+  monitorCount: number;
+  healthyCount: number;
   amName: string;
 };
 
 export function BookHealthDonut({
-  redCount,
-  yellowCount,
-  greenCount,
+  criticalCount,
+  atRiskCount,
+  monitorCount,
+  healthyCount,
   amName,
 }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
-  const total = redCount + yellowCount + greenCount;
+  const total = criticalCount + atRiskCount + monitorCount + healthyCount;
 
   const data = {
-    labels: ["RED", "Yellow", "Green"],
+    labels: ["Critical", "At-risk", "Monitor", "Healthy"],
     datasets: [
       {
-        data: [redCount, yellowCount, greenCount],
+        data: [criticalCount, atRiskCount, monitorCount, healthyCount],
         backgroundColor: [
-          CHART_COLORS.red,
-          CHART_COLORS.amber,
-          CHART_COLORS.green,
+          HEALTH_TIER_COLORS.CRITICAL,
+          HEALTH_TIER_COLORS["AT-RISK"],
+          HEALTH_TIER_COLORS.MONITOR,
+          HEALTH_TIER_COLORS.HEALTHY,
         ],
         borderWidth: 2,
         borderColor: CHART_COLORS.bg,
@@ -79,17 +82,17 @@ export function BookHealthDonut({
     },
     onClick: (_e: unknown, els: { index: number }[]) => {
       if (!els[0]) return;
-      const lanes = ["act", "improving", "quiet"];
-      const labels = ["RED", "Yellow", "Green"];
-      const counts = [redCount, yellowCount, greenCount];
+      const tiers = ["CRITICAL", "AT-RISK", "MONITOR", "HEALTHY"];
+      const labels = ["Critical", "At-risk", "Monitor", "Healthy"];
+      const counts = [criticalCount, atRiskCount, monitorCount, healthyCount];
       const idx = els[0].index;
-      const filterValue = lanes[idx];
+      const tierValue = tiers[idx];
       const params = new URLSearchParams();
       params.set("am", amName);
-      params.set("filter", filterValue);
+      params.set("tier", tierValue);
       router.push(`/v2?${params.toString()}`);
       showToast(
-        `Filtered to ${labels[idx]} - ${counts[idx]} customers`,
+        `Filtered to ${labels[idx]} — ${counts[idx]} customers`,
         { type: "info", icon: "filter" },
       );
     },
@@ -127,65 +130,46 @@ export function BookHealthDonut({
           marginBottom: "10px",
         }}
       >
-        <AnimatedNumber value={total} /> customers - click to filter
+        <AnimatedNumber value={total} /> customers — click to filter
       </div>
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: "8px 14px",
+          gap: "6px 10px",
           marginBottom: "8px",
           fontSize: "11px",
           color: CHART_COLORS.muted,
         }}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: CHART_COLORS.red,
-            }}
-          ></span>
-          RED{" "}
-          <strong style={{ color: CHART_COLORS.midnight, fontWeight: 600 }}>
-            <AnimatedNumber value={redCount} />
-          </strong>
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: CHART_COLORS.amber,
-            }}
-          ></span>
-          Yellow{" "}
-          <strong style={{ color: CHART_COLORS.midnight, fontWeight: 600 }}>
-            <AnimatedNumber value={yellowCount} />
-          </strong>
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: CHART_COLORS.green,
-            }}
-          ></span>
-          Green{" "}
-          <strong style={{ color: CHART_COLORS.midnight, fontWeight: 600 }}>
-            <AnimatedNumber value={greenCount} />
-          </strong>
-        </span>
+        <LegendChip color={HEALTH_TIER_COLORS.CRITICAL} label="Critical" value={criticalCount} />
+        <LegendChip color={HEALTH_TIER_COLORS["AT-RISK"]} label="At-risk" value={atRiskCount} />
+        <LegendChip color={HEALTH_TIER_COLORS.MONITOR} label="Monitor" value={monitorCount} />
+        <LegendChip color={HEALTH_TIER_COLORS.HEALTHY} label="Healthy" value={healthyCount} />
       </div>
       <div style={{ position: "relative", width: "100%", height: "180px" }}>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Doughnut data={data} options={options as any} />
       </div>
     </div>
+  );
+}
+
+function LegendChip({ color, label, value }: { color: string; label: string; value: number }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 2,
+          background: color,
+        }}
+      ></span>
+      {label}{" "}
+      <strong style={{ color: CHART_COLORS.midnight, fontWeight: 600 }}>
+        <AnimatedNumber value={value} />
+      </strong>
+    </span>
   );
 }

@@ -683,9 +683,10 @@ function V2DashboardInner() {
                 }}
               >
                 <BookHealthDonut
-                  redCount={redCountForAm}
-                  yellowCount={yellowCountForAm}
-                  greenCount={greenCountForAm}
+                  criticalCount={criticalForAm}
+                  atRiskCount={atRiskForAm}
+                  monitorCount={monitorForAm}
+                  healthyCount={healthyForAm}
                   amName={selectedAm}
                 />
                 <SignalMixPie customers={amCustomers} amName={selectedAm} />
