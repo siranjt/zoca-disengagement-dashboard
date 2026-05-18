@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import type { CoachingRow, CoachingMetric } from "@/lib/coaching";
 
+import { useActivityLogger } from "@/hooks/use-activity-logger";
 type Mode = "manager" | "am";
 
 type Props = {
@@ -104,8 +105,19 @@ function formatMrr(cents: number): string {
 }
 
 export default function V2CoachingLoops({ mode, rows, onMetricClick }: Props) {
-  if (mode === "am") return <CoachingPills row={rows[0]} onMetricClick={onMetricClick} />;
-  return <CoachingTable rows={rows} onMetricClick={onMetricClick} />;
+  // Phase 33.B.9.1 — log coaching_acted by wrapping the consumer's onMetricClick.
+  const logEvent = useActivityLogger();
+  const loggedOnMetricClick: ((amName: string, metric: CoachingMetric) => void) | undefined = onMetricClick
+    ? (amName: string, metric: CoachingMetric) => {
+        logEvent("coaching_acted", {
+          surface: mode === "manager" ? "v2_manager_1on1" : "v2_coaching",
+          metadata: { am: amName, metric: String(metric) },
+        });
+        onMetricClick(amName, metric);
+      }
+    : undefined;
+  if (mode === "am") return <CoachingPills row={rows[0]} onMetricClick={loggedOnMetricClick} />;
+  return <CoachingTable rows={rows} onMetricClick={loggedOnMetricClick} />;
 }
 
 // ---------------------------------------------------------------------------
