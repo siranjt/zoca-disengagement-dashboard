@@ -40,7 +40,8 @@ type Movement = {
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; data: Movement };
+  | { status: "ready"; data: Movement }
+  | { status: "building_history"; days: number };
 
 type Props = {
   days?: number;
@@ -271,7 +272,14 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
           return;
         }
         const data: Movement = await res.json();
-        if (!cancelled) setState({ status: "ready", data });
+        if (!cancelled) {
+            // Phase 33.H.6 — API may soft-fail with building_history flag
+            if (data && (data as any).building_history) {
+              setState({ status: "building_history", days: (data as any).days || days });
+            } else {
+              setState({ status: "ready", data });
+            }
+          }
       } catch (e) {
         if (!cancelled) {
           setState({
@@ -320,7 +328,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
   };
 
   return (
-    <section aria-label="Stoplight movement" className="mb-7">
+    <section aria-label="Tier movement" className="mb-7">
       <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3
@@ -331,7 +339,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
           </h3>
           <p className="mt-0.5 text-[11px] text-zoca-text-2">
             {state.status === "ready"
-              ? `Customers whose stoplight changed between ${state.data.comparedAt} and ${state.data.currentAt}.`
+              ? `Customers whose tier changed between ${state.data.comparedAt} and ${state.data.currentAt}.`
               : `Comparing today's snapshot to ${days} days ago.`}
           </p>
           {summary && (
@@ -436,19 +444,32 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
         </div>
       )}
 
+      {state.status === "building_history" && (
+        <div
+          className="rounded-2xl px-4 py-3 text-[12px]"
+          style={{
+            border: "1px solid var(--zoca-border)",
+            background: "var(--zoca-bg-soft)",
+            color: "var(--zoca-text-2)",
+          }}
+        >
+          Building history — comparing today's snapshot to {state.days} days ago needs a snapshot from that date. Once {state.days} days of data have accumulated, this section will populate automatically.
+        </div>
+      )}
+
       {state.status === "ready" && filtered && (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <MovementGroup
-            title="Flipped to RED"
-            hint="Anything → RED. Top priority for outreach."
+            title="Slipped to Needs call"
+            hint="Anything → Needs call. Top priority for outreach."
             rows={filtered.flippedToRed}
-            emptyText="No customers flipped to RED in this window. 🎉"
+            emptyText="No customers slipped to Needs call in this window. 🎉"
             emptyTone="good"
             onJumpToAm={onJumpToAm}
           />
           <MovementGroup
             title="Degraded"
-            hint="GREEN → YELLOW. Early warning."
+            hint="Healthy → Monitor. Early warning."
             rows={filtered.degraded}
             emptyText="No early-warning degradations in this window."
             emptyTone="good"
@@ -456,9 +477,9 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
           />
           <MovementGroup
             title="Recoveries"
-            hint="Anything → GREEN. Wins worth celebrating."
+            hint="Anything → Healthy. Wins worth celebrating."
             rows={filtered.recoveries}
-            emptyText="No recoveries to GREEN this window — focus on outreach."
+            emptyText="No recoveries to Healthy this window — focus on outreach."
             emptyTone="neutral"
             onJumpToAm={onJumpToAm}
           />

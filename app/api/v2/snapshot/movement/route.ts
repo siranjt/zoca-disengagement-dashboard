@@ -22,9 +22,18 @@ export async function GET(req: NextRequest) {
   try {
     const result = await readStoplightMovement(days);
     if (!result) {
+      // Phase 33.H.6 — soft-fail with building_history flag instead of 404
       return NextResponse.json(
-        { error: "no snapshots available for comparison" },
-        { status: 404 },
+        {
+          building_history: true,
+          days,
+          comparedAt: null,
+          currentAt: null,
+          flippedToRed: [],
+          recoveries: [],
+          degraded: [],
+        },
+        { status: 200, headers: { "Cache-Control": "no-store" } },
       );
     }
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
