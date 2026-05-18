@@ -372,7 +372,16 @@ export async function getHealthCardMap(): Promise<Map<string, NormalizedHealth>>
   `;
   const m = new Map<string, NormalizedHealth>();
   for (const r of rows as Array<{ entity_id: string; data: NormalizedHealth }>) {
-    m.set(r.entity_id.toLowerCase(), r.data);
+    // Phase 33.E.1.2 — strip `raw` to keep the snapshot response under
+    // Vercel's 4.5MB serverless function payload cap. The cached blob in
+    // Postgres still has it; we just don't send it down to the client.
+    const data = r.data as NormalizedHealth & { raw?: unknown };
+    if (data && typeof data === "object" && "raw" in data) {
+      const { raw: _omit, ...rest } = data;
+      m.set(r.entity_id.toLowerCase(), rest as NormalizedHealth);
+    } else {
+      m.set(r.entity_id.toLowerCase(), data);
+    }
   }
   return m;
 }
