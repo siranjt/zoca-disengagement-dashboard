@@ -116,7 +116,7 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[12px]">
         <TrendRow
-          label="RED"
+          label="Needs call"
           values={points.map((p) => p.red)}
           color="rgb(255 86 187)"
           lastValue={last.red}
