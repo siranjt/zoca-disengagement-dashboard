@@ -41,6 +41,13 @@ type AmRow = {
   avgComposite: number;
   topSignal: string;
   flagged: number;          // performance.flag === true count
+  // Phase 33.H.3b — 4-tier health_tier counts (MONITOR fallback)
+  critical: number;
+  atRisk: number;
+  monitor: number;
+  healthy: number;
+  needsCall: number;
+  pctNeedsCall: number;
 };
 
 const POD_OPTIONS = ["All", "Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
@@ -216,6 +223,12 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
       let mrrAtRisk = 0;
       let scoreSum = 0;
       let flagged = 0;
+      // Phase 33.H.3b — 4-tier counts
+      let critical = 0;
+      let atRisk = 0;
+      let monitor = 0;
+      let healthy = 0;
+      let mrrAtRiskNeedsCall = 0;
       for (const c of list) {
         const sl = c.signals_v2.stoplight;
         counts[sl] += 1;
@@ -331,7 +344,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
         acc.mrrAtRisk += r.mrrAtRisk;
         return acc;
       },
-      { total: 0, RED: 0, YELLOW: 0, GREEN: 0, action: 0, mrr: 0, mrrAtRisk: 0 },
+      { total: 0, RED: 0, YELLOW: 0, GREEN: 0, critical: 0, atRisk: 0, monitor: 0, healthy: 0, needsCall: 0, action: 0, mrr: 0, mrrAtRisk: 0 },
     );
   }, [sorted]);
 
@@ -359,7 +372,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
     exportCsv(sorted, `zoca_rollup_${date}${podSuffix}.csv`);
   };
 
-  const liveLabel = `Showing ${sorted.length} AMs, ${totals.total} customers, ${totals.RED} red`;
+  const liveLabel = `Showing ${sorted.length} AMs, ${totals.total} customers, ${totals.needsCall} needs call`;
 
   return (
     <section aria-label="Cross-AM rollup">
@@ -484,7 +497,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           </div>
         </div>
         <div>
-          <div className="zoca-micro-label">RED</div>
+          <div className="zoca-micro-label">Needs call</div>
           <div
             className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-pink)" }}
@@ -493,7 +506,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           </div>
         </div>
         <div>
-          <div className="zoca-micro-label">YELLOW</div>
+          <div className="zoca-micro-label">Monitor</div>
           <div
             className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-amber)" }}
@@ -502,7 +515,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           </div>
         </div>
         <div>
-          <div className="zoca-micro-label">GREEN</div>
+          <div className="zoca-micro-label">Healthy</div>
           <div
             className="mt-1 font-extrabold tabular-nums"
             style={{ fontSize: "18px", letterSpacing: "-0.02em", color: "var(--zoca-green)" }}
@@ -519,7 +532,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             {formatMoney(totals.mrr)}
           </div>
         </div>
-        <div title="MRR carried by customers currently RED — the dollars actively at risk this week">
+        <div title="MRR carried by Critical + At-risk customers — the dollars actively at risk this week">
           <div className="zoca-micro-label">MRR at risk</div>
           <div
             className="mt-1 font-extrabold tabular-nums"
@@ -566,7 +579,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 sortDir={sortDir}
                 onClick={toggleSort}
                 align="right"
-                tooltip="Customers needing action today (RED stoplight). Click to sort."
+                tooltip="Customers needing action today (Critical + At-risk). Click to sort."
               />
               <Th
                 label="% RED"
@@ -575,7 +588,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 sortDir={sortDir}
                 onClick={toggleSort}
                 align="right"
-                tooltip="RED as a percentage of the AM's book. Compares fairly across books of different sizes."
+                tooltip="Needs-call (Critical + At-risk) as a percentage of the AM's book. Compares fairly across books of different sizes."
               />
               <Th
                 label="RED"
@@ -625,7 +638,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 sortDir={sortDir}
                 onClick={toggleSort}
                 align="right"
-                tooltip="Sum of plan_amount for RED-stoplight customers in this book."
+                tooltip="Sum of plan_amount for Critical + At-risk customers in this book."
               />
               <Th
                 label={"⛑"}
@@ -706,7 +719,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 </td>
                 <td
                   className="px-3 py-2.5 text-right tabular-nums"
-                  title={r.total ? `${r.pctRed.toFixed(0)}% of ${r.total}` : "No customers"}
+                  title={r.total ? `${r.pctNeedsCall.toFixed(0)}% of ${r.total}` : "No customers"}
                 >
                   {r.action > 0 ? (
                     <span
@@ -725,7 +738,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-2">
                   {r.total ? (
-                    `${r.pctRed.toFixed(0)}%`
+                    `${r.pctNeedsCall.toFixed(0)}%`
                   ) : (
                     <span className="text-zoca-text-3">·</span>
                   )}
@@ -734,7 +747,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                   className="px-3 py-2.5 text-right tabular-nums"
                   style={{ color: "var(--zoca-pink)" }}
                 >
-                  {r.RED > 0 ? (
+                  {r.needsCall > 0 ? (
                     <AmLink amName={r.am} filter="act" showArrow={false} style={{ color: "var(--zoca-pink)" }}>
                       {r.RED}
                     </AmLink>
@@ -746,13 +759,13 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                   className="px-3 py-2.5 text-right tabular-nums"
                   style={{ color: "var(--zoca-amber)" }}
                 >
-                  {r.YELLOW || <span className="text-zoca-text-3">·</span>}
+                  {r.monitor || <span className="text-zoca-text-3">·</span>}
                 </td>
                 <td
                   className="px-3 py-2.5 text-right tabular-nums"
                   style={{ color: "var(--zoca-green)" }}
                 >
-                  {r.GREEN || <span className="text-zoca-text-3">·</span>}
+                  {r.healthy || <span className="text-zoca-text-3">·</span>}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-2">
                   {r.avgComposite || <span className="text-zoca-text-3">·</span>}
