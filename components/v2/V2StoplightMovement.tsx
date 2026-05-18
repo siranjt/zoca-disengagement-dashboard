@@ -79,7 +79,7 @@ function StoplightChip({ tier }: { tier: Stoplight }) {
       className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
       style={styles[tier]}
     >
-      {tier}
+      {tier === "RED" ? "NEEDS CALL" : tier === "YELLOW" ? "MONITOR" : "HEALTHY"}
     </span>
   );
 }
@@ -335,7 +335,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
             className="font-extrabold text-zoca-text"
             style={{ fontSize: "17px", letterSpacing: "-0.015em" }}
           >
-            Stoplight movement
+            Tier movement
           </h3>
           <p className="mt-0.5 text-[11px] text-zoca-text-2">
             {state.status === "ready"
@@ -345,7 +345,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
           {summary && (
             <p className="mt-1 text-[12px] text-zoca-text-2">
               <span className="font-semibold" style={{ color: "var(--zoca-pink)" }}>{summary.flipped}</span> flipped
-              to RED · <span className="font-semibold" style={{ color: "#b45309" }}>{summary.degraded}</span>{" "}
+              to needs call · <span className="font-semibold" style={{ color: "#b45309" }}>{summary.degraded}</span>{" "}
               degraded ·{" "}
               <span className="font-semibold" style={{ color: "#047857" }}>{summary.recovered}</span>{" "}
               recovered
