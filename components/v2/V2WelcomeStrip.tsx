@@ -1,6 +1,7 @@
 "use client";
 
 import type { ScoredCustomerV2 } from "@/lib/types";
+import { normalizeHealthTier } from "@/lib/config";
 
 type Props = {
   amName: string;
@@ -12,14 +13,19 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
   const redCount = customers.filter((c) => c.signals_v2.stoplight === "RED").length;
   const yellowCount = customers.filter((c) => c.signals_v2.stoplight === "YELLOW").length;
   // Phase 33.H.2 — tier-based counts (MONITOR fallback for missing metabase_health)
-  const needsCallCount = customers.filter((c) => {
-    const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
-    return _htRaw === "CRITICAL - DEAL BREAKER" || _htRaw === "CRITICAL" || _htRaw === "AT-RISK";
-  }).length;
-  const watchingCount = customers.filter((c) => {
-    const _htRaw = ((c as any).metabase_health?.health_tier as string | null | undefined) || "";
-    return _htRaw !== "CRITICAL - DEAL BREAKER" && _htRaw !== "CRITICAL" && _htRaw !== "AT-RISK" && _htRaw !== "HEALTHY";
-  }).length;
+  // Phase Beacon-fix — robust tier classification with stoplight fallback
+  function _classify(c: ScoredCustomerV2): "needsCall" | "watching" | "healthy" {
+    const ht = normalizeHealthTier((c as any).metabase_health?.health_tier);
+    if (ht === "CRITICAL" || ht === "AT-RISK") return "needsCall";
+    if (ht === "HEALTHY") return "healthy";
+    if (ht === "MONITOR") return "watching";
+    // Fallback: no metabase_health row — use legacy stoplight
+    if (c.signals_v2?.stoplight === "RED") return "needsCall";
+    if (c.signals_v2?.stoplight === "GREEN") return "healthy";
+    return "watching";
+  }
+  const needsCallCount = customers.filter((c) => _classify(c) === "needsCall").length;
+  const watchingCount = customers.filter((c) => _classify(c) === "watching").length;
   const total = customers.length;
 
   return (
