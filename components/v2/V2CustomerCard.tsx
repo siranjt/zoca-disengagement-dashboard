@@ -643,6 +643,34 @@ function V2CustomerCardInner({
               <span aria-hidden>🔑</span>
               <span className="font-semibold tabular-nums text-zoca-text">
                 {(customer.performance.active_ranking_count ?? 0).toLocaleString()}
+          {/* Phase G9 — open churn ticket banner (top-of-funnel save signal) */}
+          {(() => {
+            const churn: any = (customer as any).metabase_health?.churn;
+            const openCount = Number(churn?.open_count ?? 0);
+            if (!Number.isFinite(openCount) || openCount <= 0) return null;
+            const titles = typeof churn?.ticket_titles === "string" && churn.ticket_titles.trim()
+              ? churn.ticket_titles.trim()
+              : "(title unknown)";
+            const ids = typeof churn?.ticket_ids === "string" && churn.ticket_ids.trim()
+              ? churn.ticket_ids.trim()
+              : "";
+            const latest = typeof churn?.latest_ticket_date === "string" && churn.latest_ticket_date
+              ? churn.latest_ticket_date.slice(0, 10)
+              : "";
+            const titleText = `${openCount} open churn ticket${openCount === 1 ? "" : "s"}: ${titles}${latest ? ` (latest: ${latest})` : ""}${ids ? ` [${ids}]` : ""}`;
+            return (
+              <div
+                data-churn-banner="1"
+                className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-zoca-pill px-2.5 py-0.5 text-[10px] font-semibold"
+                style={{ background: "rgba(220, 38, 38, 0.15)", color: "#b91c1c", border: "1px solid rgba(220, 38, 38, 0.3)" }}
+                title={titleText}
+              >
+                <span aria-hidden>⚠️</span>
+                <span>Active churn ticket{openCount > 1 ? `s (${openCount})` : ""}</span>
+                <span className="font-normal opacity-80">— review before contact</span>
+              </div>
+            );
+          })()}
               </span>
               <span>keywords</span>
               <span className="text-zoca-text-3" aria-hidden>·</span>
