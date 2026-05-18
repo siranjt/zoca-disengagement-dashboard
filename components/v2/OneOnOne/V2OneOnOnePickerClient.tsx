@@ -150,7 +150,7 @@ export default function V2OneOnOnePickerClient() {
                   >
                     {am.red_count}
                   </span>
-                  <span className="text-[11px] text-zoca-text-2">RED</span>
+                  <span className="text-[11px] text-zoca-text-2">Needs call</span>
                   <span className="text-zoca-text-soft">·</span>
                   <span
                     className="tabular-nums font-semibold"

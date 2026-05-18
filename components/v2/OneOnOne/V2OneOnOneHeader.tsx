@@ -58,17 +58,17 @@ export default function V2OneOnOneHeader({ amName, pod, last, book }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Chip color="#e11d48" bg="rgba(244,63,94,0.08)" label="RED" value={book.red} />
+          <Chip color="#e11d48" bg="rgba(244,63,94,0.08)" label="Needs call" value={book.red} />
           <Chip
             color="#b45309"
             bg="rgba(245,158,11,0.08)"
-            label="YELLOW"
+            label="Monitor"
             value={book.yellow}
           />
           <Chip
             color="#047857"
             bg="rgba(16,185,129,0.08)"
-            label="GREEN"
+            label="Healthy"
             value={book.green}
           />
           <Chip

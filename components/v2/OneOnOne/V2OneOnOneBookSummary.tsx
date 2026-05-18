@@ -30,7 +30,7 @@ export default function V2OneOnOneBookSummary({ book }: Props) {
         <Stat label="Accounts" value={book.total} />
         <Stat label="MRR managed" value={fmtMoney(book.mrr_total_cents)} />
         <Stat
-          label="RED"
+          label="Needs call"
           value={`${book.red} (${redPct}%)`}
           color="var(--zoca-pink)"
         />
