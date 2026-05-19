@@ -15,7 +15,7 @@
     },
     {
       "path": "/api/cron/refresh/compose",
-      "schedule": "5 22 * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/prune",
