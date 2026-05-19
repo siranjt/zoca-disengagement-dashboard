@@ -123,7 +123,17 @@ export default function V2Sparkline({
             </linearGradient>
           </defs>
         )}
-        {fillPath && <path d={fillPath} fill={effectiveFill || "transparent"} />}
+        {fillPath && (
+          // Phase 33.brand-PR4 — area fill fades in 0.9s after the line starts drawing (spec §8 row 2)
+          <path
+            d={fillPath}
+            fill={effectiveFill || "transparent"}
+            style={{
+              opacity: drawn ? 1 : 0,
+              transition: "opacity 0.6s ease 0.9s",
+            }}
+          />
+        )}
         {refY !== null && (
           <line
             x1={0}
@@ -146,10 +156,22 @@ export default function V2Sparkline({
           style={{
             strokeDasharray: pathLength != null ? `${pathLength}` : "1000",
             strokeDashoffset: drawn ? 0 : pathLength != null ? pathLength : 1000,
-            transition: "stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1)",
+            // Phase 33.brand-PR4 — slower, more cinematic line draw (spec §8: 2.0s)
+            transition: "stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         />
-        {showLastPoint && <circle cx={last.x} cy={last.y} r={1.8} fill={color} />}
+        {showLastPoint && (
+          // Phase 33.brand-PR4 — today's spike dot grows in after the line+fill settle (spec §8 row 4)
+          <circle
+            cx={last.x}
+            cy={last.y}
+            r={drawn ? 1.8 : 0}
+            fill={color}
+            style={{
+              transition: "r 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 1.2s",
+            }}
+          />
+        )}
       </svg>
       {showLastValue && (
         <span
