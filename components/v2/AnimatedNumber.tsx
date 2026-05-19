@@ -21,7 +21,8 @@ type Props = {
  */
 export function AnimatedNumber({
   value,
-  duration = 900,
+  // Phase 33.brand-watchfire-PR8-42 — 800ms ease-out per spec §11 row 42.
+  duration = 800,
   format,
   className,
   style,

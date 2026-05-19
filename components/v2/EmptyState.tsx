@@ -18,9 +18,14 @@ type Props = {
  * / nothing snoozed / etc.).
  */
 export function EmptyState({ variant = "filter-empty", title, subtitle }: Props) {
-  const accent = variant === "all-clear" ? "#10b981" : "#C8431D";
-  const bg =
-    variant === "all-clear" ? "rgba(16,185,129,0.10)" : "rgba(200, 67, 29, 0.10)";
+  // Phase 33.brand-watchfire-PR10 — idle treatment for genuine all-clear states.
+  if (variant === "all-clear") {
+    return <BeaconIdleState title={title} subtitle={subtitle} />;
+  }
+  // Phase 33.brand-watchfire-PR10 — all-clear branch is handled by BeaconIdleState above,
+  // so the remaining variants (filter-empty / snoozed-none / pinned-none) all use Ember.
+  const accent = "#C8431D";
+  const bg = "rgba(200, 67, 29, 0.10)";
   return (
     <div
       className="zoca-fade-in"
@@ -87,3 +92,74 @@ export function EmptyState({ variant = "filter-empty", title, subtitle }: Props)
 }
 
 export default EmptyState;
+
+// Phase 33.brand-watchfire-PR10 — idle state (spec §11 rows 55-57).
+// Replaces the bouncing-checkmark visual for "all-clear" empty states
+// (e.g. "You're caught up.", "No one's gone silent.") with the banked-
+// ember glow, rotating-in motto, and drifting Brass particles. Filter-
+// empty / pinned-none / snoozed-none variants keep the existing visual.
+function BeaconIdleState({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="beacon-idle">
+      {/* #57 Faint Brass particles drift up */}
+      <div className="beacon-idle-particles" aria-hidden>
+        <span className="beacon-particle beacon-particle-1" />
+        <span className="beacon-particle beacon-particle-2" />
+        <span className="beacon-particle beacon-particle-3" />
+        <span className="beacon-particle beacon-particle-4" />
+        <span className="beacon-particle beacon-particle-5" />
+        <span className="beacon-particle beacon-particle-6" />
+      </div>
+
+      {/* #55 Banked-ember illustration */}
+      <svg
+        className="beacon-banked-ember"
+        width="80"
+        height="80"
+        viewBox="0 0 80 80"
+        fill="none"
+        aria-hidden
+      >
+        <defs>
+          <radialGradient id="beacon-idle-ember-glow" cx="50%" cy="65%" r="55%">
+            <stop offset="0%" stopColor="#C8431D" stopOpacity="0.55" />
+            <stop offset="60%" stopColor="#C8431D" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#C8431D" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {/* glow halo behind the flame */}
+        <circle
+          cx="40"
+          cy="50"
+          r="34"
+          fill="url(#beacon-idle-ember-glow)"
+          className="beacon-ember-halo"
+        />
+        {/* deep ember base — banked logs */}
+        <path
+          d="M 22 64 Q 40 70, 58 64 Q 56 62, 50 60 L 48 62 L 44 58 L 40 62 L 36 58 L 32 62 L 30 60 Q 24 62, 22 64 Z"
+          fill="#7C2D12"
+        />
+        {/* mid-flame ember */}
+        <path
+          d="M 40 30 Q 28 50, 34 60 Q 38 50, 40 46 Q 42 50, 46 60 Q 52 50, 40 30 Z"
+          fill="#C8431D"
+          className="beacon-ember-inner"
+        />
+        {/* core flame — gold */}
+        <path
+          d="M 40 40 Q 36 52, 39 58 Q 40 53, 41 58 Q 44 52, 40 40 Z"
+          fill="#FBBF24"
+          className="beacon-ember-core"
+        />
+      </svg>
+
+      <div className="beacon-idle-title">{title}</div>
+      {subtitle && <div className="beacon-idle-sub">{subtitle}</div>}
+
+      {/* #56 Motto rotates in slowly */}
+      <div className="beacon-idle-motto">A signal worth following.</div>
+    </div>
+  );
+}
+

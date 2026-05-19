@@ -1276,3 +1276,121 @@ textarea {
     animation: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR10 — idle state (spec §11 rows 55-57).
+   Activates only for the "all-clear" EmptyState variant.
+   ───────────────────────────────────────────────────────────── */
+
+.beacon-idle {
+  position: relative;
+  text-align: center;
+  padding: 56px 24px 64px;
+  overflow: hidden;
+}
+
+/* #55 Banked-ember illustration + slow glow halo */
+.beacon-banked-ember {
+  display: inline-block;
+  margin-bottom: 18px;
+}
+.beacon-ember-halo {
+  transform-origin: center;
+  animation: beacon-ember-glow 4s ease-in-out infinite;
+}
+@keyframes beacon-ember-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1);    }
+  50%      { opacity: 1.00; transform: scale(1.08); }
+}
+.beacon-ember-inner {
+  transform-origin: 40px 60px;
+  animation: beacon-ember-flicker 2.1s ease-in-out infinite;
+}
+.beacon-ember-core {
+  transform-origin: 40px 58px;
+  animation: beacon-ember-flicker 1.4s ease-in-out infinite;
+}
+@keyframes beacon-ember-flicker {
+  0%, 100% { transform: scaleY(0.94); opacity: 0.92; }
+  50%      { transform: scaleY(1.10); opacity: 1.00; }
+}
+
+/* Idle copy */
+.beacon-idle-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--zoca-text);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.beacon-idle-sub {
+  font-size: 13px;
+  color: var(--zoca-text-2);
+  line-height: 1.5;
+  max-width: 420px;
+  margin: 0 auto 24px;
+}
+
+/* #56 Motto rotates in slowly */
+.beacon-idle-motto {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--zoca-text-2);
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: perspective(400px) rotateX(-20deg) translateY(6px);
+  animation: beacon-motto-in 1.6s cubic-bezier(0.34, 1.2, 0.64, 1) 0.8s forwards;
+}
+@keyframes beacon-motto-in {
+  0%   { opacity: 0; transform: perspective(400px) rotateX(-20deg) translateY(6px); }
+  100% { opacity: 1; transform: perspective(400px) rotateX(0deg)   translateY(0);   }
+}
+
+/* #57 Brass particles drift up softly */
+.beacon-idle-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.beacon-particle {
+  position: absolute;
+  bottom: -10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(217, 164, 65, 0.65),
+    rgba(217, 164, 65, 0)
+  );
+  animation: beacon-particle-drift 9s linear infinite;
+}
+.beacon-particle-1 { left: 14%; animation-delay: 0s;   animation-duration: 8s;  }
+.beacon-particle-2 { left: 26%; animation-delay: 1.4s; animation-duration: 11s; }
+.beacon-particle-3 { left: 42%; animation-delay: 2.8s; animation-duration: 9s;  }
+.beacon-particle-4 { left: 58%; animation-delay: 4.2s; animation-duration: 10s; }
+.beacon-particle-5 { left: 72%; animation-delay: 5.6s; animation-duration: 8s;  }
+.beacon-particle-6 { left: 84%; animation-delay: 7.0s; animation-duration: 11s; }
+@keyframes beacon-particle-drift {
+  0%   { transform: translateY(0)      scale(0.6); opacity: 0; }
+  10%  {                                            opacity: 0.85; }
+  85%  {                                            opacity: 0.85; }
+  100% { transform: translateY(-220px) scale(1.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-ember-halo,
+  .beacon-ember-inner,
+  .beacon-ember-core,
+  .beacon-particle {
+    animation: none !important;
+  }
+  .beacon-idle-motto {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
