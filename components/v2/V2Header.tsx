@@ -82,7 +82,7 @@ export function V2Header(props: Props) {
 
   return (
     <nav
-      className={`sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3 ${compact ? "v2-header-compact" : ""}`}
+      className={`beacon-nav-slide sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3 ${compact ? "v2-header-compact" : ""}`}
       style={{
         background: "rgba(255,255,255,0.85)",
         borderColor: "var(--zoca-border)",

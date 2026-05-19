@@ -747,16 +747,17 @@ button:active:not(.no-press),
 .b-card-pulse {
   animation: b-card-pulse 3s ease-in-out infinite;
 }
+/* Phase 33.brand-watchfire-PR6 — re-skin to Ember + Char */
 @keyframes b-card-pulse {
   0%, 100% {
     box-shadow:
-      0 1px 3px rgba(11, 5, 29, 0.04),
-      0 0 0 0 rgba(255, 86, 187, 0.45);
+      0 1px 3px rgba(43, 31, 20, 0.06),
+      0 0 0 0 rgba(200, 67, 29, 0.45);
   }
   60% {
     box-shadow:
-      0 1px 3px rgba(11, 5, 29, 0.04),
-      0 0 0 10px rgba(255, 86, 187, 0);
+      0 1px 3px rgba(43, 31, 20, 0.06),
+      0 0 0 10px rgba(200, 67, 29, 0);
   }
 }
 
@@ -783,9 +784,10 @@ button:active:not(.no-press),
 .b-tab-pulse {
   animation: b-tab-pulse 2.4s ease-in-out infinite;
 }
+/* Phase 33.brand-watchfire-PR6 — re-skin to Char */
 @keyframes b-tab-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(11, 5, 29, 0.45); }
-  60%      { box-shadow: 0 0 0 7px rgba(11, 5, 29, 0);    }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(43, 31, 20, 0.45); }
+  60%      { box-shadow: 0 0 0 7px rgba(43, 31, 20, 0);    }
 }
 
 /* 4. Spike dot radius pulse (sparkline last point) */
@@ -958,4 +960,15 @@ button:active:not(.no-press),
 
 @media (prefers-reduced-motion: reduce) {
   .zoca-gradient-text { animation: none !important; }
+}
+
+/* Phase 33.brand-watchfire-PR6 — nav slide-down entry (spec §11 row 1) */
+@keyframes beacon-nav-slide {
+  0%   { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0);     }
+}
+.beacon-nav-slide { animation: beacon-nav-slide 0.4s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-nav-slide { animation: none !important; }
 }
