@@ -104,7 +104,7 @@ export default function V2AmActivityRollup({
           style={{
             background: "rgba(124, 45, 18, 0.12)",
             border: "1px solid rgba(200, 67, 29, 0.22)",
-            color: "#c026d3",
+            color: "var(--zoca-pink-bright)",
           }}
         >
           <span>

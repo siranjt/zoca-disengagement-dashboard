@@ -733,7 +733,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
           top: 6,
           zIndex: 10,
           marginBottom: 12,
-          background: "rgba(255,255,255,0.94)",
+          // Phase 33.brand-watchfire-T8 — sticky filter panel on Parchment.
+          background: "rgba(240, 228, 204, 0.94)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           border: "0.5px solid var(--zoca-border)",
@@ -925,7 +926,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 padding: "8px 14px",
                 background: "rgba(124, 45, 18, 0.12)",
                 border: "1px solid rgba(200, 67, 29, 0.22)",
-                color: "#c026d3",
+                color: "var(--zoca-pink-bright)",
                 borderRadius: "9999px",
                 fontSize: "12px",
                 fontWeight: 600,
@@ -962,7 +963,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 padding: "8px 14px",
                 background: "rgba(124, 45, 18, 0.12)",
                 border: "1px solid rgba(200, 67, 29, 0.22)",
-                color: "#c026d3",
+                color: "var(--zoca-pink-bright)",
                 borderRadius: "9999px",
                 fontSize: "12px",
                 fontWeight: 600,
@@ -1179,7 +1180,7 @@ function FilterChip({
         className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
         style={
           active
-            ? { background: "rgba(200, 67, 29, 0.14)", color: "#c026d3" }
+            ? { background: "rgba(200, 67, 29, 0.14)", color: "var(--zoca-pink-bright)" }
             : { background: "var(--zoca-bg-soft)", color: "var(--zoca-text-2)" }
         }
       >

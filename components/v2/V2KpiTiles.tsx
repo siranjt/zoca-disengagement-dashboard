@@ -47,13 +47,13 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
   midnight: {
     border: "var(--zoca-text)",
     shadow: "0 0 0 1px rgba(11,5,29,0.25), 0 0 24px rgba(11,5,29,0.18)",
-    gradient: "linear-gradient(180deg, rgba(11,5,29,0.04), rgba(11,5,29,0.06)), #fff",
+    gradient: "linear-gradient(180deg, rgba(11,5,29,0.04), rgba(11,5,29,0.06)), var(--zoca-bg-soft)",
     labelColor: "var(--zoca-text)",
   },
   pink: {
     border: "var(--zoca-pink)",
     shadow: "0 0 0 1px rgba(200, 67, 29, 0.35), 0 0 24px rgba(252, 228, 214, 0.35)",
-    gradient: "linear-gradient(180deg, rgba(200, 67, 29, 0.04), rgba(252, 228, 214, 0.06)), #fff",
+    gradient: "linear-gradient(180deg, rgba(200, 67, 29, 0.04), rgba(252, 228, 214, 0.06)), var(--zoca-bg-soft)",
     // Phase 33.brand-watchfire-audit-T2 — Deep Ember replaces V2 fuchsia.
     labelColor: "#7C2D12",
   },
@@ -61,21 +61,21 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
   amber: {
     border: "#D9A441",
     shadow: "0 0 0 1px rgba(217, 164, 65, 0.35), 0 0 24px rgba(245, 230, 187, 0.45)",
-    gradient: "linear-gradient(180deg, rgba(217, 164, 65, 0.04), rgba(245, 230, 187, 0.10)), #fff",
+    gradient: "linear-gradient(180deg, rgba(217, 164, 65, 0.04), rgba(245, 230, 187, 0.10)), var(--zoca-bg-soft)",
     labelColor: "#5C4317",
   },
   // Phase 33.brand-watchfire-audit-T2 — green → Patina family.
   green: {
     border: "#4A7C59",
     shadow: "0 0 0 1px rgba(74, 124, 89, 0.35), 0 0 24px rgba(218, 229, 220, 0.45)",
-    gradient: "linear-gradient(180deg, rgba(74, 124, 89, 0.04), rgba(218, 229, 220, 0.10)), #fff",
+    gradient: "linear-gradient(180deg, rgba(74, 124, 89, 0.04), rgba(218, 229, 220, 0.10)), var(--zoca-bg-soft)",
     labelColor: "#2D4843",
   },
   // Phase 33.brand-watchfire-audit-T2 — crimson → Deep Crimson family.
   crimson: {
     border: "#7C2D12",
     shadow: "0 0 0 1px rgba(124, 45, 18, 0.40), 0 0 24px rgba(245, 201, 182, 0.45)",
-    gradient: "linear-gradient(180deg, rgba(124, 45, 18, 0.04), rgba(245, 201, 182, 0.10)), #fff",
+    gradient: "linear-gradient(180deg, rgba(124, 45, 18, 0.04), rgba(245, 201, 182, 0.10)), var(--zoca-bg-soft)",
     labelColor: "#7C2D12",
   },
 };

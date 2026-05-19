@@ -459,7 +459,7 @@ function PodDeltaPill({ delta }: { delta: number }) {
   const style: React.CSSProperties = worse
     ? {
         background: "rgba(124, 45, 18, 0.12)",
-        color: "#c026d3",
+        color: "var(--zoca-pink-bright)",
         border: "1px solid rgba(200, 67, 29, 0.22)",
       }
     : {

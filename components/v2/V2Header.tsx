@@ -84,7 +84,8 @@ export function V2Header(props: Props) {
     <nav
       className={`beacon-nav-slide sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b backdrop-blur-md flex-wrap gap-3 ${compact ? "v2-header-compact" : ""}`}
       style={{
-        background: "rgba(255,255,255,0.85)",
+        // Phase 33.brand-watchfire-T8 — nav on Parchment with backdrop blur.
+        background: "rgba(240, 228, 204, 0.92)",
         borderColor: "var(--zoca-border)",
         transition: "padding 0.2s ease, box-shadow 0.2s ease",
       }}

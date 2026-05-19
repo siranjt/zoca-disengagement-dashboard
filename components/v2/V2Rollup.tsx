@@ -772,7 +772,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                       className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold"
                       style={{
                         background: "rgba(124, 45, 18, 0.12)",
-                        color: "#c026d3",
+                        color: "var(--zoca-pink-bright)",
                         border: "1px solid rgba(200, 67, 29, 0.22)",
                       }}
                     >
@@ -838,7 +838,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                       className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-semibold"
                       style={{
                         background: "rgba(124, 45, 18, 0.12)",
-                        color: "#c026d3",
+                        color: "var(--zoca-pink-bright)",
                         border: "1px solid rgba(200, 67, 29, 0.22)",
                       }}
                     >

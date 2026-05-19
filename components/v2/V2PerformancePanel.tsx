@@ -261,7 +261,8 @@ export default function V2PerformancePanel({ performance, tier }: Props) {
     <div
       className="mt-3 rounded-zoca border border-zoca-border bg-zoca-bg-tint px-4 py-3.5"
       style={{
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)",
+        // Phase 33.brand-watchfire-T8 — inset highlight Light Parchment.
+        boxShadow: "inset 0 1px 0 rgba(248, 239, 215, 0.7)",
       }}
     >
       <div className="mb-2 flex items-baseline justify-between gap-2">
