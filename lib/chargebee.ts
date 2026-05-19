@@ -168,6 +168,28 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
     } while (offset);
   }
 
+  // Phase 33.scope-fix3 — surface the cancelled-30d fetch outcome in Vercel logs.
+  // Caveat: _cancelledWithCfEntity over-counts when a customer has BOTH live and
+  // cancelled subs (resurrected case) — customerToEntities holds both. Diagnostic
+  // only; we can tighten later if needed.
+  let _cancelledTotalSubs = 0;
+  let _cancelledWithCfEntity = 0;
+  let _cancelledDistinctEntities = new Set<string>();
+  for (const s of out) {
+    if ((s as any).recently_cancelled) {
+      _cancelledTotalSubs++;
+      if (s.customer_id && customerToEntities.has(s.customer_id)) {
+        _cancelledWithCfEntity++;
+        for (const eid of customerToEntities.get(s.customer_id)!) _cancelledDistinctEntities.add(eid);
+      }
+    }
+  }
+  console.log(
+    `[chargebee] cancelled-30d fetch: ${_cancelledTotalSubs} subs, ` +
+    `${_cancelledWithCfEntity} matched to customer\u2192entity map, ` +
+    `${_cancelledDistinctEntities.size} distinct entity_ids`
+  );
+
   // Convert Set values to sorted arrays for stable output
   const customerToEntitiesArr = new Map<string, string[]>();
   for (const [c, s] of customerToEntities) {

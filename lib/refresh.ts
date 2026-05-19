@@ -258,7 +258,14 @@ export async function runStageA(today: number = todayMs()): Promise<{
   const subsByCustomer = new Map<string, ChargebeeSub>();
   for (const s of subs) {
     if (!s.customer_id) continue;
-    if (!subsByCustomer.has(s.customer_id) || s.status === "active") {
+    // Phase 33.scope-fix2 — prefer live subs over cancelled, and prefer
+    // "active" over other live statuses (non_renewing, in_trial, future).
+    const existing = subsByCustomer.get(s.customer_id);
+    if (!existing) {
+      subsByCustomer.set(s.customer_id, s);
+    } else if (existing.status === "cancelled" && s.status !== "cancelled") {
+      subsByCustomer.set(s.customer_id, s);
+    } else if (s.status === "active" && existing.status !== "active") {
       subsByCustomer.set(s.customer_id, s);
     }
   }
@@ -875,7 +882,11 @@ export async function composeSnapshot(
     // Phase 33.scope — derive lifecycle_state for this customer.
     const _cidForLifecycle = meta?.customer_id || "";
     const _recentlyChurned = stageA.recentlyChurnedByCustomer?.[_cidForLifecycle] || null;
-    const _hasLiveSub = !!meta?.subscription_id;
+    // Phase 33.scope-fix1 — pure-churn customers have subscription_id set
+    // (subsByCustomer stores any sub if no live sub overrode it), so we must
+    // also require sub_status !== "cancelled" to call them a live sub.
+    const _subStatus = meta?.sub_status || "";
+    const _hasLiveSub = !!meta?.subscription_id && _subStatus !== "cancelled";
     const _activatedIso = meta?.activated_at || null;
     const _activatedMs = _activatedIso ? Date.parse(_activatedIso) : NaN;
     const _thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
