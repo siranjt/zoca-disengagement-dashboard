@@ -390,7 +390,7 @@ function V2SnapshotTimeline({
         <button
           type="button"
           onClick={retry}
-          className="ml-3 rounded-zoca-pill border border-rose-300 bg-white px-2 py-0.5 text-[11px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
+          className="ml-3 rounded-zoca-pill border border-rose-300 bg-zoca-bg-soft px-2 py-0.5 text-[11px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
         >
           Retry
         </button>
@@ -567,7 +567,7 @@ function V2SnapshotTimeline({
           <div className="flex items-center gap-3 text-[11px] text-zoca-text-2">
             <LegendKey />
           </div>
-          <div className="flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-white p-0.5">
+          <div className="flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-zoca-bg-soft p-0.5">
             {[7, 30, 90].map((n) => {
               const active = days === n;
               return (

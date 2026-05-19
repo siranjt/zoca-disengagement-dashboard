@@ -34,8 +34,8 @@ export function V2ManagerHero({
         <div
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
           style={{
-            border: "1px solid rgba(20,110,245,0.18)",
-            background: "rgba(20,110,245,0.06)",
+            border: "1px solid rgba(200, 67, 29, 0.18)",
+            background: "rgba(200, 67, 29, 0.06)",
           }}
         >
           <span className="zoca-pulse-dot-green" />

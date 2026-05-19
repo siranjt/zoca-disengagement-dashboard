@@ -26,7 +26,7 @@ export default function V2OneOnOneHistory({ rows }: Props) {
 
   return (
     <section
-      className="mb-4 rounded-zoca-lg bg-white p-4 md:p-5"
+      className="mb-4 rounded-zoca-lg bg-zoca-bg-soft p-4 md:p-5"
       style={{ border: "0.5px solid var(--zoca-border)" }}
     >
       <header className="mb-2">
@@ -92,7 +92,7 @@ export default function V2OneOnOneHistory({ rows }: Props) {
           onClick={() => setOpenId(null)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-xl overflow-auto rounded-zoca-lg bg-white p-5"
+            className="max-h-[80vh] w-full max-w-xl overflow-auto rounded-zoca-lg bg-zoca-bg-soft p-5"
             style={{ border: "0.5px solid var(--zoca-border)" }}
             onClick={(e) => e.stopPropagation()}
           >

@@ -23,7 +23,7 @@ function V2TicketsPanel({ customer }: Props) {
   return (
     <section
       id="tickets"
-      className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       aria-label="Tickets"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -57,7 +57,7 @@ function V2TicketsPanel({ customer }: Props) {
               <details
                 key={category}
                 open={defaultOpen}
-                className="group rounded-zoca border border-zoca-border bg-white"
+                className="group rounded-zoca border border-zoca-border bg-zoca-bg-soft"
               >
                 <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-zoca-text marker:hidden">
                   <span className="inline-flex items-center gap-2">

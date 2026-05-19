@@ -27,7 +27,7 @@ function StoplightChip({ sl }: { sl: "RED" | "YELLOW" | "GREEN" }) {
 export default function V2OneOnOneWins({ wins }: Props) {
   return (
     <section
-      className="mb-4 rounded-zoca-lg bg-white p-4 md:p-5"
+      className="mb-4 rounded-zoca-lg bg-zoca-bg-soft p-4 md:p-5"
       style={{ border: "0.5px solid var(--zoca-border)" }}
     >
       <h2

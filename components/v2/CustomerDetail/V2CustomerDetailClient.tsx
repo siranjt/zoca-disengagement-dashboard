@@ -115,7 +115,7 @@ function V2CustomerDetailClient({ entityId }: Props) {
           <div className="mt-1 text-[12px] text-zoca-pink-bright/80">{error}</div>
           <a
             href="/v2"
-            className="mt-3 inline-flex items-center gap-1 rounded-zoca-pill border border-rose-300 bg-white px-3 py-1 text-[12px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
+            className="mt-3 inline-flex items-center gap-1 rounded-zoca-pill border border-rose-300 bg-zoca-bg-soft px-3 py-1 text-[12px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
           >
             ← Back to dashboard
           </a>
@@ -202,7 +202,7 @@ function Breadcrumb({ amName, company, locationRecordId }: { amName: string; com
 function LoadingSkeleton() {
   return (
     <div className="mt-6 space-y-4" aria-busy="true" aria-live="polite">
-      <div className="rounded-zoca-lg border border-zoca-border bg-white p-5 md:p-6">
+      <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-5 md:p-6">
         <div className="h-6 w-1/3 animate-pulse rounded-zoca-pill bg-zoca-bg-tint" />
         <div className="mt-3 h-4 w-1/4 animate-pulse rounded-zoca-pill bg-zoca-bg-tint" />
         <div className="mt-4 h-12 w-full animate-pulse rounded-zoca bg-zoca-bg-tint" />
@@ -211,7 +211,7 @@ function LoadingSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+            className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
           >
             <div className="h-4 w-1/3 animate-pulse rounded-zoca-pill bg-zoca-bg-tint" />
             <div className="mt-3 space-y-2">
@@ -228,7 +228,7 @@ function LoadingSkeleton() {
 
 function PerformanceCard({ customer }: { customer: ScoredCustomerV2 }) {
   return (
-    <section className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5">
+    <section className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h3 className="text-[13px] font-semibold uppercase tracking-wider text-zoca-text-2">
           Performance signals

@@ -36,7 +36,7 @@ export function CustomerCardSkeleton() {
             flexDirection: "column",
             gap: "10px",
             padding: "20px 22px",
-            background: "#fff",
+            background: "var(--zoca-bg-soft)",
             border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: "14px",
             animationDelay: `${i * 60}ms`,

@@ -162,7 +162,7 @@ function ToastCard({
         pointerEvents: "auto",
         minWidth: 260,
         maxWidth: 360,
-        background: "#ffffff",
+        background: "var(--zoca-bg-soft)",
         border: "1px solid var(--zoca-border, rgba(11,5,29,0.08))",
         borderRadius: 12,
         boxShadow: toast.exiting

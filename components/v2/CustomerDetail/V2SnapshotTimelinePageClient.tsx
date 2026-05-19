@@ -226,7 +226,7 @@ function V2SnapshotTimelinePageClient({ entityId }: Props) {
         </div>
       )}
       {!custLoading && !custError && customer && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-zoca border border-zoca-border bg-white px-3 py-2 text-[12px] text-zoca-text-2">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-zoca border border-zoca-border bg-zoca-bg-soft px-3 py-2 text-[12px] text-zoca-text-2">
           {customer.am_name && (
             <span>
               <span className="text-zoca-text-2">AM</span>{" "}
@@ -267,7 +267,7 @@ function V2SnapshotTimelinePageClient({ entityId }: Props) {
 
       {/* The full-variant chart */}
       <section
-        className="mt-5 rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+        className="mt-5 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
         aria-label="Composite score timeline"
       >
         <V2SnapshotTimeline
@@ -281,7 +281,7 @@ function V2SnapshotTimelinePageClient({ entityId }: Props) {
 
       {/* Events log */}
       <section
-        className="mt-6 rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+        className="mt-6 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
         aria-label="Events log"
       >
         <button

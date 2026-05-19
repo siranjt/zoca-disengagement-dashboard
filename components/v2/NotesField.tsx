@@ -138,7 +138,7 @@ export function NotesField({ amName, entityId, customerId, bizname }: Props) {
           fontSize: "13px",
           lineHeight: 1.5,
           color: "var(--zoca-text)",
-          background: state === "loading" ? "var(--zoca-bg-soft)" : "#fff",
+          background: state === "loading" ? "var(--zoca-bg-soft)" : "var(--zoca-bg)",
           border: "1px solid var(--zoca-border)",
           borderRadius: "10px",
           outline: "none",
@@ -146,8 +146,8 @@ export function NotesField({ amName, entityId, customerId, bizname }: Props) {
           transition: "border-color 0.18s ease, box-shadow 0.18s ease",
         }}
         onFocus={(e) => {
-          e.currentTarget.style.borderColor = "rgba(20,110,245,0.38)";
-          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(20,110,245,0.12)";
+          e.currentTarget.style.borderColor = "rgba(200, 67, 29, 0.38)";
+          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(200, 67, 29, 0.12)";
         }}
         onBlurCapture={(e) => {
           e.currentTarget.style.borderColor = "var(--zoca-border)";

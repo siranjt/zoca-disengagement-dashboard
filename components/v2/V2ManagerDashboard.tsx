@@ -1138,7 +1138,7 @@ function V2ManagerDashboardInner() {
                       className="flex items-center gap-3 py-2 text-[13px] -mx-2 px-2 rounded-md transition"
                       style={{ borderColor: "var(--zoca-border)" }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(20,110,245,0.04)";
+                        e.currentTarget.style.background = "rgba(200, 67, 29, 0.04)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";

@@ -105,7 +105,7 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
           e.currentTarget.style.background = "var(--zoca-bg-soft)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "#ffffff";
+          e.currentTarget.style.background = "var(--zoca-bg-soft)";
         }}
       >
         <span
@@ -164,7 +164,7 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
                 minWidth: Math.max(pillRect.width, 288),
                 maxWidth: "320px",
                 zIndex: 9999,
-                background: "#ffffff",
+                background: "var(--zoca-bg-soft)",
                 border: "1px solid var(--zoca-border)",
                 borderRadius: "12px",
                 boxShadow:
@@ -179,7 +179,7 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
                 className="px-3 py-2 border-b"
                 style={{
                   borderColor: "var(--zoca-border)",
-                  background: "#ffffff",
+                  background: "var(--zoca-bg-soft)",
                 }}
               >
                 <input
@@ -196,7 +196,7 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
                 className="overflow-y-auto py-1"
                 style={{
                   scrollbarWidth: "thin",
-                  background: "#ffffff",
+                  background: "var(--zoca-bg-soft)",
                   flex: 1,
                 }}
               >

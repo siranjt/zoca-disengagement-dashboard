@@ -870,7 +870,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
               className="w-full rounded-full border py-1.5 pl-8 pr-3 text-[12px] focus:outline-none"
               style={{
                 borderColor: "var(--zoca-border)",
-                background: "#ffffff",
+                background: "var(--zoca-bg-soft)",
                 color: "var(--zoca-text)",
                 minWidth: 200,
               }}
@@ -887,7 +887,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
               className="rounded-full border px-2.5 py-1.5 text-[12px] focus:outline-none"
               style={{
                 borderColor: "var(--zoca-border)",
-                background: "#ffffff",
+                background: "var(--zoca-bg-soft)",
                 color: "var(--zoca-text)",
               }}
             >
@@ -997,8 +997,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 alignItems: "center",
                 gap: "8px",
                 padding: "8px 14px",
-                background: "rgba(20,110,245,0.08)",
-                border: "1px solid rgba(20,110,245,0.22)",
+                background: "rgba(200, 67, 29, 0.08)",
+                border: "1px solid rgba(200, 67, 29, 0.22)",
                 color: "#0c4a6e",
                 borderRadius: "9999px",
                 fontSize: "12px",
@@ -1169,7 +1169,7 @@ function FilterChip({
             }
           : {
               borderColor: "var(--zoca-border)",
-              background: "#ffffff",
+              background: "var(--zoca-bg-soft)",
               color: "var(--zoca-text-2)",
             }
       }

@@ -25,7 +25,7 @@ function V2BillingPanel({ customer }: Props) {
 
   return (
     <section
-      className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       aria-label="Billing"
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">

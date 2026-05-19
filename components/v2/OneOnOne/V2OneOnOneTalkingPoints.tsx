@@ -60,7 +60,7 @@ export default function V2OneOnOneTalkingPoints({
 
   return (
     <section
-      className="mb-4 rounded-zoca-lg bg-white p-4 md:p-5"
+      className="mb-4 rounded-zoca-lg bg-zoca-bg-soft p-4 md:p-5"
       style={{ border: "0.5px solid var(--zoca-border)" }}
     >
       <header className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -83,10 +83,10 @@ export default function V2OneOnOneTalkingPoints({
           style={{
             background: buttonDisabled
               ? "var(--zoca-bg-soft)"
-              : "rgba(20,110,245,0.08)",
+              : "rgba(200, 67, 29, 0.08)",
             color: buttonDisabled ? "var(--zoca-text-soft)" : "var(--zoca-blue)",
             border: `1px solid ${
-              buttonDisabled ? "var(--zoca-border)" : "rgba(20,110,245,0.22)"
+              buttonDisabled ? "var(--zoca-border)" : "rgba(200, 67, 29, 0.22)"
             }`,
             cursor: buttonDisabled ? "default" : "pointer",
           }}
@@ -135,7 +135,7 @@ export default function V2OneOnOneTalkingPoints({
                     aria-hidden
                     className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[12px] font-bold"
                     style={{
-                      background: "#fff",
+                      background: "var(--zoca-bg-soft)",
                       color: style.fg,
                       border: `1px solid ${style.border}`,
                     }}
@@ -154,7 +154,7 @@ export default function V2OneOnOneTalkingPoints({
                         <span
                           className="rounded-full px-2 py-0.5 text-[10px] tabular-nums"
                           style={{
-                            background: "#fff",
+                            background: "var(--zoca-bg-soft)",
                             color: style.fg,
                             border: `1px solid ${style.border}`,
                           }}

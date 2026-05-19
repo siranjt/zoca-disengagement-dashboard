@@ -146,7 +146,7 @@ export default function V2HoverPreview({ customer, anchorRef, visible, onClose }
         top: pos.top,
         left: pos.left,
         width: POPOVER_WIDTH,
-        background: "#ffffff",
+        background: "var(--zoca-bg-soft)",
         border: "0.5px solid var(--zoca-border)",
         borderRadius: "var(--zoca-radius-lg, 14px)",
         boxShadow: "0 8px 24px rgba(11,5,29,0.10)",

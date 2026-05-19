@@ -379,7 +379,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
                           }
                         : {
                             borderColor: "var(--zoca-border)",
-                            background: "#ffffff",
+                            background: "var(--zoca-bg-soft)",
                             color: "var(--zoca-text-2)",
                           }
                     }
@@ -397,7 +397,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
               className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition focus:outline-none"
               style={{
                 borderColor: "var(--zoca-border)",
-                background: "#ffffff",
+                background: "var(--zoca-bg-soft)",
                 color: "var(--zoca-text-2)",
               }}
             >

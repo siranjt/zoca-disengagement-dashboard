@@ -142,7 +142,7 @@ export function V2UserMenu() {
           padding: "4px 10px 4px 4px",
           borderRadius: "999px",
           border: "1px solid var(--zoca-border)",
-          background: "#ffffff",
+          background: "var(--zoca-bg-soft)",
           cursor: "pointer",
           transition: "background 0.15s ease",
         }}
@@ -150,7 +150,7 @@ export function V2UserMenu() {
           e.currentTarget.style.background = "var(--zoca-bg-soft)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "#ffffff";
+          e.currentTarget.style.background = "var(--zoca-bg-soft)";
         }}
       >
         {image ? (
@@ -220,7 +220,7 @@ export function V2UserMenu() {
             right: coords.right,
             zIndex: 9999,
             width: "260px",
-            background: "#ffffff",
+            background: "var(--zoca-bg-soft)",
             border: "1px solid var(--zoca-border)",
             borderRadius: "12px",
             boxShadow: "0 12px 32px rgba(11,5,29,0.12)",

@@ -47,6 +47,12 @@
   --zoca-flame-core:      #D9A441;
   --zoca-flame-heart-top: #FEF3C7;
   --zoca-flame-heart-bot: #FBBF24;
+
+  /* Phase 33.brand-watchfire-T7 — missing spec tokens per §9/§10. */
+  --zoca-lapis-soft:   #D8E1E6;  /* Pale Lapis (VOL COLLAPSE bg) */
+  --zoca-smoke-soft:   #E5DDD3;  /* Pale Smoke (USAGE LOW bg) */
+  --zoca-ember-peach:  #FBE8D8;  /* Peach (GBP clicks pill bg) */
+  --zoca-border-perf:  #E4B188;  /* Darker Brass (Performance Signals border) */
 }
 
 /* Phase 17.A — keyframes for brand animations */
@@ -596,10 +602,11 @@ button:active:not(.no-press),
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  /* Phase 33.brand-watchfire-T7 — mesh tints in Watchfire palette. */
   background-image:
-    radial-gradient(at 0% 0%, rgba(20, 110, 245, 0.06) 0%, transparent 50%),
+    radial-gradient(at 0% 0%, rgba(217, 164, 65, 0.06) 0%, transparent 50%),
     radial-gradient(at 100% 100%, rgba(200, 67, 29, 0.05) 0%, transparent 50%),
-    radial-gradient(at 50% 0%, rgba(244, 239, 253, 0.6) 0%, transparent 40%);
+    radial-gradient(at 50% 0%, rgba(252, 228, 214, 0.50) 0%, transparent 40%);
   background-size: 200% 200%, 200% 200%, 200% 200%;
   animation: v2-mesh-drift 24s ease-in-out infinite;
 }

@@ -55,7 +55,7 @@ function V2ActionLogPanel({ actions }: Props) {
   const visible = actions.slice(0, 50);
   return (
     <section
-      className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       aria-label="AM action log"
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">

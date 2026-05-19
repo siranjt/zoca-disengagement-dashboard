@@ -195,7 +195,7 @@ export default function V2OneOnOnePrepClient({ amName }: Props) {
 
       {loading && (
         <div
-          className="rounded-zoca-lg bg-white p-6 text-center text-[12px] text-zoca-text-2"
+          className="rounded-zoca-lg bg-zoca-bg-soft p-6 text-center text-[12px] text-zoca-text-2"
           style={{ border: "0.5px solid var(--zoca-border)" }}
         >
           Loading 1:1 prep for {amName}…
@@ -204,7 +204,7 @@ export default function V2OneOnOnePrepClient({ amName }: Props) {
 
       {error && (
         <div
-          className="rounded-zoca-lg bg-white p-6 text-center text-[12.5px]"
+          className="rounded-zoca-lg bg-zoca-bg-soft p-6 text-center text-[12.5px]"
           style={{
             border: "0.5px solid rgba(244,63,94,0.22)",
             color: "var(--zoca-pink)",

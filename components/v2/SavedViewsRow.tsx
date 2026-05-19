@@ -167,7 +167,7 @@ const [views, setViews] = useState<SavedView[]>([]);
               fontSize: "12px",
               borderRadius: "9999px",
               border: "1px solid var(--zoca-border)",
-              background: "#fff",
+              background: "var(--zoca-bg-soft)",
               color: "var(--zoca-text)",
               outline: "none",
               minWidth: "150px",
@@ -248,7 +248,7 @@ function SavedViewPill({
         alignItems: "stretch",
         borderRadius: "9999px",
         border: "1px solid var(--zoca-border)",
-        background: "#fff",
+        background: "var(--zoca-bg-soft)",
         overflow: "hidden",
       }}
       onMouseEnter={() => setHovered(true)}

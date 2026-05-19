@@ -233,7 +233,7 @@ export default function V2OnboardingTour({ forceOpen, onClose }: Props) {
 
       {/* Tooltip card */}
       <div
-        className="rounded-zoca-lg border border-zoca-border bg-white"
+        className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft"
         style={{
           position: "absolute",
           top: tooltipPos.top,

@@ -109,7 +109,7 @@ function V2CommsThreadPanel({ entityId }: Props) {
 
   return (
     <section
-      className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       aria-label="Communications thread"
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -258,7 +258,7 @@ function FilterChip({
       className={`rounded-zoca-pill border px-2 py-0.5 text-[11px] font-medium transition ${
         active
           ? tone
-          : "border-zoca-border bg-white text-zoca-text-2 hover:bg-zoca-bg-tint"
+          : "border-zoca-border bg-zoca-bg-soft text-zoca-text-2 hover:bg-zoca-bg-tint"
       }`}
       aria-pressed={active}
     >
@@ -283,7 +283,7 @@ function DirChip({
       className={`rounded-zoca-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider transition ${
         active
           ? "border-zoca-pink-cta bg-zoca-pink-cta/12 text-zoca-pink-cta"
-          : "border-zoca-border bg-white text-zoca-text-2 hover:bg-zoca-bg-tint"
+          : "border-zoca-border bg-zoca-bg-soft text-zoca-text-2 hover:bg-zoca-bg-tint"
       }`}
       aria-pressed={active}
     >

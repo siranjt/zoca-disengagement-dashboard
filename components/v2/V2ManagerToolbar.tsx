@@ -209,7 +209,7 @@ export default function V2ManagerToolbar({
     <div
       className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-2.5 print:hidden"
       style={{
-        background: "#ffffff",
+        background: "var(--zoca-bg-soft)",
         border: "1px solid var(--zoca-border)",
         boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
       }}
@@ -354,7 +354,7 @@ export default function V2ManagerToolbar({
             role="menu"
             className="absolute right-0 top-full z-40 mt-1.5 w-72 overflow-hidden rounded-2xl"
             style={{
-              background: "#ffffff",
+              background: "var(--zoca-bg-soft)",
               border: "1px solid var(--zoca-border)",
               boxShadow: "0 12px 28px -8px rgba(11,5,29,0.10)",
             }}

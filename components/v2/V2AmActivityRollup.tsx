@@ -240,9 +240,9 @@ export default function V2AmActivityRollup({
                         }}
                         onMouseEnter={(e) => {
                           (e.currentTarget as HTMLElement).style.background =
-                            "rgba(20,110,245,0.08)";
+                            "rgba(200, 67, 29, 0.08)";
                           (e.currentTarget as HTMLElement).style.borderColor =
-                            "rgba(20,110,245,0.22)";
+                            "rgba(200, 67, 29, 0.22)";
                         }}
                         onMouseLeave={(e) => {
                           (e.currentTarget as HTMLElement).style.background = "transparent";

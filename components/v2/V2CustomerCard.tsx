@@ -780,7 +780,7 @@ function V2CustomerCardInner({
             }
             if (!primary) return null;
             const concerning = primary.variant === "refund" || primary.variant === "adjustment";
-            const bg = concerning ? "rgba(245, 158, 11, 0.18)" : "rgba(20, 110, 245, 0.14)";
+            const bg = concerning ? "rgba(245, 158, 11, 0.18)" : "rgba(200, 67, 29, 0.14)";
             const fg = concerning ? "#b45309" : "#1d4ed8";
             const titleParts: string[] = [];
             if (f60.has_refund) titleParts.push(`Refund 60d: ${fmt(f60.refund_amount) || "(amount unknown)"}`);

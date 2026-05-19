@@ -18,7 +18,7 @@ type Props = {
 function V2NotesPanel({ amName, entityId, customerId, bizname }: Props) {
   return (
     <section
-      className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       aria-label="Private notes"
     >
       <div className="mb-2 flex items-baseline justify-between gap-2">

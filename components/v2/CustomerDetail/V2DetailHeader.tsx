@@ -86,7 +86,7 @@ function V2DetailHeader({ customer, trend }: Props) {
 
   return (
     <section
-      className={`rounded-zoca-lg border bg-white p-5 md:p-6 ${STOPLIGHT_BORDER[s.stoplight]}`}
+      className={`rounded-zoca-lg border bg-zoca-bg-soft p-5 md:p-6 ${STOPLIGHT_BORDER[s.stoplight]}`}
       style={(() => {
         const _ht = normalizeHealthTier((customer as any).metabase_health?.health_tier);
         return _ht ? { borderColor: HEALTH_TIER_COLORS[_ht] } : undefined;
@@ -233,7 +233,7 @@ function V2DetailHeader({ customer, trend }: Props) {
                       void navigator.clipboard.writeText(customer.entity_id);
                     }
                   }}
-                  className="rounded-zoca-pill border border-zoca-border bg-white px-1.5 py-0 text-[9px] font-medium text-zoca-text-2 hover:bg-zoca-bg-tint hover:text-zoca-text"
+                  className="rounded-zoca-pill border border-zoca-border bg-zoca-bg-soft px-1.5 py-0 text-[9px] font-medium text-zoca-text-2 hover:bg-zoca-bg-tint hover:text-zoca-text"
                   title="Copy entity_id"
                   aria-label="Copy entity_id"
                 >
@@ -257,7 +257,7 @@ function V2DetailHeader({ customer, trend }: Props) {
                   bizname: customer.company || undefined,
                   amName: customer.am_name || undefined,
                 })}
-                className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-white px-2.5 py-1 text-[11px] font-medium text-zoca-text hover:bg-zoca-bg-tint"
+                className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-zoca-bg-soft px-2.5 py-1 text-[11px] font-medium text-zoca-text hover:bg-zoca-bg-tint"
                 title={`Email ${customer.email}`}
               >
                 <i className="ti ti-mail" aria-hidden />
@@ -267,7 +267,7 @@ function V2DetailHeader({ customer, trend }: Props) {
             {customer.phone && (
               <a
                 href={buildTelLink(customer.phone)}
-                className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-white px-2.5 py-1 text-[11px] font-medium text-zoca-text hover:bg-zoca-bg-tint"
+                className="inline-flex items-center gap-1 rounded-zoca-pill border border-zoca-border bg-zoca-bg-soft px-2.5 py-1 text-[11px] font-medium text-zoca-text hover:bg-zoca-bg-tint"
                 title={`Call ${customer.phone}`}
               >
                 <i className="ti ti-phone" aria-hidden />
@@ -334,7 +334,7 @@ function V2DetailHeader({ customer, trend }: Props) {
                   const pct = v === null ? 0 : v;
                   const barColor = v === null ? "#cbd5e1" : (v >= 70 ? "#10b981" : v >= 40 ? "#f59e0b" : "#dc2626");
                   return (
-                    <div key={i} className="rounded-zoca border border-zoca-border bg-white px-3 py-2">
+                    <div key={i} className="rounded-zoca border border-zoca-border bg-zoca-bg-soft px-3 py-2">
                       <div className="flex items-baseline justify-between gap-1">
                         <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">{sc.label}</span>
                         <span className="text-[12px] font-semibold tabular-nums text-zoca-text" title={`${sc.label} sub-score`}>
@@ -360,7 +360,7 @@ function V2DetailHeader({ customer, trend }: Props) {
               </div>
             )}
             {recommended && (
-              <div className="rounded-zoca-lg border border-zoca-border bg-white px-3 py-2 text-[12px] leading-snug text-zoca-text">
+              <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft px-3 py-2 text-[12px] leading-snug text-zoca-text">
                 <span className="font-semibold text-zoca-text">→ Recommended action: </span>
                 <span className="text-zoca-text-2">{recommended}</span>
               </div>
@@ -392,7 +392,7 @@ function V2DetailHeader({ customer, trend }: Props) {
         const total = Number(comms.total_incoming ?? channels.reduce((s, c) => s + (Number.isFinite(c.count) ? c.count : 0), 0));
         const allZero = channels.every((c) => !Number.isFinite(c.count) || c.count === 0);
         return (
-          <div data-detail-comms="1" className="mt-3 rounded-zoca border border-zoca-border bg-white px-3 py-2">
+          <div data-detail-comms="1" className="mt-3 rounded-zoca border border-zoca-border bg-zoca-bg-soft px-3 py-2">
             <div className="mb-1.5 flex items-baseline justify-between gap-2">
               <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">
                 Incoming comms · 90d
@@ -407,7 +407,7 @@ function V2DetailHeader({ customer, trend }: Props) {
                 return (
                   <div
                     key={i}
-                    className={`rounded-zoca border px-2 py-1.5 ${hasActivity ? "border-zoca-border bg-white" : "border-zoca-border bg-zoca-bg-tint/50"}`}
+                    className={`rounded-zoca border px-2 py-1.5 ${hasActivity ? "border-zoca-border bg-zoca-bg-soft" : "border-zoca-border bg-zoca-bg-tint/50"}`}
                   >
                     <div className="flex items-baseline justify-between gap-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-zoca-text-2">{ch.label}</span>
@@ -441,15 +441,15 @@ function V2DetailHeader({ customer, trend }: Props) {
               <span className="text-[10px] text-zoca-text-3">Booking automation</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+              <div className="rounded-zoca border border-zoca-border bg-zoca-bg-soft px-2 py-1.5">
                 <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Leads</div>
                 <div className="text-[14px] font-semibold tabular-nums text-zoca-text">{total}</div>
               </div>
-              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+              <div className="rounded-zoca border border-zoca-border bg-zoca-bg-soft px-2 py-1.5">
                 <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Booked</div>
                 <div className="text-[14px] font-semibold tabular-nums text-zoca-text">{booked}</div>
               </div>
-              <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
+              <div className="rounded-zoca border border-zoca-border bg-zoca-bg-soft px-2 py-1.5">
                 <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Rate</div>
                 <div className={`text-[14px] font-semibold tabular-nums ${rate >= 60 ? "text-emerald-700" : rate >= 30 ? "text-amber-700" : "text-zoca-pink-bright"}`}>
                   {Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"}
@@ -463,7 +463,7 @@ function V2DetailHeader({ customer, trend }: Props) {
 
 
       {/* Phase 30 — Inline snapshot timeline (replaces the tiny sparkline). */}
-      <div className="mt-4 rounded-zoca-lg border border-zoca-border bg-white p-3 md:p-4">
+      <div className="mt-4 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-3 md:p-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] uppercase tracking-wider text-zoca-text-2 font-semibold">
             Composite over last 90 days

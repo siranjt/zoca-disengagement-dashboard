@@ -26,7 +26,7 @@ function V2HubspotPanel({ customer }: Props) {
     <div className="space-y-4">
       {/* Contacts */}
       <section
-        className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+        className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
         aria-label="HubSpot contacts"
       >
         <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -99,7 +99,7 @@ function V2HubspotPanel({ customer }: Props) {
 
       {/* Last call */}
       <section
-        className="rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+        className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
         aria-label="Last HubSpot call"
       >
         <div className="mb-3 flex items-baseline justify-between gap-2">

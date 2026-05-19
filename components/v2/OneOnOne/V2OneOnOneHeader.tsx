@@ -29,7 +29,7 @@ export default function V2OneOnOneHeader({ amName, pod, last, book }: Props) {
   const d = daysSince(last?.held_at ?? null);
   return (
     <header
-      className="mb-4 rounded-zoca-lg bg-white p-4 md:p-5"
+      className="mb-4 rounded-zoca-lg bg-zoca-bg-soft p-4 md:p-5"
       style={{ border: "0.5px solid var(--zoca-border)" }}
     >
       <div className="flex flex-wrap items-end justify-between gap-3">

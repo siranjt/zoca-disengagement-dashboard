@@ -86,14 +86,14 @@ export default function V2OneOnOnePickerClient() {
       </header>
 
       {state.status === "loading" && (
-        <div className="rounded-zoca-lg border border-zoca-border bg-white p-6 text-center text-[12px] text-zoca-text-2">
+        <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-6 text-center text-[12px] text-zoca-text-2">
           Loading AMs…
         </div>
       )}
 
       {state.status === "error" && (
         <div
-          className="rounded-zoca-lg border bg-white p-6 text-center text-[12px]"
+          className="rounded-zoca-lg border bg-zoca-bg-soft p-6 text-center text-[12px]"
           style={{ borderColor: "rgba(244,63,94,0.22)", color: "var(--zoca-pink)" }}
         >
           Could not load AM list: {state.message}
@@ -101,7 +101,7 @@ export default function V2OneOnOnePickerClient() {
       )}
 
       {state.status === "ready" && state.ams.length === 0 && (
-        <div className="rounded-zoca-lg border border-zoca-border bg-white p-6 text-center text-[12px] text-zoca-text-2">
+        <div className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-6 text-center text-[12px] text-zoca-text-2">
           No AMs found.
         </div>
       )}
@@ -117,7 +117,7 @@ export default function V2OneOnOnePickerClient() {
                 onClick={() =>
                   router.push(`/v2/manager/1on1/${encodeURIComponent(am.am_name)}`)
                 }
-                className="rounded-zoca-lg bg-white p-4 text-left transition hover:shadow-zoca-sm"
+                className="rounded-zoca-lg bg-zoca-bg-soft p-4 text-left transition hover:shadow-zoca-sm"
                 style={{
                   border: "0.5px solid var(--zoca-border)",
                   cursor: "pointer",

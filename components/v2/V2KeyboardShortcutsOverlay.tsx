@@ -75,7 +75,7 @@ export default function V2KeyboardShortcutsOverlay({ open, onClose }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="rounded-zoca-lg border border-zoca-border bg-white"
+        className="rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft"
         style={{
           width: "min(560px, 100%)",
           maxHeight: "min(80vh, 720px)",

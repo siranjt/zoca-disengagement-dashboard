@@ -48,7 +48,7 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
 
   return (
     <section
-      className="mb-4 rounded-zoca-lg bg-white p-4 md:p-5"
+      className="mb-4 rounded-zoca-lg bg-zoca-bg-soft p-4 md:p-5"
       style={{ border: "0.5px solid var(--zoca-border)" }}
     >
       <header className="mb-3">
@@ -77,7 +77,7 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
             className="mt-1 w-full rounded-lg px-3 py-2 text-[12.5px]"
             style={{
               border: "0.5px solid var(--zoca-border)",
-              background: "#fff",
+              background: "var(--zoca-bg-soft)",
               outline: "none",
             }}
           />
@@ -95,7 +95,7 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
             className="mt-1 w-full rounded-lg px-3 py-2 text-[12.5px]"
             style={{
               border: "0.5px solid var(--zoca-border)",
-              background: "#fff",
+              background: "var(--zoca-bg-soft)",
               outline: "none",
               resize: "vertical",
             }}
@@ -112,9 +112,9 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
               onClick={addItem}
               className="rounded-full px-3 py-1 text-[11.5px] font-semibold transition"
               style={{
-                background: "rgba(20,110,245,0.08)",
+                background: "rgba(200, 67, 29, 0.08)",
                 color: "var(--zoca-blue)",
-                border: "1px solid rgba(20,110,245,0.22)",
+                border: "1px solid rgba(200, 67, 29, 0.22)",
                 cursor: "pointer",
               }}
             >
@@ -150,7 +150,7 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
                         className="w-full rounded-lg px-2 py-1 text-[12px]"
                         style={{
                           border: "0.5px solid var(--zoca-border)",
-                          background: "#fff",
+                          background: "var(--zoca-bg-soft)",
                           outline: "none",
                         }}
                       />
@@ -162,7 +162,7 @@ export default function V2OneOnOneNotes({ saving, onSave }: Props) {
                         className="w-full rounded-lg px-2 py-1 text-[11.5px]"
                         style={{
                           border: "0.5px solid var(--zoca-border)",
-                          background: "#fff",
+                          background: "var(--zoca-bg-soft)",
                           outline: "none",
                         }}
                       />
