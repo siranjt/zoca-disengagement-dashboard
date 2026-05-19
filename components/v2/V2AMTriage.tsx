@@ -595,14 +595,18 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       <div
         style={{
           position: "sticky",
-          top: 0,
+          top: 6,
           zIndex: 10,
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          borderBottom: "0.5px solid var(--zoca-border)",
-          padding: _stickyPinned ? "10px 0 4px" : "16px 0 0",
-          boxShadow: _stickyPinned ? "0 4px 14px -8px rgba(11,5,29,0.18)" : "none",
+          marginBottom: 12,
+          background: "rgba(255,255,255,0.94)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "0.5px solid var(--zoca-border)",
+          borderRadius: 14,
+          padding: _stickyPinned ? "10px 14px" : "14px 16px",
+          boxShadow: _stickyPinned
+            ? "0 8px 24px -12px rgba(11,5,29,0.18)"
+            : "0 1px 3px rgba(11,5,29,0.04)",
           transition: "padding 0.2s ease, box-shadow 0.2s ease",
         }}
       >
