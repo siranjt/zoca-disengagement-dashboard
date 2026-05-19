@@ -403,6 +403,9 @@ function V2ManagerDashboardInner() {
     let flagged = 0;
     let preLaunch = 0;
     for (const c of snapshot.snapshot.customers) {
+      // Phase 33.scope followup — exclude recently_churned from main kpis tally.
+      // They already surface in ScopeStrip via the +N recently churned suffix.
+      if ((c as any).lifecycle_state === "recently_churned") continue;
       total += 1;
       const sl = c.signals_v2.stoplight;
       if (sl === "RED") RED += 1;
@@ -498,6 +501,10 @@ function V2ManagerDashboardInner() {
     if (!compareSnapshot) return new Map<string, { red: number; needsCall: number }>();
     const m = new Map<string, { red: number; needsCall: number }>();
     for (const c of compareSnapshot.customers) {
+      // Phase 33.scope followup — exclude recently_churned from compareCountsByAm.
+      // compareRedByAm reads off this map, so without this, the "RED Δ" arrows
+      // on the per-AM rollup compare against a churn-contaminated baseline.
+      if ((c as any).lifecycle_state === "recently_churned") continue;
       if (!c.am_name) continue;
       const entry = m.get(c.am_name) || { red: 0, needsCall: 0 };
       if (c.signals_v2.stoplight === "RED") entry.red += 1;

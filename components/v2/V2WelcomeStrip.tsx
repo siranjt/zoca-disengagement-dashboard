@@ -10,8 +10,14 @@ type Props = {
 };
 
 export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) {
-  const redCount = customers.filter((c) => c.signals_v2.stoplight === "RED").length;
-  const yellowCount = customers.filter((c) => c.signals_v2.stoplight === "YELLOW").length;
+  // Phase 33.scope followup — exclude recently_churned from welcome-strip tallies.
+  // The lifecycle pill on the card already surfaces them separately;
+  // counting them here doubles them into the "needs a call" stack.
+  const _activeCustomers = customers.filter(
+    (c) => (c as any).lifecycle_state !== "recently_churned",
+  );
+  const redCount = _activeCustomers.filter((c) => c.signals_v2.stoplight === "RED").length;
+  const yellowCount = _activeCustomers.filter((c) => c.signals_v2.stoplight === "YELLOW").length;
   // Phase 33.H.2 — tier-based counts (MONITOR fallback for missing metabase_health)
   // Phase Beacon-fix — robust tier classification with stoplight fallback
   function _classify(c: ScoredCustomerV2): "needsCall" | "watching" | "healthy" {
@@ -24,9 +30,9 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
     if (c.signals_v2?.stoplight === "GREEN") return "healthy";
     return "watching";
   }
-  const needsCallCount = customers.filter((c) => _classify(c) === "needsCall").length;
-  const watchingCount = customers.filter((c) => _classify(c) === "watching").length;
-  const total = customers.length;
+  const needsCallCount = _activeCustomers.filter((c) => _classify(c) === "needsCall").length;
+  const watchingCount = _activeCustomers.filter((c) => _classify(c) === "watching").length;
+  const total = _activeCustomers.length;
 
   return (
     <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-zoca-lg border border-zoca-border-2 bg-zoca-banner px-5 py-4">

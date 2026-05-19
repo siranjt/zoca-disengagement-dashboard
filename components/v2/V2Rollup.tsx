@@ -843,6 +843,10 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                     <span className="text-zoca-text-3">·</span>
                   )}
                 </td>
+                {/* Phase 33.scope followup — Churned 30d body cell */}
+                <td className="px-3 py-2.5 text-right tabular-nums text-zoca-text-2">
+                  {r.churned30d || <span className="text-zoca-text-3">·</span>}
+                </td>
                 <td className="px-3 py-2.5 text-zoca-text-2">{r.topSignal}</td>
               </tr>
             ))}
