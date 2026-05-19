@@ -1163,7 +1163,10 @@ export async function composeSnapshot(
   // -------------------------------------------------------------------------
   {
     const allowedStatuses = new Set(["active", "non_renewing", "in_trial", "future"]);
-    const invalid = scored.filter((c) => !allowedStatuses.has(c.cb_status));
+    // Phase 33.scope-fix4 — recently_churned customers intentionally have
+    // cb_status="cancelled" (30-day retention window). Allow them through
+    // the guard; still block any other unexpected status.
+    const invalid = scored.filter((c) => !allowedStatuses.has(c.cb_status) && c.lifecycle_state !== "recently_churned");
     if (invalid.length > 0) {
       const examples = invalid
         .slice(0, 3)
