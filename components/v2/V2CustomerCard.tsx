@@ -106,8 +106,35 @@ function V2CustomerCardInner({
     if (!eid) return;
     let seen: Record<string, SeenRecord> = {};
     try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-      if (raw) seen = JSON.parse(raw);
+      if (typeof window === "undefined") {
+        seen = {};
+      } else {
+        let raw = window.localStorage.getItem(key);
+        // Phase 33.brand-watchfire-T3-migration — first post-deploy: promote
+        // PR 8 legacy `beacon_seen_<am>` map (entity_id → tier string) into
+        // the v2 schema (entity_id → { tier, last_touch_at?, churn_open? }).
+        // Avoids the mass-arrival animation storm on first load per AM.
+        if (!raw) {
+          const legacyKey = `beacon_seen_${am}`;
+          const legacyRaw = window.localStorage.getItem(legacyKey);
+          if (legacyRaw) {
+            try {
+              const legacy = JSON.parse(legacyRaw) as Record<string, string>;
+              const migrated: Record<string, SeenRecord> = {};
+              for (const [legacyEid, legacyTier] of Object.entries(legacy)) {
+                if (typeof legacyTier === "string") {
+                  migrated[legacyEid] = { tier: legacyTier };
+                }
+              }
+              window.localStorage.setItem(key, JSON.stringify(migrated));
+              raw = JSON.stringify(migrated);
+            } catch {
+              /* legacy parse failed, treat as no prior history */
+            }
+          }
+        }
+        if (raw) seen = JSON.parse(raw);
+      }
     } catch {
       seen = {};
     }

@@ -435,12 +435,34 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tierChangedSetRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    // One-shot read of the per-AM seen map; build the tier-changed Set.
+    // Phase 33.brand-watchfire-T3-deps — rebuild when amName changes so
+    // switching AM picker re-reads that AM's seen map.
     try {
       if (typeof window === "undefined") return;
       const am = amName || "default";
-      const raw = window.localStorage.getItem(`beacon_seen_v2_${am}`);
-      if (!raw) return;
+      const key = `beacon_seen_v2_${am}`;
+      let raw = window.localStorage.getItem(key);
+      // Phase 33.brand-watchfire-T3-migration — same legacy promotion as V2CustomerCard.
+      if (!raw) {
+        const legacyRaw = window.localStorage.getItem(`beacon_seen_${am}`);
+        if (legacyRaw) {
+          try {
+            const legacy = JSON.parse(legacyRaw) as Record<string, string>;
+            const migrated: Record<string, { tier: string }> = {};
+            for (const [eid, tier] of Object.entries(legacy)) {
+              if (typeof tier === "string") migrated[eid] = { tier };
+            }
+            window.localStorage.setItem(key, JSON.stringify(migrated));
+            raw = JSON.stringify(migrated);
+          } catch {
+            /* legacy parse failed */
+          }
+        }
+      }
+      if (!raw) {
+        tierChangedSetRef.current = new Set();
+        return;
+      }
       const seen = JSON.parse(raw) as Record<
         string,
         { tier?: string; last_touch_at?: string | null; churn_open?: number }
@@ -455,8 +477,7 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     } catch {
       tierChangedSetRef.current = new Set();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [amName, customers]);
   useEffect(() => {
     const finalIds = new Set(finalList.map((c) => c.entity_id));
     const stillVisible = viewList.filter((c) => !c._exiting);
