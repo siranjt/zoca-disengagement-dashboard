@@ -172,29 +172,35 @@ function NavTab({
   label: string;
   active: boolean;
 }) {
+  // Phase 33.brand-watchfire-PR7-35 — ripple keys remount the overlay span
+  // each click so the CSS animation restarts from scratch.
+  const [rippleKey, setRippleKey] = useState(0);
+  const baseStyle = active
+    ? {
+        background: "var(--zoca-text)",
+        color: "#ffffff",
+        fontWeight: 600 as const,
+        textDecoration: "none" as const,
+      }
+    : {
+        background: "transparent",
+        color: "var(--zoca-text-2)",
+        fontWeight: 500 as const,
+        textDecoration: "none" as const,
+      };
   return (
     <a
       href={href}
       aria-current={active ? "page" : undefined}
       // Phase 33.brand-PR4b — soft pulse on the active tab.
       className={`px-3 py-1 rounded-md text-[11px] transition${active ? " b-tab-pulse" : ""}`}
-      style={
-        active
-          ? {
-              background: "var(--zoca-text)",
-              color: "#ffffff",
-              fontWeight: 600,
-              textDecoration: "none",
-            }
-          : {
-              background: "transparent",
-              color: "var(--zoca-text-2)",
-              fontWeight: 500,
-              textDecoration: "none",
-            }
-      }
+      style={{ ...baseStyle, position: "relative", overflow: "hidden" }}
+      onClick={() => setRippleKey((k) => k + 1)}
     >
-      {label}
+      <span style={{ position: "relative", zIndex: 1 }}>{label}</span>
+      {rippleKey > 0 && (
+        <span key={rippleKey} className="beacon-tab-ripple" aria-hidden />
+      )}
     </a>
   );
 }

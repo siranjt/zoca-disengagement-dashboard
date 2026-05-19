@@ -1494,3 +1494,99 @@ textarea {
     color: var(--zoca-text);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR7-remaining — interactions (spec §11).
+   ───────────────────────────────────────────────────────────── */
+
+/* #35 Tab click — Ember ripple expanding outward from center */
+.beacon-tab-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgba(200, 67, 29, 0.45) 0%,
+    rgba(200, 67, 29, 0.15) 35%,
+    transparent 70%
+  );
+  opacity: 0;
+  transform: scale(0.2);
+  animation: beacon-tab-ripple 0.5s ease-out forwards;
+}
+@keyframes beacon-tab-ripple {
+  0%   { opacity: 1; transform: scale(0.2); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* #36 Refresh in-flight — desaturate cards while /api/v2/refresh runs */
+body.beacon-refreshing article[data-entity-id],
+body.beacon-refreshing .zoca-card {
+  filter: saturate(0.55);
+  transition: filter 0.4s ease-out;
+}
+
+/* #37 Card focus-entry — brass ring fades in/out over 400ms */
+.beacon-card-focus-entry {
+  animation: beacon-card-focus-entry 0.4s ease-out;
+}
+@keyframes beacon-card-focus-entry {
+  0%   { box-shadow: 0 0 0 0   rgba(217, 164, 65, 0.55); }
+  50%  { box-shadow: 0 0 0 6px rgba(217, 164, 65, 0.55); }
+  100% { box-shadow: 0 0 0 0   rgba(217, 164, 65, 0);    }
+}
+
+/* #38 BeaconMark flare — 350ms ember halo on "Open detail" click */
+.beacon-mark-flare {
+  animation: beacon-mark-flare 0.35s ease-out;
+}
+@keyframes beacon-mark-flare {
+  0%   { filter: drop-shadow(0 0 0   rgba(200, 67, 29, 0));    }
+  40%  { filter: drop-shadow(0 0 8px rgba(200, 67, 29, 0.85)); }
+  100% { filter: drop-shadow(0 0 0   rgba(200, 67, 29, 0));    }
+}
+
+/* #39 Snooze dropdown — brass border drawn on entry */
+.beacon-dropdown-entry {
+  animation: beacon-dropdown-entry 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform-origin: top right;
+}
+@keyframes beacon-dropdown-entry {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    box-shadow: 0 0 0 0 rgba(217, 164, 65, 0);
+  }
+  60% {
+    box-shadow: 0 0 0 1.5px rgba(217, 164, 65, 0.65);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 0 rgba(217, 164, 65, 0);
+  }
+}
+
+/* #40 "× wrong?" chip shrink — 250ms before form opens */
+.beacon-wrong-shrink {
+  animation: beacon-wrong-shrink 0.25s ease-out forwards;
+}
+@keyframes beacon-wrong-shrink {
+  0%   { transform: scale(1);    opacity: 1;   }
+  100% { transform: scale(0.75); opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-tab-ripple,
+  .beacon-card-focus-entry,
+  .beacon-mark-flare,
+  .beacon-dropdown-entry,
+  .beacon-wrong-shrink {
+    animation: none !important;
+  }
+  body.beacon-refreshing article[data-entity-id],
+  body.beacon-refreshing .zoca-card {
+    filter: none;
+  }
+}

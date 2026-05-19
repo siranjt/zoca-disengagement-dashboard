@@ -26,6 +26,12 @@ export function RefreshButton() {
   async function handleClick() {
     setStatus("refreshing");
     setErrorMsg(null);
+    // Phase 33.brand-watchfire-PR7-36 — desaturate cards while the refresh
+    // is in flight. Class is removed on error; page reload handles cleanup
+    // on success.
+    if (typeof document !== "undefined") {
+      document.body.classList.add("beacon-refreshing");
+    }
     try {
       const res = await fetch("/api/v2/refresh", { method: "POST" });
       const data = await res.json();

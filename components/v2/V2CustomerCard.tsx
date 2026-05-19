@@ -426,6 +426,10 @@ function V2CustomerCardInner({
               title="Open full detail page for this customer"
               onClick={(e) => {
                 e.stopPropagation();
+                // Phase 33.brand-watchfire-PR7-38 — flare the nav BeaconMark on detail open.
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("beacon:mark-flare"));
+                }
                 logEvent("customer_opened", {
                   surface: "v2_dashboard",
                   entity_id: customer.entity_id,
@@ -1415,7 +1419,8 @@ function SnoozeMenu({ onPick, size = "sm" }: { onPick: (days: number) => void; s
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 rounded-zoca border border-zoca-border bg-white py-1 shadow-zoca-sm"
+          // Phase 33.brand-watchfire-PR7-39 — brass border draw on snooze dropdown entry.
+          className="beacon-dropdown-entry absolute right-0 z-20 mt-1 rounded-zoca border border-zoca-border bg-white py-1 shadow-zoca-sm"
           style={{ minWidth: 110 }}
         >
           {presets.map((p) => (
@@ -1614,6 +1619,8 @@ function FeedbackButton({
   setState: React.Dispatch<React.SetStateAction<any>>;
   submit: (comment: string) => Promise<void>;
 }) {
+  // Phase 33.brand-watchfire-PR7-40 — chip shrinks 250ms before form opens.
+  const [wrongShrinking, setWrongShrinking] = useState(false);
   if (state.kind === "done") {
     return (
       <span
@@ -1672,8 +1679,12 @@ function FeedbackButton({
   return (
     <button
       type="button"
-      onClick={() => setState({ kind: "open", comment: "" })}
-      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-2 transition hover:bg-zoca-bg-tint hover:text-zoca-pink-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
+      onClick={() => {
+        // Phase 33.brand-watchfire-PR7-40 — quick shrink before form mounts.
+        setWrongShrinking(true);
+        setTimeout(() => setState({ kind: "open", comment: "" }), 250);
+      }}
+      className={`ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-2 transition hover:bg-zoca-bg-tint hover:text-zoca-pink-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline${wrongShrinking ? " beacon-wrong-shrink" : ""}`}
       aria-label="This signal looks wrong — send feedback"
       title="This signal looks wrong — let us know"
     >

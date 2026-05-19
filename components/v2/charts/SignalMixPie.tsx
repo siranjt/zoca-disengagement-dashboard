@@ -95,7 +95,8 @@ export function SignalMixPie({ customers, amName }: Props) {
         borderWidth: 1,
         borderColor: CHART_COLORS.bg,
         hoverBorderWidth: 2,
-        hoverOffset: 6,
+        // Phase 33.brand-watchfire-PR7-34 — hover lift 6→9 per spec §11 row 34.
+        hoverOffset: 9,
       },
     ],
   };

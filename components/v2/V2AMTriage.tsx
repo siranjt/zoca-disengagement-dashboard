@@ -90,6 +90,15 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   const [coachingMetric, setCoachingMetric] = useState<CoachingMetric | null>(null);
   // Phase 32 — keyboard navigation state.
   const [focusedEntityId, setFocusedEntityId] = useState<string | null>(null);
+  // Phase 33.brand-watchfire-PR7-37 — transient id of the card that JUST
+  // got focused, used to fire the brass focus-entry ring for 400ms.
+  const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusedEntityId) return;
+    setFocusEntryId(focusedEntityId);
+    const tFocus = setTimeout(() => setFocusEntryId(null), 400);
+    return () => clearTimeout(tFocus);
+  }, [focusedEntityId]);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -972,11 +981,16 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
             // Phase 33.brand-watchfire-PR8-45 — mid-exit cards get the
             // collapse animation; suppress focus ring while exiting.
             const isExiting = !!c._exiting;
-            const wrapperClass = isExiting
+            // Phase 33.brand-watchfire-PR7-37 — brass focus-entry ring for 400ms.
+            const isFocusEntry = focusEntryId === c.entity_id && !isExiting;
+            const baseClass = isExiting
               ? "beacon-card-exit transition"
               : isFocused
                 ? "rounded-zoca-lg ring-2 ring-zoca-pink-cta/30 transition"
                 : "transition";
+            const wrapperClass = isFocusEntry
+              ? `${baseClass} beacon-card-focus-entry`
+              : baseClass;
             return (
               <div
                 key={c.entity_id}

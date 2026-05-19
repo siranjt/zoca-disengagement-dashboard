@@ -24,7 +24,7 @@
  * Phase 33.brand-PR1
  */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 interface BeaconMarkProps {
   /** Pixel height. Width is computed at 3:8 ratio. Default: 32 */
@@ -48,13 +48,24 @@ export function BeaconMark({
   flicker = false,
   className,
 }: BeaconMarkProps) {
+  // Phase 33.brand-watchfire-PR7-38 — listen for cross-component flare events
+  // (e.g. customer "Open detail" click) and pulse for 350ms.
+  const [flaring, setFlaring] = useState(false);
+  useEffect(() => {
+    function onFlare() {
+      setFlaring(true);
+      window.setTimeout(() => setFlaring(false), 360);
+    }
+    window.addEventListener("beacon:mark-flare", onFlare);
+    return () => window.removeEventListener("beacon:mark-flare", onFlare);
+  }, []);
   const width = Math.round((size * 12) / 32 * 100) / 100;
   return (
     <svg
       width={width}
       height={size}
       viewBox="-6 -32 12 32"
-      className={className}
+      className={`${className ?? ""}${flaring ? " beacon-mark-flare" : ""}`.trim() || undefined}
       role="img"
       aria-label="Beacon"
       style={{ display: "block", flexShrink: 0 }}
