@@ -40,7 +40,7 @@ export function AmLink({ amName, filter, children, showArrow = true, className, 
       }}
       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--zoca-blue)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.color = ""; }}
-      title={`Switch to ${amName}'s planner`}
+      title={`Switch to ${amName}'s Beacon`}
     >
       {children ?? amName}
       {showArrow && <span style={{ fontSize: "0.78em", opacity: 0.6 }}>↗</span>}

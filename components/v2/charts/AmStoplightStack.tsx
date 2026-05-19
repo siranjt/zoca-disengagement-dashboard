@@ -118,7 +118,7 @@ export function AmStoplightStack({ rows }: Props) {
       params.set("am", row.am);
       params.set("filter", "act");
       router.push(`/v2?${params.toString()}`);
-      showToast(`Opening ${row.am.split(" ")[0]}'s planner - ${row.red} RED`, {
+      showToast(`Opening ${row.am.split(" ")[0]}'s Beacon - ${row.red} RED`, {
         type: "info",
         icon: "user",
       });

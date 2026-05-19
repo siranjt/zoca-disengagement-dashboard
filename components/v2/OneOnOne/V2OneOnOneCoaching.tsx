@@ -95,7 +95,7 @@ export default function V2OneOnOneCoaching({ amName, row }: Props) {
       </h2>
       <p className="mt-0.5 text-[11px] text-zoca-text-2">
         Behavioral signals on what's falling through. Click a non-zero card to
-        view the matching cohort in this AM's planner.
+        view the matching cohort in this AM's Beacon.
       </p>
 
       {!row ? (

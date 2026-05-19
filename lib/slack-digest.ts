@@ -128,7 +128,7 @@ function buildDigestBlocks(
       type: "header",
       text: {
         type: "plain_text",
-        text: `${amName}'s planner — ${redCount} need a call today`,
+        text: `${amName}'s Beacon — ${redCount} need a call today`,
         emoji: false,
       },
     },
@@ -188,7 +188,7 @@ function buildDigestFallbackText(
 ): string {
   const pod = POD_MAP[amName] || "—";
   const lines: string[] = [
-    `*${amName}'s planner — ${redCount} need a call today*`,
+    `*${amName}'s Beacon — ${redCount} need a call today*`,
     `${pod} · ${redCount} RED · ${yellowCount} watching`,
   ];
   if (top3.length > 0) {
