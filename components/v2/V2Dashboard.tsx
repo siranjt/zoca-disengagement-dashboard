@@ -1,4 +1,6 @@
 "use client";
+// Phase 33.brand-watchfire-T11 — page ambient (sign-in lockup at viewport center).
+import { BeaconAmbient } from "./BeaconAmbient";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -582,6 +584,8 @@ function V2DashboardInner() {
       // Phase 33.brand-watchfire-T6 — AM view canvas on Parchment.
       style={{ background: "var(--zoca-bg)" }}
     >
+      {/* Phase 33.brand-watchfire-T11 — page ambient layer. */}
+      <BeaconAmbient />
       <CursorGlow />
       <V2Header
         generatedAt={ready?.generatedAt}

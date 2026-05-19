@@ -100,7 +100,8 @@ export function V2Header(props: Props) {
           <ZocaLogo height={20} color="var(--zoca-text)" />
           <span className="text-zoca-text-3 text-xs">|</span>
           {/* Phase 33.brand-PR1 — Beacon mark slotted into the lockup at logo-height. */}
-          <BeaconMark size={20} />
+          {/* Phase 33.brand-watchfire-T11 — nav flame blazes (4 co-prime layers). */}
+          <BeaconMark size={20} flicker />
           <span
             className="text-zoca-text text-[13px] font-medium"
             style={{ letterSpacing: "-0.005em" }}

@@ -1,4 +1,6 @@
 "use client";
+// Phase 33.brand-watchfire-T11 — page ambient (sign-in lockup at viewport center).
+import { BeaconAmbient } from "./BeaconAmbient";
 // Phase 33.brand-watchfire-pink-sweep-v2 (5 hex/rgba + 0 tailwind-rose swept)
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -803,6 +805,8 @@ function V2ManagerDashboardInner() {
   return (
     // Phase 33.brand-watchfire-T6 — Manager view canvas on Parchment.
     <div data-theme="zoca-light" className="min-h-screen text-zoca-text print:bg-white print:text-black v2-mesh-bg" style={{ background: "var(--zoca-bg)" }}>
+      {/* Phase 33.brand-watchfire-T11 — page ambient layer. */}
+      <BeaconAmbient />
       {snapshot.status === "ready" && (
         <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
       )}
