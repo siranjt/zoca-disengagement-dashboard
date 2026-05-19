@@ -87,7 +87,7 @@
 .zoca-pulse-dot-pink {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--zoca-pink);
-  box-shadow: 0 0 12px rgba(255, 86, 187, 0.7);
+  box-shadow: 0 0 12px rgba(200, 67, 29, 0.7);
   animation: zoca-pulse 2s ease-in-out infinite;
   display: inline-block;
 }
@@ -115,15 +115,15 @@
   box-shadow:
     0 12px 28px -8px rgba(11, 5, 29, 0.1),
     0 0 0 1px rgba(20, 110, 245, 0.18),
-    0 0 32px rgba(255, 168, 205, 0.32);
+    0 0 32px rgba(252, 228, 214, 0.32);
 }
 
 .zoca-chip-pink {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 11px;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 86, 187, 0.22);
-  background: rgba(255, 134, 225, 0.12);
+  border: 1px solid rgba(200, 67, 29, 0.22);
+  background: rgba(124, 45, 18, 0.12);
   color: #c026d3;
   font-size: 10px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
@@ -228,7 +228,7 @@ canvas { max-width: 100% !important; }
   right: -0.55em;
   font-size: 0.45em;
   color: var(--zoca-pink);
-  filter: drop-shadow(0 0 12px rgba(255, 86, 187, 0.55));
+  filter: drop-shadow(0 0 12px rgba(200, 67, 29, 0.55));
 }
 
 /* Zoca signature button — blue body, pink-glow on hover */
@@ -254,18 +254,18 @@ canvas { max-width: 100% !important; }
 .zoca-btn:hover:not(:disabled) {
   background-color: var(--zoca-blue-strong);
   transform: scale(1.025);
-  box-shadow: 0 12px 24px -8px rgba(255, 134, 225, 0.45), 0 0 0 1px rgba(255, 86, 187, 0.2);
+  box-shadow: 0 12px 24px -8px rgba(124, 45, 18, 0.45), 0 0 0 1px rgba(200, 67, 29, 0.2);
 }
 .zoca-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .zoca-btn.zoca-btn-outline {
   background-color: transparent;
   color: var(--zoca-pink);
-  border: 1px solid rgba(255, 86, 187, 0.32);
+  border: 1px solid rgba(200, 67, 29, 0.32);
 }
 .zoca-btn.zoca-btn-outline:hover:not(:disabled) {
-  background-color: rgba(255, 134, 225, 0.06);
-  box-shadow: 0 0 18px rgba(255, 168, 205, 0.4);
+  background-color: rgba(124, 45, 18, 0.06);
+  box-shadow: 0 0 18px rgba(252, 228, 214, 0.4);
   transform: scale(1.025);
 }
 
@@ -348,7 +348,7 @@ canvas { max-width: 100% !important; }
 /* Soft pink glow on hover for KPI / accent cards */
 .zoca-glow-hover { transition: box-shadow 240ms ease, transform 240ms ease, border-color 240ms ease; }
 .zoca-glow-hover:hover {
-  box-shadow: 0 18px 36px -12px rgba(255, 134, 225, 0.45), 0 0 0 1px rgba(255, 86, 187, 0.22);
+  box-shadow: 0 18px 36px -12px rgba(124, 45, 18, 0.45), 0 0 0 1px rgba(200, 67, 29, 0.22);
   transform: translateY(-2px);
 }
 
@@ -359,7 +359,7 @@ canvas { max-width: 100% !important; }
   position: absolute;
   inset: -4px;
   border-radius: 9999px;
-  border: 2px solid rgba(255, 86, 187, 0.45);
+  border: 2px solid rgba(200, 67, 29, 0.45);
   opacity: 0;
   animation: zLivePulse 2.4s ease-out infinite;
   pointer-events: none;
@@ -374,7 +374,7 @@ canvas { max-width: 100% !important; }
   position: relative;
   background:
     radial-gradient(120% 140% at 0% 0%, rgba(20, 110, 245, 0.08), transparent 45%),
-    radial-gradient(120% 140% at 100% 100%, rgba(255, 134, 225, 0.12), transparent 45%),
+    radial-gradient(120% 140% at 100% 100%, rgba(124, 45, 18, 0.12), transparent 45%),
     #ffffff;
 }
 .zoca-gradient-border::before {
@@ -383,7 +383,7 @@ canvas { max-width: 100% !important; }
   inset: 0;
   padding: 1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 86, 187, 0.55) 0%, rgba(20, 110, 245, 0.35) 55%, rgba(0, 0, 0, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(200, 67, 29, 0.55) 0%, rgba(20, 110, 245, 0.35) 55%, rgba(0, 0, 0, 0.08) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
@@ -505,7 +505,7 @@ button:active:not(.no-press),
   filter: brightness(1.08);
 }
 .v2-chip-clickable:focus-visible {
-  outline: 2px solid rgba(255, 86, 187, 0.45);
+  outline: 2px solid rgba(200, 67, 29, 0.45);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -590,7 +590,7 @@ button:active:not(.no-press),
   z-index: 0;
   background-image:
     radial-gradient(at 0% 0%, rgba(20, 110, 245, 0.06) 0%, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(255, 86, 187, 0.05) 0%, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(200, 67, 29, 0.05) 0%, transparent 50%),
     radial-gradient(at 50% 0%, rgba(244, 239, 253, 0.6) 0%, transparent 40%);
   background-size: 200% 200%, 200% 200%, 200% 200%;
   animation: v2-mesh-drift 24s ease-in-out infinite;
@@ -660,7 +660,7 @@ button:active:not(.no-press),
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1;
-  background: linear-gradient(90deg, #3B82F6 0%, #8B5CF6 25%, #ff56bb 50%, #F97316 75%, #ff56bb 100%);
+  background: linear-gradient(90deg, #3B82F6 0%, #8B5CF6 25%, #C8431D 50%, #F97316 75%, #C8431D 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -689,8 +689,8 @@ button:active:not(.no-press),
   animation: b-button-fade 0.8s ease 1.6s both, b-btn-pulse 2.2s ease-in-out 2.4s infinite;
 }
 @keyframes b-btn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0  rgba(255, 86, 187, 0.45); }
-  60%      { box-shadow: 0 0 0 10px rgba(255, 86, 187, 0);   }
+  0%, 100% { box-shadow: 0 0 0 0  rgba(200, 67, 29, 0.45); }
+  60%      { box-shadow: 0 0 0 10px rgba(200, 67, 29, 0);   }
 }
 
 .b-drift-dot {
@@ -1110,3 +1110,5 @@ textarea:focus-visible {
     animation: none !important;
   }
 }
+
+/* Phase 33.brand-watchfire-pink-sweep-globals — sweep complete (21 replacements) */

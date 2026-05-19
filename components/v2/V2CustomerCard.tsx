@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-customercard (6 hardcoded + 21 tailwind-rose swept).
 
 import * as React from "react";
 import { memo, useEffect, useRef, useState } from "react";
@@ -48,7 +49,7 @@ const ENGAGEMENT_COLOR: Record<EngagementTier, string> = {
   Active: "text-emerald-700",
   Light: "text-zoca-text-2",
   Cold: "text-amber-700",
-  Dormant: "text-rose-700",
+  Dormant: "text-zoca-pink-bright",
 };
 const ENGAGEMENT_FALLBACK = "text-zoca-text-2";
 
@@ -253,13 +254,13 @@ function V2CustomerCardInner({
       return {
         borderColor: isSnoozed
           ? "rgba(245, 158, 11, 0.35)"
-          : "rgba(255, 86, 187, 0.22)",
+          : "rgba(200, 67, 29, 0.22)",
         background: isSnoozed
           ? "linear-gradient(180deg, rgba(254, 243, 199, 0.55) 0%, #ffffff 100%)"
-          : "linear-gradient(180deg, rgba(255, 86, 187, 0.03) 0%, #ffffff 100%)",
+          : "linear-gradient(180deg, rgba(200, 67, 29, 0.03) 0%, #ffffff 100%)",
         boxShadow: isSnoozed
           ? "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(245, 158, 11, 0.18)"
-          : "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(255, 86, 187, 0.08)",
+          : "0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 1px rgba(200, 67, 29, 0.08)",
       };
     }
     if (s.stoplight === "YELLOW") {
@@ -291,8 +292,8 @@ function V2CustomerCardInner({
   const reasonPillStyle: React.CSSProperties = (() => {
     if (s.stoplight === "RED") {
       return {
-        background: "rgba(255, 86, 187, 0.06)",
-        border: "1px solid rgba(255, 86, 187, 0.18)",
+        background: "rgba(200, 67, 29, 0.06)",
+        border: "1px solid rgba(200, 67, 29, 0.18)",
       };
     }
     if (s.stoplight === "YELLOW") {
@@ -403,7 +404,7 @@ function V2CustomerCardInner({
             const daysAgo = sourceIso ? Math.max(0, Math.floor((Date.now() - Date.parse(sourceIso)) / dayMs)) : null;
             const cls =
               lc === "recently_churned"
-                ? "bg-rose-500/18 text-rose-700"
+                ? "bg-zoca-pink/18 text-zoca-pink-bright"
                 : lc === "newly_onboarded"
                   ? "bg-emerald-500/18 text-emerald-700"
                   : "bg-sky-500/18 text-sky-700";
@@ -441,7 +442,7 @@ function V2CustomerCardInner({
                     ? "bg-emerald-500/18 text-emerald-700"
                     : customer.hubspot.icp_tier === "Tier 2"
                       ? "bg-amber-500/18 text-amber-700"
-                      : "bg-rose-500/18 text-rose-700"
+                      : "bg-zoca-pink/18 text-zoca-pink-bright"
                 }`}
                 title={`HubSpot ICP rating: ${customer.hubspot.icp_tier}. Tier 1 = strong fit · Tier 2 = workable · Tier 3 = low priority.`}
               >
@@ -958,13 +959,13 @@ function V2CustomerCardInner({
           {actionState.kind === "error" && (
             <div
               role="alert"
-              className="max-w-[260px] rounded-zoca-sm border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-right text-[10px] text-rose-200 md:max-w-[300px]"
+              className="max-w-[260px] rounded-zoca-sm border border-zoca-pink/30 bg-zoca-pink/10 px-2 py-1 text-right text-[10px] text-zoca-pink-bright md:max-w-[300px]"
             >
               Couldn’t log: {actionState.message}
               <button
                 type="button"
                 onClick={() => setActionState({ kind: "idle" })}
-                className="ml-1 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/40"
+                className="ml-1 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink/40"
                 aria-label="Dismiss error and retry"
               >
                 retry
@@ -990,7 +991,7 @@ function V2CustomerCardInner({
             <span
               className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium ${
                 customer.hubspot.last_call.sentiment === "frustrated"
-                  ? "bg-rose-500/18 text-rose-700"
+                  ? "bg-zoca-pink/18 text-zoca-pink-bright"
                   : customer.hubspot.last_call.sentiment === "warm"
                     ? "bg-emerald-500/18 text-emerald-700"
                     : "bg-zoca-bg-tint text-zoca-text-2"
@@ -1046,7 +1047,7 @@ function V2CustomerCardInner({
               {expandToggleLabel(!expanded)}
               {customer.performance?.flag && !expanded && (
                 <span
-                  className="ml-1 inline-flex items-center rounded-zoca-pill bg-rose-500/18 px-1.5 py-0.5 text-[10px] font-medium text-rose-700"
+                  className="ml-1 inline-flex items-center rounded-zoca-pill bg-zoca-pink/18 px-1.5 py-0.5 text-[10px] font-medium text-zoca-pink-bright"
                   title={(customer.performance.flag_reasons || []).join(" · ") || "Performance trajectory flagged"}
                 >
                   ⚑ {performanceChipSummary(customer.performance) || "trajectory"}
@@ -1259,7 +1260,7 @@ function SignalChipRow({
     if (negativeActive.length === 0) return null;
     const chipClass =
       tone === "RED"
-        ? "v2-chip-clickable rounded-full bg-rose-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 ring-1 ring-rose-500/25"
+        ? "v2-chip-clickable rounded-full bg-zoca-pink/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-zoca-pink-bright ring-1 ring-zoca-pink/25"
         : "v2-chip-clickable rounded-full bg-amber-500/12 px-[11px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 ring-1 ring-amber-500/25";
     chipsToRender = negativeActive.map((c) => (
       <button
@@ -1310,7 +1311,7 @@ function PinButton({
         background: "transparent",
         border: "1px solid var(--zoca-border)",
         color: isPinned ? "var(--zoca-pink)" : "var(--zoca-text-2)",
-        boxShadow: isPinned ? "0 0 12px rgba(255, 168, 205, 0.4)" : "none",
+        boxShadow: isPinned ? "0 0 12px rgba(252, 228, 214, 0.4)" : "none",
         flexShrink: 0,
       }}
       title={isPinned ? "Unpin" : "Pin"}
@@ -1618,7 +1619,7 @@ function FeedbackButton({
           cancel
         </button>
         {state.kind === "error" && (
-          <span className="text-[10px] text-rose-700" role="alert">
+          <span className="text-[10px] text-zoca-pink-bright" role="alert">
             {state.message}
           </span>
         )}
@@ -1629,7 +1630,7 @@ function FeedbackButton({
     <button
       type="button"
       onClick={() => setState({ kind: "open", comment: "" })}
-      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-2 transition hover:bg-zoca-bg-tint hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
+      className="ml-2 inline-flex items-center rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium text-zoca-text-2 transition hover:bg-zoca-bg-tint hover:text-zoca-pink-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40 align-baseline"
       aria-label="This signal looks wrong — send feedback"
       title="This signal looks wrong — let us know"
     >
@@ -1658,7 +1659,7 @@ function ActionChip({
       ? "border-emerald-400/40 bg-emerald-500/18 text-emerald-700 hover:bg-emerald-500/25"
       : tone === "amber"
         ? "border-amber-400/40 bg-amber-500/18 text-amber-700 hover:bg-amber-500/25"
-        : "border-rose-400/40 bg-rose-500/18 text-rose-700 hover:bg-rose-500/25";
+        : "border-zoca-pink/40 bg-zoca-pink/18 text-zoca-pink-bright hover:bg-rose-500/25";
   return (
     <button
       type="button"

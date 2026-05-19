@@ -108,10 +108,11 @@ const config: Config = {
           "linear-gradient(135deg, rgba(26, 11, 74, 0.55), rgba(36, 18, 92, 0.55))",
         "zoca-kpi-strip":
           "linear-gradient(135deg, rgba(26, 11, 74, 0.9), rgba(36, 18, 92, 0.9))",
+        // Phase 33.brand-watchfire-pink-sweep — ember CTA gradient.
         "zoca-pink-cta":
-          "linear-gradient(135deg, #ffa8cd 0%, #ff86e1 100%)",
+          "linear-gradient(135deg, #C8431D 0%, #7C2D12 100%)",
         "zoca-banner":
-          "linear-gradient(135deg, rgba(255, 134, 225, 0.15), rgba(120, 104, 244, 0.15))",
+          "linear-gradient(135deg, rgba(124, 45, 18, 0.15), rgba(42, 77, 92, 0.15))",
       },
       keyframes: {
         "zoca-pulse": {

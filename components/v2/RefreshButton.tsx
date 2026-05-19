@@ -1,5 +1,6 @@
 "use client";
 
+// Phase 33.brand-watchfire-pink-sweep-refreshbutton (2 V2-pink values swept).
 import { useState, useTransition } from "react";
 
 /**
@@ -56,12 +57,12 @@ export function RefreshButton() {
       style={{
         background: "transparent",
         color: "var(--zoca-pink)",
-        border: "1px solid rgba(255,86,187,0.32)",
+        border: "1px solid rgba(200, 67, 29, 0.32)",
         letterSpacing: "-0.005em",
       }}
       onMouseEnter={(e) => {
         if (!refreshing) {
-          e.currentTarget.style.background = "rgba(255,134,225,0.06)";
+          e.currentTarget.style.background = "rgba(124, 45, 18, 0.06)";
         }
       }}
       onMouseLeave={(e) => {
