@@ -41,6 +41,7 @@ type AmRow = {
   avgComposite: number;
   topSignal: string;
   flagged: number;          // performance.flag === true count
+  churned30d: number;          // Phase 33.scope — recently_churned in this AM book
   // Phase 33.H.3b — 4-tier health_tier counts (MONITOR fallback)
   critical: number;
   atRisk: number;
@@ -207,6 +208,10 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
   const rows = useMemo<AmRow[]>(() => {
     const byAm = new Map<string, ScoredCustomerV2[]>();
     for (const c of snapshot.customers) {
+      // Phase 33.scope optionB rollup byAm exclude recently_churned
+      // so the per-AM RED/YELLOW/GREEN tally stays honest. The
+      // separate Churned 30d column reads its own r.churned30d.
+      if (c.lifecycle_state === "recently_churned") continue;
       const am = c.am_name || "";
       if (!am) continue;
       if (!byAm.has(am)) byAm.set(am, []);
@@ -223,6 +228,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
       let mrrAtRisk = 0;
       let scoreSum = 0;
       let flagged = 0;
+      let churned30d = 0;
       // Phase 33.H.3b — 4-tier counts
       let critical = 0;
       let atRisk = 0;
@@ -249,6 +255,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           if (_ht === "CRITICAL" || _ht === "AT-RISK") mrrAtRiskNeedsCall += plan;
         scoreSum += c.signals_v2.composite || 0;
         if (c.performance?.flag) flagged += 1;
+        if (c.lifecycle_state === "recently_churned") churned30d++;
       }
       result.push({
         am,
@@ -271,6 +278,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
           needsCall: critical + atRisk,
           pctNeedsCall: list.length ? ((critical + atRisk) / list.length) * 100 : 0,
         flagged,
+        churned30d,
       });
     }
     return result;
@@ -674,6 +682,14 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                 align="right"
                 tooltip="Customers with performance trajectory flag (GBP drop, zero-review weeks, or YTD lead decline)."
               />
+              {/* Phase 33.scope — Churned 30d column */}
+              <th
+                className="px-3 py-2 text-right font-semibold"
+                scope="col"
+                title="Customers whose Chargebee subscription was cancelled in the last 30 days. Kept visible for retention follow-up."
+              >
+                Churned 30d
+              </th>
               <th
                 className="px-3 py-2 text-left font-semibold"
                 scope="col"
@@ -695,7 +711,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             {sorted.length === 0 && (
               <tr>
                 <td
-                  colSpan={14}
+                  colSpan={15}
                   className="px-4 py-10 text-center text-sm text-zoca-text-2"
                 >
                   {search.trim()

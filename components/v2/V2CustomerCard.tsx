@@ -392,6 +392,33 @@ function V2CustomerCardInner({
             >
               ↗ Open detail
             </a>
+          {/* Phase 33.scope — lifecycle pill (recently_churned | newly_onboarded | resurrected) */}
+          {customer.lifecycle_state && customer.lifecycle_state !== "active" && (() => {
+            const lc = customer.lifecycle_state;
+            const dayMs = 24 * 60 * 60 * 1000;
+            const sourceIso = lc === "recently_churned" ? customer.churned_on : customer.onboarded_on;
+            const daysAgo = sourceIso ? Math.max(0, Math.floor((Date.now() - Date.parse(sourceIso)) / dayMs)) : null;
+            const cls =
+              lc === "recently_churned"
+                ? "bg-rose-500/18 text-rose-700"
+                : lc === "newly_onboarded"
+                  ? "bg-emerald-500/18 text-emerald-700"
+                  : "bg-sky-500/18 text-sky-700";
+            const label =
+              lc === "recently_churned"
+                ? `Churned ${daysAgo ?? "?"} day${daysAgo === 1 ? "" : "s"} ago`
+                : lc === "newly_onboarded"
+                  ? `New customer · ${daysAgo ?? "?"} day${daysAgo === 1 ? "" : "s"}`
+                  : `Resurrected · ${daysAgo ?? "?"} day${daysAgo === 1 ? "" : "s"}`;
+            return (
+              <span
+                className={`rounded-zoca-pill px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${cls}`}
+                title={`Lifecycle state: ${lc.replace(/_/g, " ")}.`}
+              >
+                {label}
+              </span>
+            );
+          })()}
             {s.pre_launch && (
               <span
                 className="rounded-zoca-pill bg-sky-500/18 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700"

@@ -79,6 +79,8 @@ export type StageAData = {
     place_id: string | null;
   }>;
   baseSheetByEntityId: Record<string, BaseSheetRow>;
+  /** Phase 33.scope — Chargebee subs cancelled within last 30d, keyed by customer_id. */
+  recentlyChurnedByCustomer?: Record<string, { subscription_id: string; cancelled_at: string | null; activated_at: string | null; }>;
   billingMetrics: Record<string, BillingMetrics>;
   stats: {
     totalSubs: number;
@@ -300,6 +302,27 @@ export async function runStageA(today: number = todayMs()): Promise<{
   }
 
   memSnap("A end");
+  // Phase 33.scope — separate the cancelled-<30d bag from the live universe.
+  const recentlyChurnedByCustomer: Record<string, { subscription_id: string; cancelled_at: string | null; activated_at: string | null }> = {};
+  const liveCustomerIds = new Set<string>();
+  for (const s of subs) {
+    if (!(s as any).recently_cancelled && s.customer_id) liveCustomerIds.add(s.customer_id);
+  }
+  for (const s of subs) {
+    if (!(s as any).recently_cancelled) continue;
+    if (!s.customer_id) continue;
+    if (liveCustomerIds.has(s.customer_id)) continue; // resurrection — keep live as primary
+    const existing = recentlyChurnedByCustomer[s.customer_id];
+    const cancelledMs = (s as any).cancelled_at as number | null | undefined;
+    if (!existing || (cancelledMs && (!existing.cancelled_at || Date.parse(existing.cancelled_at) < cancelledMs))) {
+      recentlyChurnedByCustomer[s.customer_id] = {
+        subscription_id: s.subscription_id || "",
+        cancelled_at: cancelledMs ? new Date(cancelledMs).toISOString() : null,
+        activated_at: s.activated_at ? new Date(s.activated_at).toISOString() : null,
+      };
+    }
+  }
+
   const data: StageAData = {
     todayMs: today,
     todayIso: new Date(today).toISOString(),
@@ -307,6 +330,7 @@ export async function runStageA(today: number = todayMs()): Promise<{
     customerToEntities: customerToEntitiesObj,
     entityMeta,
     baseSheetByEntityId,
+    recentlyChurnedByCustomer,
     billingMetrics,
     stats: {
       totalSubs: subs.length,
@@ -764,6 +788,18 @@ export async function composeSnapshot(
       preLaunch,
     });
 
+    // Phase 33.scope — recently churned customers are already gone;
+    // don't let them clog the at-risk stack. Override stoplight to GREEN
+    // (neutral) so existing math is preserved while UI uses lifecycle_state.
+    {
+      const _cidNeutral = meta?.customer_id || "";
+      const _churn = stageA.recentlyChurnedByCustomer?.[_cidNeutral];
+      const _hasLive = !!meta?.subscription_id;
+      if (!_hasLive && _churn) {
+        (signalsV2 as any).stoplight = "GREEN";
+        (signalsV2 as any).tier = "HEALTHY";
+      }
+    }
     // Pod from AM
     const amName = bs?.am_name || "";
     const pod = POD_MAP[amName] || "";
@@ -836,6 +872,22 @@ export async function composeSnapshot(
       }
     }
 
+    // Phase 33.scope — derive lifecycle_state for this customer.
+    const _cidForLifecycle = meta?.customer_id || "";
+    const _recentlyChurned = stageA.recentlyChurnedByCustomer?.[_cidForLifecycle] || null;
+    const _hasLiveSub = !!meta?.subscription_id;
+    const _activatedIso = meta?.activated_at || null;
+    const _activatedMs = _activatedIso ? Date.parse(_activatedIso) : NaN;
+    const _thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const _isNewlyOnboarded = _hasLiveSub && Number.isFinite(_activatedMs) && (stageA.todayMs - _activatedMs) <= _thirtyDaysMs && !_recentlyChurned;
+    const _isResurrected = _hasLiveSub && !!_recentlyChurned; // unreachable under current dedupe, but kept for completeness
+    const _isRecentlyChurned = !_hasLiveSub && !!_recentlyChurned;
+    let _lifecycle_state: "active" | "recently_churned" | "newly_onboarded" | "resurrected" = "active";
+    if (_isRecentlyChurned) _lifecycle_state = "recently_churned";
+    else if (_isResurrected) _lifecycle_state = "resurrected";
+    else if (_isNewlyOnboarded) _lifecycle_state = "newly_onboarded";
+    const _churnedOn = _recentlyChurned?.cancelled_at || null;
+    const _onboardedOn = _activatedIso;
     scored.push({
       customer_id: meta?.customer_id || "",
       entity_id: entityId,
@@ -865,6 +917,9 @@ export async function composeSnapshot(
       tickets,
       signals_v2: signalsV2,
       hubspot: hubspotJoin,
+      lifecycle_state: _lifecycle_state,
+      churned_on: _churnedOn,
+      onboarded_on: _onboardedOn,
     });
   }
 
@@ -893,6 +948,8 @@ export async function composeSnapshot(
   const tierCounts: Record<Tier, number> = { HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0 };
   const stoplightCounts: Record<Stoplight, number> = { RED: 0, YELLOW: 0, GREEN: 0 };
   for (const c of scored) {
+    // Phase 33.scope optionB — exclude recently_churned from tier/stoplight totals.
+    if (c.lifecycle_state === "recently_churned") continue;
     tierCounts[c.signals_v2.tier]++;
     stoplightCounts[c.signals_v2.stoplight]++;
   }
@@ -918,6 +975,8 @@ export async function composeSnapshot(
   const amMap = new Map<string, { high: number; total: number }>();
   const amBreakdownMap = new Map<string, AmTierRow>();
   for (const c of scored) {
+    // Phase 33.scope optionB — exclude recently_churned from AM breakdown.
+    if (c.lifecycle_state === "recently_churned") continue;
     const am = c.am_name || "(unassigned)";
     const cur = amMap.get(am) || { high: 0, total: 0 };
     cur.total++;
@@ -936,6 +995,8 @@ export async function composeSnapshot(
   // Pod breakdown
   const podMap = new Map<string, PodTierRow>();
   for (const c of scored) {
+    // Phase 33.scope optionB — exclude recently_churned from pod breakdown.
+    if (c.lifecycle_state === "recently_churned") continue;
     const pod = c.pod || "(unassigned)";
     const row = podMap.get(pod) || { pod, HIGH: 0, MEDIUM: 0, LOW: 0, HEALTHY: 0, total: 0, ams: [] };
     row[c.signals_v2.tier]++;
@@ -1116,6 +1177,9 @@ export async function composeSnapshot(
       customer_count: scored.length,
       customer_id_count: byCid.size,
       multi_location_count: multiLocCount,
+      recently_churned_count: scored.filter((c) => c.lifecycle_state === "recently_churned").length,
+      newly_onboarded_count: scored.filter((c) => c.lifecycle_state === "newly_onboarded").length,
+      resurrected_count: scored.filter((c) => c.lifecycle_state === "resurrected").length,
     };
   }
 

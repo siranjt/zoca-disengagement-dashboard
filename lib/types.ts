@@ -9,6 +9,9 @@ export type ChargebeeSub = {
   plan_amount: number;
   created_at: number | null;
   activated_at: number | null;
+  /* lifecycle-state-types — Phase 33.scope */
+  cancelled_at?: number | null;
+  recently_cancelled?: boolean;
   auto_collection: string | null;
   email: string | null;
   first_name: string | null;
@@ -347,6 +350,12 @@ export type ScoredCustomerV2 = ScoredCustomer & {
   tickets: TicketsMetrics | null;
   signals_v2: CustomerSignalsV2;
   hubspot?: HubspotJoinFields | null;
+  /** Phase 33.scope — recently_churned | newly_onboarded | resurrected | active. */
+  lifecycle_state?: "active" | "recently_churned" | "newly_onboarded" | "resurrected";
+  /** Phase 33.scope — ISO string when cancelled_at landed (for recently_churned). */
+  churned_on?: string | null;
+  /** Phase 33.scope — ISO string of first activated_at across customer's subs. */
+  onboarded_on?: string | null;
 };
 
 export type AmTierRow = {
@@ -467,6 +476,10 @@ export type SnapshotV2 = Omit<Snapshot, "customers"> & {
     customer_count: number;
     customer_id_count: number;
     multi_location_count: number;
+    /** Phase 33.scope — sibling counts; customer_count stays as live universe. */
+    recently_churned_count?: number;
+    newly_onboarded_count?: number;
+    resurrected_count?: number;
   };
 };
 

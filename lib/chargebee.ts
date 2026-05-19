@@ -98,6 +98,76 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
     } while (offset);
   }
 
+
+  // Phase 33.scope: second pass — cancelled subs within the last 30 days.
+  // These power the "recently churned (30d retention)" lifecycle bucket.
+  // We dedupe against the live universe; if a customer_id has BOTH a live
+  // sub AND a recently-cancelled sub (resurrection case), the live sub
+  // stays as the primary row in `out` and the cancelled marker is carried
+  // on a SEPARATE row appended with `recently_cancelled: true`.
+  {
+    const cutoffSec = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+    let offset: string | undefined;
+    let page = 0;
+    do {
+      const params = new URLSearchParams();
+      params.set("limit", "100");
+      params.set("status[is]", "cancelled");
+      params.set("cancelled_at[after]", String(cutoffSec));
+      if (offset) params.set("offset", offset);
+
+      const res = await fetch(`${base}/subscriptions?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: authHeader },
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Chargebee cancelled ${res.status}: ${text.slice(0, 200)}`);
+      }
+      const data = (await res.json()) as {
+        list: { subscription: any; customer: any }[];
+        next_offset?: string;
+      };
+      for (const item of data.list || []) {
+        const sub = item.subscription || {};
+        const cust = item.customer || {};
+        const customer_id = sub.customer_id || cust.id;
+        if (!customer_id) continue;
+        const key = customer_id + "::" + sub.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const cfEntityId = sub.cf_entity_id || "";
+        if (cfEntityId) {
+          const set = customerToEntities.get(customer_id) || new Set<string>();
+          set.add(cfEntityId);
+          customerToEntities.set(customer_id, set);
+        }
+
+        out.push({
+          subscription_id: sub.id || "",
+          customer_id,
+          status: sub.status || "cancelled",
+          plan_amount: Number(sub.plan_amount || sub.mrr || 0),
+          created_at: sub.created_at ? Number(sub.created_at) * 1000 : null,
+          activated_at: sub.activated_at ? Number(sub.activated_at) * 1000 : null,
+          cancelled_at: sub.cancelled_at ? Number(sub.cancelled_at) * 1000 : null,
+          recently_cancelled: true,
+          auto_collection: cust.auto_collection || sub.auto_collection || null,
+          email: cust.email || null,
+          first_name: cust.first_name || null,
+          last_name: cust.last_name || null,
+          company: cust.company || null,
+          phone: cust.phone || null,
+        });
+      }
+      offset = data.next_offset;
+      page++;
+      if (page > 80) break;
+    } while (offset);
+  }
+
   // Convert Set values to sorted arrays for stable output
   const customerToEntitiesArr = new Map<string, string[]>();
   for (const [c, s] of customerToEntities) {

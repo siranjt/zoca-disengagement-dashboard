@@ -467,6 +467,8 @@ function V2ManagerDashboardInner() {
     let mrrAtRisk = 0;
     const actionAmsSet = new Set<string>();
     for (const c of compareSnapshot.customers) {
+      // Phase 33.scope optionB manager compareKpis exclude recently_churned
+      if (c.lifecycle_state === "recently_churned") continue;
       total += 1;
       const sl = c.signals_v2.stoplight;
       if (sl === "RED") RED += 1;
@@ -529,6 +531,8 @@ function V2ManagerDashboardInner() {
     if (snapshot.status !== "ready") return [];
     const byAm = new Map<string, { red: number; yellow: number; green: number }>();
     for (const c of snapshot.snapshot.customers) {
+      // Phase 33.scope optionB manager amStoplightRows exclude recently_churned
+      if (c.lifecycle_state === "recently_churned") continue;
       if (!c.am_name) continue;
       const entry =
         byAm.get(c.am_name) || { red: 0, yellow: 0, green: 0 };
@@ -552,6 +556,9 @@ function V2ManagerDashboardInner() {
     if (snapshot.status !== "ready") return [];
     const byAm = new Map<string, ScoredCustomerV2[]>();
     for (const c of snapshot.snapshot.customers) {
+      // Phase 33.scope optionB manager topMovers exclude recently_churned
+      // so the per-AM RED tally below doesn't pick them up.
+      if (c.lifecycle_state === "recently_churned") continue;
       if (!c.am_name) continue;
       if (!byAm.has(c.am_name)) byAm.set(c.am_name, []);
       byAm.get(c.am_name)!.push(c);

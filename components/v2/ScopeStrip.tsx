@@ -47,6 +47,26 @@ export default function ScopeStrip({ scope }: { scope?: SnapshotV2["scope"] }) {
       {" · Active-sub universe only ("}
       {statusLabel}
       {")"}
+      {/* Phase 33.scope — recently_churned / newly_onboarded / resurrected sibling counts */}
+      {scope.recently_churned_count !== undefined && scope.recently_churned_count > 0 && (
+        <>
+          {" · "}
+          <span className="font-semibold text-zoca-text">+{scope.recently_churned_count}</span>{" recently churned"}
+        </>
+      )}
+      {scope.newly_onboarded_count !== undefined && scope.newly_onboarded_count > 0 && (
+        <>
+          {" · "}
+          <span className="font-semibold text-zoca-text">+{scope.newly_onboarded_count}</span>{" new"}
+        </>
+      )}
+      {scope.resurrected_count !== undefined && scope.resurrected_count > 0 && (
+        <>
+          {" · "}
+          <span className="font-semibold text-zoca-text">+{scope.resurrected_count}</span>{" resurrected"}
+        </>
+      )}
+
     </div>
   );
 }
