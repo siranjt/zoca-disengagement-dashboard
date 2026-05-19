@@ -184,7 +184,10 @@ html, body {
 body {
   background: var(--zoca-bg);
   color: var(--zoca-text);
-  font-family: -apple-system, 'Inter', BlinkMacSystemFont, var(--font-inter), system-ui, sans-serif;
+  /* Phase 33.brand-watchfire-T9 — Georgia serif across the dashboard
+     (heraldic register). Inter is still loaded by next/font as a
+     fallback for any inline `fontFamily: var(--font-inter)` callsite. */
+  font-family: Georgia, 'Times New Roman', 'Times', serif;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -254,7 +257,8 @@ canvas { max-width: 100% !important; }
   color: #ffffff;
   border-radius: 9999px;
   padding: 0.625rem 1.375rem;
-  font-family: var(--font-inter), -apple-system, sans-serif;
+  /* Phase 33.brand-watchfire-T9 — buttons in heraldic register too. */
+  font-family: Georgia, 'Times New Roman', 'Times', serif;
   font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: -0.005em;
