@@ -10,35 +10,43 @@
    ============================================================ */
 :root {
   /* Zoca brand — surfaces */
-  --zoca-bg: #ffffff;
-  --zoca-bg-soft: #fafafa;
-  --zoca-bg-tint: #f4effd;
+  --zoca-bg: #F0E4CC;       /* Parchment */
+  --zoca-bg-soft: #F8EFD7;  /* Light Parchment */
+  --zoca-bg-tint: #EBE0C2;  /* Buff */
 
   /* Zoca brand — text */
-  --zoca-text: #0b051d;
-  --zoca-text-2: #696376;
-  --zoca-text-3: #bcc1c2;
+  --zoca-text: #2B1F14;     /* Char */
+  --zoca-text-2: #6E5F50;   /* Smoke */
+  --zoca-text-3: #8B7A66;   /* Faded Smoke */
 
   /* Zoca brand — accents */
-  --zoca-blue: #146ef5;
-  --zoca-blue-strong: #0a4ec0;
-  --zoca-pink: #ff56bb;
-  --zoca-pink-bright: #ff86e1;
-  --zoca-pink-soft: #ffa8cd;
+  --zoca-blue: #2A4D5C;        /* Sea Lapis */
+  --zoca-blue-strong: #1A3340; /* Deep Lapis */
+  --zoca-pink: #C8431D;         /* Ember */
+  --zoca-pink-bright: #7C2D12;  /* Deep Ember */
+  --zoca-pink-soft: #FCE4D6;    /* Light Ember */
 
   /* Zoca brand — borders */
-  --zoca-border: rgba(0, 0, 0, 0.08);
-  --zoca-border-2: rgba(0, 0, 0, 0.12);
+  --zoca-border: #D4C29B;     /* Aged Brass */
+  --zoca-border-2: #C2A975;   /* Darker Brass */
 
   /* Zoca brand — 4-tier health palette (Phase 33.E.9 extends old stoplight) */
-  --zoca-crimson: #dc2626;     /* CRITICAL tier — deep red */
-  --zoca-red: #ff56bb;         /* AT-RISK tier (legacy name = brand pink) */
-  --zoca-amber: #f59e0b;       /* MONITOR tier */
-  --zoca-green: #10b981;       /* HEALTHY tier */
-  --zoca-crimson-soft: rgba(220, 38, 38, 0.10);
-  --zoca-red-soft: rgba(255, 134, 225, 0.12);
-  --zoca-amber-soft: rgba(245, 158, 11, 0.10);
-  --zoca-green-soft: rgba(16, 185, 129, 0.10);
+  --zoca-crimson: #7C2D12;    /* CRITICAL tier — Deep Crimson */
+  --zoca-red: #7C2D12;        /* AT-RISK tier — Deep Crimson (Watchfire) */
+  --zoca-amber: #D9A441;      /* MONITOR tier — Brass */
+  --zoca-green: #4A7C59;      /* HEALTHY tier — Patina */
+  --zoca-crimson-soft: rgba(124, 45, 18, 0.10);
+  --zoca-red-soft: #F5C9B6;       /* Faded Crimson */
+  --zoca-amber-soft: #F5E6BB;     /* Pale Brass */
+  --zoca-green-soft: #DAE5DC;     /* Pale Patina */
+  --zoca-green-deep: #2D4843;     /* Pine — patina text on light */
+
+  /* Phase 33.brand-watchfire-palette — flame layer tokens (Mark) */
+  --zoca-flame-outer:     #C8431D;
+  --zoca-flame-mid:       #E85A2B;
+  --zoca-flame-core:      #D9A441;
+  --zoca-flame-heart-top: #FEF3C7;
+  --zoca-flame-heart-bot: #FBBF24;
 }
 
 /* Phase 17.A — keyframes for brand animations */
