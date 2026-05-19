@@ -809,7 +809,8 @@ function V2CustomerCardInner({
             return (
               <div
                 data-churn-banner="1"
-                className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-zoca-pill px-2.5 py-0.5 text-[10px] font-semibold"
+                // Phase 33.brand-watchfire-PR9-54 — shake when churn newly opens.
+                className={`mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-zoca-pill px-2.5 py-0.5 text-[10px] font-semibold${churnShakeActive ? " beacon-churn-shake" : ""}`}
                 style={{ background: "rgba(220, 38, 38, 0.15)", color: "#b91c1c", border: "1px solid rgba(220, 38, 38, 0.3)" }}
                 title={titleText}
               >

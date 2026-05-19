@@ -23,15 +23,16 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
       <div className="mb-5 flex justify-center">
         <div
           className="beacon-pill-fade inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+          // Phase 33.brand-watchfire-audit-T2 — Sea Lapis tones replace V2 blue tint.
           style={{
-            border: "1px solid rgba(20,110,245,0.18)",
-            background: "rgba(20,110,245,0.06)",
+            border: "1px solid rgba(42, 77, 92, 0.22)",
+            background: "rgba(42, 77, 92, 0.06)",
           }}
         >
           <span className="zoca-pulse-dot-green" />
           <span
-            className="text-[11px] font-semibold uppercase text-zoca-blue"
-            style={{ letterSpacing: "0.08em" }}
+            className="text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: "0.08em", color: "#2A4D5C" }}
           >
             Live customer signals · auto-scored by Claude
           </span>

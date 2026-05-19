@@ -33,12 +33,13 @@ type Props = {
   tiles: Tile[];
 };
 
+// Phase 33.brand-watchfire-audit-T2 — KPI tile semantic colors → Watchfire.
 const COLORS: Record<Tile["color"], string> = {
-  midnight: "var(--zoca-text)",
-  pink: "var(--zoca-pink)",
-  amber: "#b45309",
-  green: "#047857",
-  crimson: "#dc2626",
+  midnight: "var(--zoca-text)", // Char
+  pink: "var(--zoca-pink)",     // Ember
+  amber: "#5C4317",             // Dark Brass-Brown (was #b45309)
+  green: "#2D4843",             // Pine (was #047857)
+  crimson: "#7C2D12",           // Deep Crimson (was #dc2626)
 };
 
 // Selected-state palette — kept per color so each tile glows in its own hue.
@@ -53,25 +54,29 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
     border: "var(--zoca-pink)",
     shadow: "0 0 0 1px rgba(200, 67, 29, 0.35), 0 0 24px rgba(252, 228, 214, 0.35)",
     gradient: "linear-gradient(180deg, rgba(200, 67, 29, 0.04), rgba(252, 228, 214, 0.06)), #fff",
-    labelColor: "#c026d3",
+    // Phase 33.brand-watchfire-audit-T2 — Deep Ember replaces V2 fuchsia.
+    labelColor: "#7C2D12",
   },
+  // Phase 33.brand-watchfire-audit-T2 — amber → Brass family.
   amber: {
-    border: "#f59e0b",
-    shadow: "0 0 0 1px rgba(245,158,11,0.35), 0 0 24px rgba(252,211,77,0.35)",
-    gradient: "linear-gradient(180deg, rgba(245,158,11,0.04), rgba(252,211,77,0.06)), #fff",
-    labelColor: "#b45309",
+    border: "#D9A441",
+    shadow: "0 0 0 1px rgba(217, 164, 65, 0.35), 0 0 24px rgba(245, 230, 187, 0.45)",
+    gradient: "linear-gradient(180deg, rgba(217, 164, 65, 0.04), rgba(245, 230, 187, 0.10)), #fff",
+    labelColor: "#5C4317",
   },
+  // Phase 33.brand-watchfire-audit-T2 — green → Patina family.
   green: {
-    border: "#10b981",
-    shadow: "0 0 0 1px rgba(16,185,129,0.35), 0 0 24px rgba(110,231,183,0.35)",
-    gradient: "linear-gradient(180deg, rgba(16,185,129,0.04), rgba(110,231,183,0.06)), #fff",
-    labelColor: "#047857",
+    border: "#4A7C59",
+    shadow: "0 0 0 1px rgba(74, 124, 89, 0.35), 0 0 24px rgba(218, 229, 220, 0.45)",
+    gradient: "linear-gradient(180deg, rgba(74, 124, 89, 0.04), rgba(218, 229, 220, 0.10)), #fff",
+    labelColor: "#2D4843",
   },
+  // Phase 33.brand-watchfire-audit-T2 — crimson → Deep Crimson family.
   crimson: {
-    border: "#dc2626",
-    shadow: "0 0 0 1px rgba(220,38,38,0.35), 0 0 24px rgba(252,165,165,0.35)",
-    gradient: "linear-gradient(180deg, rgba(220,38,38,0.04), rgba(252,165,165,0.06)), #fff",
-    labelColor: "#b91c1c",
+    border: "#7C2D12",
+    shadow: "0 0 0 1px rgba(124, 45, 18, 0.40), 0 0 24px rgba(245, 201, 182, 0.45)",
+    gradient: "linear-gradient(180deg, rgba(124, 45, 18, 0.04), rgba(245, 201, 182, 0.10)), #fff",
+    labelColor: "#7C2D12",
   },
 };
 

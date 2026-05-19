@@ -118,33 +118,36 @@
     0 0 32px rgba(252, 228, 214, 0.32);
 }
 
+/* Phase 33.brand-watchfire-audit-T2 — Deep Ember text on Light Ember bg. */
 .zoca-chip-pink {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 11px;
   border-radius: 9999px;
   border: 1px solid rgba(200, 67, 29, 0.22);
   background: rgba(124, 45, 18, 0.12);
-  color: #c026d3;
+  color: #7C2D12;
   font-size: 10px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
 }
+/* Phase 33.brand-watchfire-audit-T2 — Dark Brass-Brown text on Pale Brass bg. */
 .zoca-chip-amber {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 11px;
   border-radius: 9999px;
-  border: 1px solid rgba(245, 158, 11, 0.24);
-  background: rgba(245, 158, 11, 0.10);
-  color: #b45309;
+  border: 1px solid rgba(217, 164, 65, 0.28);
+  background: rgba(245, 230, 187, 0.55);
+  color: #5C4317;
   font-size: 10px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
 }
+/* Phase 33.brand-watchfire-audit-T2 — Pine text on Pale Patina bg. */
 .zoca-chip-green {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 11px;
   border-radius: 9999px;
-  border: 1px solid rgba(16, 185, 129, 0.22);
-  background: rgba(16, 185, 129, 0.08);
-  color: #047857;
+  border: 1px solid rgba(74, 124, 89, 0.28);
+  background: rgba(218, 229, 220, 0.55);
+  color: #2D4843;
   font-size: 10px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
 }
