@@ -1,7 +1,7 @@
 "use client";
 
 // Phase 33.brand-watchfire-pink-sweep-refreshbutton (2 V2-pink values swept).
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 /**
  * Manual refresh button — wired into the V2 dashboard headers.
@@ -21,6 +21,39 @@ export function RefreshButton() {
   // Phase 33.brand-watchfire-PR8 — "caught" status added for the 1.5s success beat.
   const [status, setStatus] = useState<"idle" | "refreshing" | "caught" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Phase 33.brand-watchfire-T4-caught — on mount, check for a recent refresh
+  // sessionStorage handoff and replay the "✓ caught" beat for 1.5s before
+  // reverting to idle. 8s staleness window prevents ghost beats from old reloads.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let ts: string | null = null;
+    try {
+      ts = window.sessionStorage.getItem("beacon_refresh_caught_at");
+    } catch {
+      return;
+    }
+    if (!ts) return;
+    const elapsed = Date.now() - parseInt(ts, 10);
+    if (Number.isNaN(elapsed) || elapsed < 0 || elapsed > 8000) {
+      try {
+        window.sessionStorage.removeItem("beacon_refresh_caught_at");
+      } catch {
+        /* noop */
+      }
+      return;
+    }
+    setStatus("caught");
+    const t = setTimeout(() => {
+      setStatus("idle");
+      try {
+        window.sessionStorage.removeItem("beacon_refresh_caught_at");
+      } catch {
+        /* noop */
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, []);
   const [, startTransition] = useTransition();
 
   async function handleClick() {
@@ -38,14 +71,22 @@ export function RefreshButton() {
       if (!data.ok) {
         throw new Error(data.error || "Refresh failed");
       }
-      // Phase 33.brand-watchfire-PR8 — show "✓ caught" for 1.5s before reloading,
-      // so the user sees confirmation before the page swap.
-      setStatus("caught");
-      setTimeout(() => {
-        startTransition(() => {
-          window.location.reload();
-        });
-      }, 1500);
+      // Phase 33.brand-watchfire-T4-caught — hand off the "✓ caught" beat
+      // to the next page mount via sessionStorage so it shows alongside the
+      // fresh data instead of before the page swap. Reload happens immediately.
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(
+            "beacon_refresh_caught_at",
+            String(Date.now()),
+          );
+        } catch {
+          /* sessionStorage disabled — degrade gracefully */
+        }
+      }
+      startTransition(() => {
+        window.location.reload();
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus("error");

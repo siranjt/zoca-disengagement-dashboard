@@ -74,29 +74,34 @@ export function BeaconMark({
       <rect x="-5" y="-10" width="10" height="4" fill={towerFill} />
       <rect x="-4" y="-16" width="8"  height="4" fill={towerFill} />
       <rect x="-3" y="-22" width="6"  height="4" fill={towerFill} />
+      {/* Phase 33.brand-watchfire-T4-flame — 4 nested teardrops with co-prime
+          durations (2.2 / 1.7 / 1.3 / 0.9s) per spec §11 row 19. The flame
+          layers never re-sync so the mark always feels alive. CSS keyframes
+          beacon-flame-1..4 live in globals.css; reduced-motion guard there. */}
       <path
         d="M 0 -32 C 4 -28 5 -23 3 -21 L -3 -21 C -5 -23 -4 -28 0 -32 Z"
         fill={flameOuter}
-        style={
-          flicker
-            ? {
-                transformOrigin: "0px -21px",
-                animation: "beacon-flicker 1.8s ease-in-out infinite",
-              }
-            : undefined
-        }
+        className={flicker ? "beacon-flame-1" : undefined}
+        style={{ transformOrigin: "0px -21px" }}
+      />
+      <path
+        d="M 0 -30 C 3.4 -27 4 -23 2.5 -21 L -2.5 -21 C -4 -23 -3.4 -27 0 -30 Z"
+        fill={flameOuter}
+        opacity="0.75"
+        className={flicker ? "beacon-flame-2" : undefined}
+        style={{ transformOrigin: "0px -21px" }}
       />
       <path
         d="M 0 -27 C 2 -24 3 -21 2 -19 L -2 -19 C -3 -21 -2 -24 0 -27 Z"
         fill={flameInner}
-        style={
-          flicker
-            ? {
-                transformOrigin: "0px -19px",
-                animation: "beacon-flicker-inner 1.4s ease-in-out infinite",
-              }
-            : undefined
-        }
+        className={flicker ? "beacon-flame-3" : undefined}
+        style={{ transformOrigin: "0px -19px" }}
+      />
+      <path
+        d="M 0 -25 C 1.2 -23 1.5 -21 1 -19 L -1 -19 C -1.5 -21 -1.2 -23 0 -25 Z"
+        fill={flameInner}
+        className={flicker ? "beacon-flame-4" : undefined}
+        style={{ transformOrigin: "0px -19px" }}
       />
     </svg>
   );

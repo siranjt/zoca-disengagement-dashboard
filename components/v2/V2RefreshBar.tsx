@@ -35,6 +35,39 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
     prevGeneratedAtRef.current = generatedAt;
   }, [generatedAt]);
 
+  // Phase 33.brand-watchfire-T4-caught — replay the "✓ caught" beat for 1.5s
+  // on mount if a refresh just completed (via sessionStorage handoff).
+  const [caught, setCaught] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let ts: string | null = null;
+    try {
+      ts = window.sessionStorage.getItem("beacon_refresh_caught_at");
+    } catch {
+      return;
+    }
+    if (!ts) return;
+    const elapsed = Date.now() - parseInt(ts, 10);
+    if (Number.isNaN(elapsed) || elapsed < 0 || elapsed > 8000) {
+      try {
+        window.sessionStorage.removeItem("beacon_refresh_caught_at");
+      } catch {
+        /* noop */
+      }
+      return;
+    }
+    setCaught(true);
+    const t = setTimeout(() => {
+      setCaught(false);
+      try {
+        window.sessionStorage.removeItem("beacon_refresh_caught_at");
+      } catch {
+        /* noop */
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -121,7 +154,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
             display: "inline-block",
           }}
         />
-        {refreshing ? "Catching signals…" : "Refresh live data"}
+        {caught ? "✓ caught" : refreshing ? "Catching signals…" : "Refresh live data"}
       </button>
     </div>
   );
