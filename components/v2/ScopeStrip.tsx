@@ -11,10 +11,11 @@ import type { SnapshotV2 } from "@/lib/types";
 export default function ScopeStrip({ scope }: { scope?: SnapshotV2["scope"] }) {
   if (!scope) return null;
   const statusLabel = scope.statuses.map((s) => s.replace(/_/g, "-")).join(", ");
+  // Phase 33.scope-finish — tooltip updated for 30-day churn retention.
   const tooltip =
-    `The dashboard only includes customers with an active Chargebee subscription ` +
-    `(${statusLabel}). Multi-location customers contribute one row per entity_id. ` +
-    `Customers without an active subscription do not appear here.`;
+    `Active sub universe (${statusLabel}) plus customers whose subscription was ` +
+    `cancelled in the last 30 days (visible to AMs for the retention window). ` +
+    `Multi-location customers contribute one row per entity_id.`;
   return (
     <div
       className="mx-6 mt-4 mb-2 rounded-2xl px-5 py-2.5 text-[11px] text-zoca-text-2 flex items-center gap-1 flex-wrap"
@@ -44,7 +45,7 @@ export default function ScopeStrip({ scope }: { scope?: SnapshotV2["scope"] }) {
           multi-location
         </>
       )}
-      {" · Active-sub universe only ("}
+      {" · Active subs + 30-day churn retention ("}
       {statusLabel}
       {")"}
       {/* Phase 33.scope — recently_churned / newly_onboarded / resurrected sibling counts */}

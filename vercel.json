@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/refresh/stage-a",
-      "schedule": "0 22 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/refresh/stage-b",
