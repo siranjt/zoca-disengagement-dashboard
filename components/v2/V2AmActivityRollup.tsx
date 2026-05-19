@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CoachingMetric } from "@/lib/coaching";
@@ -101,8 +102,8 @@ export default function V2AmActivityRollup({
           role="status"
           className="mb-3 zoca-fade-in inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold"
           style={{
-            background: "rgba(255,134,225,0.12)",
-            border: "1px solid rgba(255,86,187,0.22)",
+            background: "rgba(124, 45, 18, 0.12)",
+            border: "1px solid rgba(200, 67, 29, 0.22)",
             color: "#c026d3",
           }}
         >

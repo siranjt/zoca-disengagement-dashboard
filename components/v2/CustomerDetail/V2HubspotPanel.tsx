@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 2 tailwind-rose swept)
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 import { buildMailto, buildHubspotLocationUrl } from "@/lib/contact-links";
@@ -122,7 +123,7 @@ function V2HubspotPanel({ customer }: Props) {
               <span
                 className={`rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-medium ${
                   lastCall.sentiment === "frustrated"
-                    ? "bg-rose-500/18 text-rose-700"
+                    ? "bg-zoca-pink/18 text-zoca-pink-bright"
                     : lastCall.sentiment === "warm"
                       ? "bg-emerald-500/18 text-emerald-700"
                       : "bg-zoca-bg-tint text-zoca-text-2"

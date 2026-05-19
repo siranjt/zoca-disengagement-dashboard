@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 import { useEffect, useRef } from "react";
 
 /**
@@ -52,7 +53,7 @@ export function CursorGlow() {
         width: "400px",
         height: "400px",
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(255,134,225,0.10) 0%, rgba(255,134,225,0.04) 30%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(124, 45, 18, 0.10) 0%, rgba(124, 45, 18, 0.04) 30%, transparent 70%)",
         pointerEvents: "none",
         zIndex: 0,
         willChange: "transform",

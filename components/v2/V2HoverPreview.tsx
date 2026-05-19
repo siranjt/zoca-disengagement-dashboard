@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 3 tailwind-rose swept)
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -116,7 +117,7 @@ export default function V2HoverPreview({ customer, anchorRef, visible, onClose }
     "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1";
   const chipClassForTone = (tone: "rose" | "amber") =>
     tone === "rose"
-      ? `${chipBaseClass} bg-rose-500/12 text-rose-700 ring-rose-500/25`
+      ? `${chipBaseClass} bg-zoca-pink/12 text-zoca-pink-bright ring-zoca-pink/25`
       : `${chipBaseClass} bg-amber-500/12 text-amber-700 ring-amber-500/25`;
 
   const narrative = s.reason_one_line && s.reason_one_line.trim() !== ""

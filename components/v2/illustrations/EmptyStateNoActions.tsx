@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 
@@ -30,7 +31,7 @@ export default function EmptyStateNoActions() {
       {/* Clip at top */}
       <path
         d="M 50 22 L 70 22 C 72 22, 73 23, 73 25 L 73 34 C 73 36, 72 37, 70 37 L 50 37 C 48 37, 47 36, 47 34 L 47 25 C 47 23, 48 22, 50 22 Z"
-        stroke="#ff56bb"
+        stroke="#C8431D"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -43,7 +44,7 @@ export default function EmptyStateNoActions() {
         <path d="M 39 88 L 64 88" />
       </g>
       {/* Subtle pink dot — sparkle */}
-      <circle cx="80" cy="46" r="1.6" fill="#ff56bb" opacity="0.65" />
+      <circle cx="80" cy="46" r="1.6" fill="#C8431D" opacity="0.65" />
     </svg>
   );
 }

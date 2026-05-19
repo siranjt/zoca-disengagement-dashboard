@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 3 tailwind-rose swept)
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 
@@ -71,11 +72,11 @@ function V2BillingPanel({ customer }: Props) {
         </div>
         {unpaidCount > 0 ? (
           <div className="mt-1 text-[12.5px] leading-relaxed">
-            <span className="font-semibold text-rose-700 tabular-nums">
+            <span className="font-semibold text-zoca-pink-bright tabular-nums">
               {unpaidCount} unpaid
             </span>{" "}
             <span className="text-zoca-text-2">·</span>{" "}
-            <span className="font-semibold text-rose-700 tabular-nums">
+            <span className="font-semibold text-zoca-pink-bright tabular-nums">
               ${totalDueDollars.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>{" "}
             <span className="text-zoca-text-2">overdue</span>
@@ -83,7 +84,7 @@ function V2BillingPanel({ customer }: Props) {
               <>
                 {" "}
                 <span className="text-zoca-text-2">·</span>{" "}
-                <span className="font-semibold text-rose-700 tabular-nums">
+                <span className="font-semibold text-zoca-pink-bright tabular-nums">
                   {daysOverdue}d
                 </span>{" "}
                 <span className="text-zoca-text-2">past due</span>

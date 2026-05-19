@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 2 tailwind-rose swept)
 
 import type { AmActionRow, AmActionType, ContactReasonCode } from "@/lib/types";
 
@@ -23,7 +24,7 @@ const ACTION_META: Record<
   contacted_noreach: {
     icon: "×",
     label: "No reach",
-    tone: "text-rose-700 bg-rose-500/14",
+    tone: "text-zoca-pink-bright bg-zoca-pink/14",
   },
   escalated: {
     icon: "↗",

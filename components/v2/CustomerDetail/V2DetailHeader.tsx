@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 9 tailwind-rose swept)
 
 import type { ScoredCustomerV2 } from "@/lib/types";
 import type { Stoplight } from "@/lib/config";
@@ -20,13 +21,13 @@ const STOPLIGHT_LABEL: Record<Stoplight, string> = {
 };
 
 const STOPLIGHT_TONE: Record<Stoplight, string> = {
-  RED: "bg-rose-500/18 text-rose-700 border-rose-300/60",
+  RED: "bg-zoca-pink/18 text-zoca-pink-bright border-zoca-pink/60",
   YELLOW: "bg-amber-500/18 text-amber-700 border-amber-300/60",
   GREEN: "bg-emerald-500/18 text-emerald-700 border-emerald-300/60",
 };
 
 const STOPLIGHT_BORDER: Record<Stoplight, string> = {
-  RED: "border-rose-300/60",
+  RED: "border-zoca-pink/60",
   YELLOW: "border-amber-300/60",
   GREEN: "border-emerald-300/60",
 };
@@ -46,7 +47,7 @@ function trajectoryArrow(t: ScoredCustomerV2["signals_v2"]["trajectory_7d"]): {
   if (t === "worsening") {
     return {
       symbol: "▼",
-      className: "text-rose-700",
+      className: "text-zoca-pink-bright",
       title: "Composite worsening vs. 7 days ago",
     };
   }
@@ -152,7 +153,7 @@ function V2DetailHeader({ customer, trend }: Props) {
                     ? "bg-emerald-500/18 text-emerald-700"
                     : customer.hubspot.icp_tier === "Tier 2"
                       ? "bg-amber-500/18 text-amber-700"
-                      : "bg-rose-500/18 text-rose-700"
+                      : "bg-zoca-pink/18 text-zoca-pink-bright"
                 }`}
                 title={`HubSpot ICP rating: ${customer.hubspot.icp_tier}`}
               >
@@ -396,7 +397,7 @@ function V2DetailHeader({ customer, trend }: Props) {
               <span className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">
                 Incoming comms · 90d
               </span>
-              <span className={`text-[11px] tabular-nums font-semibold ${allZero ? "text-rose-700" : "text-zoca-text"}`}>
+              <span className={`text-[11px] tabular-nums font-semibold ${allZero ? "text-zoca-pink-bright" : "text-zoca-text"}`}>
                 {total} total{allZero ? " — no incoming activity" : ""}
               </span>
             </div>
@@ -450,7 +451,7 @@ function V2DetailHeader({ customer, trend }: Props) {
               </div>
               <div className="rounded-zoca border border-zoca-border bg-white px-2 py-1.5">
                 <div className="text-[10px] uppercase tracking-wider text-zoca-text-2 font-semibold">Rate</div>
-                <div className={`text-[14px] font-semibold tabular-nums ${rate >= 60 ? "text-emerald-700" : rate >= 30 ? "text-amber-700" : "text-rose-700"}`}>
+                <div className={`text-[14px] font-semibold tabular-nums ${rate >= 60 ? "text-emerald-700" : rate >= 30 ? "text-amber-700" : "text-zoca-pink-bright"}`}>
                   {Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"}
                 </div>
               </div>

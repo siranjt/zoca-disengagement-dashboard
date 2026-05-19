@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (1 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -22,7 +23,7 @@ const SIZE_PX = 80;
  *
  * Respects prefers-reduced-motion (renders nothing).
  */
-export default function V2SuccessRipple({ x, y, color = "#ff56bb", onDone }: Props) {
+export default function V2SuccessRipple({ x, y, color = "#C8431D", onDone }: Props) {
   const [mounted, setMounted] = React.useState(false);
   const reduced = useReducedMotion();
 

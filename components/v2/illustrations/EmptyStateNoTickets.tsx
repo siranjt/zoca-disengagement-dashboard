@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (3 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 
@@ -37,13 +38,13 @@ export default function EmptyStateNoTickets() {
            C 28 68, 31 65, 31 60
            C 31 55, 28 52, 24 52
            Z"
-        stroke="#ff56bb"
+        stroke="#C8431D"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       {/* Perforated divider down the middle (small dashes) */}
-      <g stroke="#ff56bb" strokeWidth="1.4" strokeLinecap="round" opacity="0.45">
+      <g stroke="#C8431D" strokeWidth="1.4" strokeLinecap="round" opacity="0.45">
         <path d="M 60 44 L 60 47" />
         <path d="M 60 50 L 60 53" />
         <path d="M 60 67 L 60 70" />
@@ -58,7 +59,7 @@ export default function EmptyStateNoTickets() {
         strokeLinejoin="round"
       />
       {/* Sparkle near upper right */}
-      <g stroke="#ff56bb" strokeWidth="1.4" strokeLinecap="round">
+      <g stroke="#C8431D" strokeWidth="1.4" strokeLinecap="round">
         <path d="M 102 26 L 102 32" />
         <path d="M 99 29 L 105 29" />
       </g>

@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (4 hex/rgba + 0 tailwind-rose swept)
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -376,7 +377,7 @@ export default function V2ManagerToolbar({
                     className="flex items-center justify-between gap-2 px-3 py-2 text-[12px]"
                     style={{
                       borderTop: "1px solid var(--zoca-border)",
-                      background: isCurrent ? "rgba(255,134,225,0.06)" : "transparent",
+                      background: isCurrent ? "rgba(124, 45, 18, 0.06)" : "transparent",
                     }}
                   >
                     {isRenaming ? (
@@ -492,9 +493,9 @@ export default function V2ManagerToolbar({
                     type="submit"
                     className="rounded-full px-3 py-0.5 text-[11px] font-semibold transition focus:outline-none"
                     style={{
-                      background: "rgba(255,134,225,0.10)",
+                      background: "rgba(124, 45, 18, 0.10)",
                       color: "var(--zoca-pink)",
-                      border: "1px solid rgba(255,86,187,0.22)",
+                      border: "1px solid rgba(200, 67, 29, 0.22)",
                     }}
                   >
                     Save
@@ -515,7 +516,7 @@ export default function V2ManagerToolbar({
                   style={{ color: "var(--zoca-pink)" }}
                   aria-label="Save current view"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(255,134,225,0.05)";
+                    e.currentTarget.style.background = "rgba(124, 45, 18, 0.05)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";

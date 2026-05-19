@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (7 hex/rgba + 0 tailwind-rose swept)
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ScoredCustomerV2 } from "@/lib/types";
@@ -792,8 +793,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 alignItems: "center",
                 gap: "8px",
                 padding: "8px 14px",
-                background: "rgba(255,134,225,0.12)",
-                border: "1px solid rgba(255,86,187,0.22)",
+                background: "rgba(124, 45, 18, 0.12)",
+                border: "1px solid rgba(200, 67, 29, 0.22)",
                 color: "#c026d3",
                 borderRadius: "9999px",
                 fontSize: "12px",
@@ -829,8 +830,8 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
                 alignItems: "center",
                 gap: "8px",
                 padding: "8px 14px",
-                background: "rgba(255,134,225,0.12)",
-                border: "1px solid rgba(255,86,187,0.22)",
+                background: "rgba(124, 45, 18, 0.12)",
+                border: "1px solid rgba(200, 67, 29, 0.22)",
                 color: "#c026d3",
                 borderRadius: "9999px",
                 fontSize: "12px",
@@ -1022,7 +1023,7 @@ function FilterChip({
           ? {
               borderColor: "var(--zoca-pink)",
               background:
-                "linear-gradient(180deg, rgba(255,86,187,0.06), rgba(255,168,205,0.08))",
+                "linear-gradient(180deg, rgba(200, 67, 29, 0.06), rgba(252, 228, 214, 0.08))",
               color: "var(--zoca-text)",
             }
           : {
@@ -1037,7 +1038,7 @@ function FilterChip({
         className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
         style={
           active
-            ? { background: "rgba(255,86,187,0.14)", color: "#c026d3" }
+            ? { background: "rgba(200, 67, 29, 0.14)", color: "#c026d3" }
             : { background: "var(--zoca-bg-soft)", color: "var(--zoca-text-2)" }
         }
       >

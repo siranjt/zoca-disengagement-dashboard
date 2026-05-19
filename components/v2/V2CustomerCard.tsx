@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 1 tailwind-rose swept)
 // Phase 33.brand-watchfire-pink-sweep-customercard (6 hardcoded + 21 tailwind-rose swept).
 
 import * as React from "react";
@@ -1659,7 +1660,7 @@ function ActionChip({
       ? "border-emerald-400/40 bg-emerald-500/18 text-emerald-700 hover:bg-emerald-500/25"
       : tone === "amber"
         ? "border-amber-400/40 bg-amber-500/18 text-amber-700 hover:bg-amber-500/25"
-        : "border-zoca-pink/40 bg-zoca-pink/18 text-zoca-pink-bright hover:bg-rose-500/25";
+        : "border-zoca-pink/40 bg-zoca-pink/18 text-zoca-pink-bright hover:bg-zoca-pink/25";
   return (
     <button
       type="button"

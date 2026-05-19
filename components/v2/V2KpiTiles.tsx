@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (4 hex/rgba + 0 tailwind-rose swept)
 
 // Phase 33.D — KPI tiles with proper filter wiring.
 //
@@ -50,8 +51,8 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
   },
   pink: {
     border: "var(--zoca-pink)",
-    shadow: "0 0 0 1px rgba(255,86,187,0.35), 0 0 24px rgba(255,168,205,0.35)",
-    gradient: "linear-gradient(180deg, rgba(255,86,187,0.04), rgba(255,168,205,0.06)), #fff",
+    shadow: "0 0 0 1px rgba(200, 67, 29, 0.35), 0 0 24px rgba(252, 228, 214, 0.35)",
+    gradient: "linear-gradient(180deg, rgba(200, 67, 29, 0.04), rgba(252, 228, 214, 0.06)), #fff",
     labelColor: "#c026d3",
   },
   amber: {

@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 import {
@@ -50,7 +51,7 @@ const DOT_COLOR: Record<ToastType, string> = {
   success: "#10b981",
   info: "#0ea5e9",
   warning: "#f59e0b",
-  error: "#ff56bb",
+  error: "#C8431D",
 };
 
 const EXIT_MS = 220;
@@ -166,7 +167,7 @@ function ToastCard({
         borderRadius: 12,
         boxShadow: toast.exiting
           ? "0 4px 12px rgba(11,5,29,0.06)"
-          : "0 6px 24px rgba(11,5,29,0.10), 0 0 18px rgba(255,168,205,0.18)",
+          : "0 6px 24px rgba(11,5,29,0.10), 0 0 18px rgba(252, 228, 214, 0.18)",
         padding: "12px 14px",
         display: "flex",
         alignItems: "flex-start",

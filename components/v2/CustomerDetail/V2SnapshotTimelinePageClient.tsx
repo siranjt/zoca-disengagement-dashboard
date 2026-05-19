@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 6 tailwind-rose swept)
 
 // ---------------------------------------------------------------------------
 // Phase 30 — Standalone full-page snapshot timeline.
@@ -51,7 +52,7 @@ type Props = {
 };
 
 const STOPLIGHT_TONE: Record<Stoplight, string> = {
-  RED: "bg-rose-500/18 text-rose-700 border-rose-300/60",
+  RED: "bg-zoca-pink/18 text-zoca-pink-bright border-zoca-pink/60",
   YELLOW: "bg-amber-500/18 text-amber-700 border-amber-300/60",
   GREEN: "bg-emerald-500/18 text-emerald-700 border-emerald-300/60",
 };
@@ -220,7 +221,7 @@ function V2SnapshotTimelinePageClient({ entityId }: Props) {
         />
       )}
       {custError && (
-        <div className="mt-4 rounded-zoca border border-rose-300/60 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+        <div className="mt-4 rounded-zoca border border-zoca-pink/60 bg-zoca-pink-soft px-3 py-2 text-[12px] text-zoca-pink-bright">
           Customer details unavailable · {custError}
         </div>
       )}

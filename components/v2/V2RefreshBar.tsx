@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (3 hex/rgba + 0 tailwind-rose swept)
 import { useState } from "react";
 import { useToast } from "./Toast";
 import { AnimatedNumber } from "./AnimatedNumber";
@@ -80,13 +81,13 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
         style={{
           background: "transparent",
           color: "var(--zoca-pink)",
-          border: "1px solid rgba(255,86,187,0.32)",
+          border: "1px solid rgba(200, 67, 29, 0.32)",
           letterSpacing: "-0.005em",
         }}
         onMouseEnter={(e) => {
           if (!refreshing) {
-            e.currentTarget.style.boxShadow = "0 0 18px rgba(255,168,205,0.4)";
-            e.currentTarget.style.background = "rgba(255,134,225,0.04)";
+            e.currentTarget.style.boxShadow = "0 0 18px rgba(252, 228, 214, 0.4)";
+            e.currentTarget.style.background = "rgba(124, 45, 18, 0.04)";
           }
         }}
         onMouseLeave={(e) => {

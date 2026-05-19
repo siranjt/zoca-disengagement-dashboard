@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (7 hex/rgba + 0 tailwind-rose swept)
 
 import { useEffect, useMemo, useState } from "react";
 import type { SnapshotV2, ScoredCustomerV2 } from "@/lib/types";
@@ -184,7 +185,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
       {text.slice(0, idx)}
       <mark
         className="rounded px-0.5"
-        style={{ background: "rgba(255,86,187,0.18)", color: "var(--zoca-text)" }}
+        style={{ background: "rgba(200, 67, 29, 0.18)", color: "var(--zoca-text)" }}
       >
         {text.slice(idx, idx + q.length)}
       </mark>
@@ -473,7 +474,7 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                     ? {
                         borderColor: "var(--zoca-pink)",
                         background:
-                          "linear-gradient(180deg, rgba(255,86,187,0.06), rgba(255,168,205,0.08))",
+                          "linear-gradient(180deg, rgba(200, 67, 29, 0.06), rgba(252, 228, 214, 0.08))",
                         color: "var(--zoca-text)",
                       }
                     : {
@@ -766,9 +767,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                     <span
                       className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold"
                       style={{
-                        background: "rgba(255,134,225,0.12)",
+                        background: "rgba(124, 45, 18, 0.12)",
                         color: "#c026d3",
-                        border: "1px solid rgba(255,86,187,0.22)",
+                        border: "1px solid rgba(200, 67, 29, 0.22)",
                       }}
                     >
                       {r.action}
@@ -832,9 +833,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                     <span
                       className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-semibold"
                       style={{
-                        background: "rgba(255,134,225,0.12)",
+                        background: "rgba(124, 45, 18, 0.12)",
                         color: "#c026d3",
-                        border: "1px solid rgba(255,86,187,0.22)",
+                        border: "1px solid rgba(200, 67, 29, 0.22)",
                       }}
                     >
                       {"⛑"} {r.flagged}

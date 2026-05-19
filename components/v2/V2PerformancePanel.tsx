@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 11 tailwind-rose swept)
 
 import type { PerformanceMetrics } from "@/lib/types";
 
@@ -55,7 +56,7 @@ function PctBadge({
   const isGood = lowerIsBetter ? !positive : positive;
   const tone = isGood
     ? "bg-emerald-500/18 text-emerald-700"
-    : "bg-rose-500/18 text-rose-700";
+    : "bg-zoca-pink/18 text-zoca-pink-bright";
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded-zoca-pill px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
@@ -188,7 +189,7 @@ function computeHeadline(p: PerformanceMetrics, tier: Tier): HeadlineShape {
 function HeadlineBar({ headline }: { headline: HeadlineShape }) {
   const toneClass =
     headline.tone === "rose"
-      ? "bg-rose-500/12 text-rose-700 border-rose-500/25"
+      ? "bg-zoca-pink/12 text-zoca-pink-bright border-zoca-pink/25"
       : headline.tone === "emerald"
         ? "bg-emerald-500/12 text-emerald-700 border-emerald-500/25"
         : "bg-zoca-bg-tint text-zoca-text-2 border-zoca-border";
@@ -269,7 +270,7 @@ export default function V2PerformancePanel({ performance, tier }: Props) {
         </h4>
         {p.flag && (
           <span
-            className="rounded-zoca-pill bg-rose-500/18 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+            className="rounded-zoca-pill bg-zoca-pink/18 px-2 py-0.5 text-[10px] font-semibold text-zoca-pink-bright"
             title={p.flag_reasons.join(" · ") || "Performance trajectory flagged"}
           >
             ⚑ Trajectory concern
@@ -350,7 +351,7 @@ export default function V2PerformancePanel({ performance, tier }: Props) {
             <span className="text-[10px] text-zoca-text-2 tabular-nums">
               <span className="text-emerald-700">{p.rankings_top_3 ?? 0}</span> /{" "}
               <span className="text-amber-700">{p.rankings_top_10 ?? 0}</span> /{" "}
-              <span className="text-rose-700">{p.rankings_outside_10 ?? 0}</span>
+              <span className="text-zoca-pink-bright">{p.rankings_outside_10 ?? 0}</span>
             </span>
           </div>
           <Subtitle>Local search terms you're ranking for</Subtitle>
@@ -382,7 +383,7 @@ export default function V2PerformancePanel({ performance, tier }: Props) {
             {p.weeks_with_zero_reviews !== null && p.weeks_with_zero_reviews > 0 && (
               <span
                 className={`text-[10px] tabular-nums ${
-                  p.weeks_with_zero_reviews >= 4 ? "text-rose-700" : "text-zoca-text-2"
+                  p.weeks_with_zero_reviews >= 4 ? "text-zoca-pink-bright" : "text-zoca-text-2"
                 }`}
                 title={`${p.weeks_with_zero_reviews} weeks with no reviews collected`}
               >
@@ -440,7 +441,7 @@ export default function V2PerformancePanel({ performance, tier }: Props) {
 
       {p.flag && p.flag_reasons.length > 0 && (
         <details className="mt-3 group">
-          <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-rose-700/80 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40">
+          <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-zoca-pink-bright/80 hover:text-zoca-pink-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-zoca-pink-cta/40">
             Why flagged? ({p.flag_reasons.length})
           </summary>
           <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[11px] text-zoca-text-2">

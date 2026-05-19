@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -11,7 +12,7 @@ type Props = {
 
 const PARTICLE_COUNT = 40;
 const DURATION_MS = 1500;
-const COLORS = ["#ff56bb", "#146ef5", "#10b981", "#f59e0b"];
+const COLORS = ["#C8431D", "#146ef5", "#10b981", "#f59e0b"];
 
 type Particle = {
   id: number;
@@ -42,7 +43,7 @@ export default function V2Confetti({ x, y, onDone }: Props) {
     if (reduced) return [];
     return Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
       id: i,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)] ?? "#ff56bb",
+      color: COLORS[Math.floor(Math.random() * COLORS.length)] ?? "#C8431D",
       vx: randBetween(-150, 150),
       vy: randBetween(-400, -200),
       rotation: Math.random() * 360,

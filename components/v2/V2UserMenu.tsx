@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (1 hex/rgba + 0 tailwind-rose swept)
 
 // Phase 33.A → 33.B → 33.D — Header user menu (avatar dropdown).
 //
@@ -39,7 +40,7 @@ function badgeForRole(role: UserRole | null | undefined): {
     return {
       label: "ADMIN",
       bg: "rgba(255, 79, 168, 0.18)",
-      fg: "#ff4fa8",
+      fg: "#7C2D12",
     };
   }
   if (role === "manager") {

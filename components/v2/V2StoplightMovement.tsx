@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (3 hex/rgba + 0 tailwind-rose swept)
 
 import { useEffect, useMemo, useState } from "react";
 import { POD_MAP } from "@/lib/config";
@@ -59,9 +60,9 @@ function StoplightChip({ tier }: { tier: Stoplight }) {
   // Phase 17.E — light-theme stoplight chips matching .zoca-chip-* family.
   const styles: Record<Stoplight, React.CSSProperties> = {
     RED: {
-      background: "rgba(255,134,225,0.12)",
+      background: "rgba(124, 45, 18, 0.12)",
       color: "#c026d3",
-      border: "1px solid rgba(255,86,187,0.22)",
+      border: "1px solid rgba(200, 67, 29, 0.22)",
     },
     YELLOW: {
       background: "rgba(245,158,11,0.10)",
@@ -131,7 +132,7 @@ function MovementGroup({
               <li
                 key={r.entity_id}
                 className={`flex items-center gap-2 py-1.5 ${isTop ? "rounded px-2 -mx-2" : ""}`}
-                style={isTop ? { background: "rgba(255,86,187,0.06)" } : undefined}
+                style={isTop ? { background: "rgba(200, 67, 29, 0.06)" } : undefined}
               >
                 {isTop && (
                   <span

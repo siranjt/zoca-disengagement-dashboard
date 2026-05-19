@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 3 tailwind-rose swept)
 
 import { useEffect, useState } from "react";
 import V2Sparkline from "./V2Sparkline";
@@ -198,7 +199,7 @@ function DeltaBadge({
   const isGood = lowerIsBetter ? !positive : positive;
   const tone = isGood
     ? "bg-emerald-500/18 text-emerald-700 ring-1 ring-emerald-500/25"
-    : "bg-rose-500/18 text-rose-700 ring-1 ring-rose-500/25";
+    : "bg-zoca-pink/18 text-zoca-pink-bright ring-1 ring-zoca-pink/25";
   const arrow = positive ? "▲" : "▼";
   const abs = Math.abs(delta);
   const display = unit === "$" ? formatMoney(abs) : `${abs}`;

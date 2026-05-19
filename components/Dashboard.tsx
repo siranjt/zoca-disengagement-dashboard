@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (5 hex/rgba + 0 tailwind-rose swept)
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -92,7 +93,7 @@ function fmtDaysSince(d: number): string {
 }
 
 function scoreColor(s: number): string {
-  if (s >= 65) return "#ff4fa8";
+  if (s >= 65) return "#7C2D12";
   if (s >= 35) return "#ffb74d";
   if (s >= 15) return "#7868f4";
   return "#76FF03";
@@ -106,7 +107,7 @@ function pctOf(n: number, total: number): string {
 const SCORE_BUCKET_LABELS = ["0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100"] as const;
 function scoreBucketColor(i: number): string {
   const mid = i * 10 + 5;
-  if (mid >= 65) return "#ff4fa8";
+  if (mid >= 65) return "#7C2D12";
   if (mid >= 35) return "#ffb74d";
   if (mid >= 15) return "#7868f4";
   return "#76FF03";
@@ -790,7 +791,7 @@ function Overview({
                   {
                     label: `Last ${channelWindow}d`,
                     data: ["chat", "phone", "video", "sms", "email"].map((c) => (channelWindow === 30 ? viewSnap.channelCounts.d30[c] : viewSnap.channelCounts.d90[c]) || 0),
-                    backgroundColor: channelWindow === 30 ? "#ff86e1" : "#7868f4",
+                    backgroundColor: channelWindow === 30 ? "#7C2D12" : "#7868f4",
                     borderRadius: 6,
                   },
                 ],
@@ -1094,7 +1095,7 @@ function AmExposureView({
                   <Td num>{pct.toFixed(0)}%</Td>
                   <Td>
                     <div className="h-2 w-48 rounded-full bg-zoca-bg-3/60">
-                      <div className="h-2 rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: "#ff4fa8" }} />
+                      <div className="h-2 rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: "#7C2D12" }} />
                     </div>
                   </Td>
                 </tr>
@@ -1330,7 +1331,7 @@ function SigBar({ name, value }: { name: string; value: number }) {
           className="h-2 rounded-full"
           style={{
             width: `${Math.max(0, Math.min(100, value))}%`,
-            background: value >= 65 ? "#ff4fa8" : value >= 35 ? "#ffb74d" : "#7868f4",
+            background: value >= 65 ? "#7C2D12" : value >= 35 ? "#ffb74d" : "#7868f4",
           }}
         />
       </div>

@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 
@@ -17,9 +18,9 @@ type Props = {
  * / nothing snoozed / etc.).
  */
 export function EmptyState({ variant = "filter-empty", title, subtitle }: Props) {
-  const accent = variant === "all-clear" ? "#10b981" : "#ff56bb";
+  const accent = variant === "all-clear" ? "#10b981" : "#C8431D";
   const bg =
-    variant === "all-clear" ? "rgba(16,185,129,0.10)" : "rgba(255,86,187,0.10)";
+    variant === "all-clear" ? "rgba(16,185,129,0.10)" : "rgba(200, 67, 29, 0.10)";
   return (
     <div
       className="zoca-fade-in"

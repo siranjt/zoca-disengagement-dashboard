@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (1 hex/rgba + 5 tailwind-rose swept)
 
 // ---------------------------------------------------------------------------
 // Phase 30 — Snapshot timeline chart.
@@ -382,14 +383,14 @@ function V2SnapshotTimeline({
   if (error) {
     return (
       <div
-        className="flex items-center justify-between rounded-zoca border border-rose-300/60 bg-rose-50 px-3 py-2 text-[12px] text-rose-700"
+        className="flex items-center justify-between rounded-zoca border border-zoca-pink/60 bg-zoca-pink-soft px-3 py-2 text-[12px] text-zoca-pink-bright"
         style={{ minHeight: heightPx }}
       >
         <span>Signal lost · {error}</span>
         <button
           type="button"
           onClick={retry}
-          className="ml-3 rounded-zoca-pill border border-rose-300 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-100"
+          className="ml-3 rounded-zoca-pill border border-rose-300 bg-white px-2 py-0.5 text-[11px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
         >
           Retry
         </button>
@@ -418,7 +419,7 @@ function V2SnapshotTimeline({
         label: "Composite",
         data: values,
         borderColor: CHART_COLORS.red,
-        backgroundColor: "rgba(255,86,187,0.10)",
+        backgroundColor: "rgba(200, 67, 29, 0.10)",
         fill: false,
         tension: 0.25,
         borderWidth: 2,

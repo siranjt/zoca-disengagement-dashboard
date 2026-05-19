@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (7 hex/rgba + 0 tailwind-rose swept)
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -265,9 +266,9 @@ export default function V2PodSummaryGrid({
                   ? {
                       border: "1px solid var(--zoca-pink)",
                       background:
-                        "linear-gradient(180deg, rgba(255,86,187,0.04), rgba(255,168,205,0.06)), #fff",
+                        "linear-gradient(180deg, rgba(200, 67, 29, 0.04), rgba(252, 228, 214, 0.06)), #fff",
                       boxShadow:
-                        "0 0 0 1px rgba(255,86,187,0.35), 0 0 24px rgba(255,168,205,0.35)",
+                        "0 0 0 1px rgba(200, 67, 29, 0.35), 0 0 24px rgba(252, 228, 214, 0.35)",
                     }
                   : {
                       border: "1px solid var(--zoca-border)",
@@ -280,7 +281,7 @@ export default function V2PodSummaryGrid({
                 e.currentTarget.style.transform = "translateY(-2px)";
                 e.currentTarget.style.borderColor = "rgba(20,110,245,0.18)";
                 e.currentTarget.style.boxShadow =
-                  "0 12px 28px -8px rgba(11,5,29,0.1), 0 0 0 1px rgba(20,110,245,0.18), 0 0 32px rgba(255,168,205,0.32)";
+                  "0 12px 28px -8px rgba(11,5,29,0.1), 0 0 0 1px rgba(20,110,245,0.18), 0 0 32px rgba(252, 228, 214, 0.32)";
               }}
               onMouseLeave={(e) => {
                 if (active) return;
@@ -454,9 +455,9 @@ function PodDeltaPill({ delta }: { delta: number }) {
   const worse = delta > 0;
   const style: React.CSSProperties = worse
     ? {
-        background: "rgba(255,134,225,0.12)",
+        background: "rgba(124, 45, 18, 0.12)",
         color: "#c026d3",
-        border: "1px solid rgba(255,86,187,0.22)",
+        border: "1px solid rgba(200, 67, 29, 0.22)",
       }
     : {
         background: "rgba(16,185,129,0.08)",

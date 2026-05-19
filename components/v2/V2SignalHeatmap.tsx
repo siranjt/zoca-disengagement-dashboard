@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (10 hex/rgba + 0 tailwind-rose swept)
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -145,11 +146,11 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
         <div className="flex items-center gap-1.5 text-[10px] text-zoca-text-2">
           <span>0</span>
           <div className="flex h-2 w-24 overflow-hidden rounded-full">
-            <div className="flex-1" style={{ background: "rgba(255,134,225,0.10)" }} />
-            <div className="flex-1" style={{ background: "rgba(255,134,225,0.25)" }} />
-            <div className="flex-1" style={{ background: "rgba(255,86,187,0.45)" }} />
-            <div className="flex-1" style={{ background: "rgba(255,86,187,0.65)" }} />
-            <div className="flex-1" style={{ background: "rgba(255,86,187,0.85)" }} />
+            <div className="flex-1" style={{ background: "rgba(124, 45, 18, 0.10)" }} />
+            <div className="flex-1" style={{ background: "rgba(124, 45, 18, 0.25)" }} />
+            <div className="flex-1" style={{ background: "rgba(200, 67, 29, 0.45)" }} />
+            <div className="flex-1" style={{ background: "rgba(200, 67, 29, 0.65)" }} />
+            <div className="flex-1" style={{ background: "rgba(200, 67, 29, 0.85)" }} />
           </div>
           <span>{max || "—"}</span>
         </div>
@@ -221,14 +222,14 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
                       v === 0
                         ? "var(--zoca-bg-soft)"
                         : intensity <= 0.2
-                          ? "rgba(255,134,225,0.10)"
+                          ? "rgba(124, 45, 18, 0.10)"
                           : intensity <= 0.4
-                            ? "rgba(255,134,225,0.25)"
+                            ? "rgba(124, 45, 18, 0.25)"
                             : intensity <= 0.6
-                              ? "rgba(255,86,187,0.45)"
+                              ? "rgba(200, 67, 29, 0.45)"
                               : intensity <= 0.8
-                                ? "rgba(255,86,187,0.65)"
-                                : "rgba(255,86,187,0.85)";
+                                ? "rgba(200, 67, 29, 0.65)"
+                                : "rgba(200, 67, 29, 0.85)";
                     const cellTextColor =
                       v === 0
                         ? "var(--zoca-text-3)"

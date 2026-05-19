@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 5 tailwind-rose swept)
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -23,7 +24,7 @@ const CHANNEL_META: Record<Channel, { label: string; icon: string; tone: string 
   email: { label: "Email", icon: "✉", tone: "bg-emerald-500/14 text-emerald-700 border-emerald-300/50" },
   phone: { label: "Phone", icon: "📞", tone: "bg-amber-500/14 text-amber-700 border-amber-300/50" },
   video: { label: "Video", icon: "📹", tone: "bg-violet-500/14 text-violet-700 border-violet-300/50" },
-  sms: { label: "SMS", icon: "📱", tone: "bg-pink-500/14 text-pink-700 border-pink-300/50" },
+  sms: { label: "SMS", icon: "📱", tone: "bg-zoca-pink/14 text-zoca-pink-bright border-pink-300/50" },
 };
 
 const CHANNELS: Channel[] = ["chat", "email", "phone", "video", "sms"];
@@ -144,7 +145,7 @@ function V2CommsThreadPanel({ entityId }: Props) {
       )}
 
       {error && !loading && (
-        <div className="rounded-zoca border border-rose-300/50 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+        <div className="rounded-zoca border border-zoca-pink/50 bg-zoca-pink-soft px-3 py-2 text-[12px] text-zoca-pink-bright">
           ⚠ {error}
         </div>
       )}

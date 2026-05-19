@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (2 hex/rgba + 0 tailwind-rose swept)
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -222,8 +223,8 @@ export default function V2OnboardingTour({ forceOpen, onClose }: Props) {
             width: targetRect.width + PAD * 2,
             height: targetRect.height + PAD * 2,
             borderRadius: "12px",
-            border: "2px solid rgba(255,86,187,0.85)",
-            boxShadow: "0 0 0 4px rgba(255,86,187,0.18)",
+            border: "2px solid rgba(200, 67, 29, 0.85)",
+            boxShadow: "0 0 0 4px rgba(200, 67, 29, 0.18)",
             pointerEvents: "none",
             zIndex: 9501,
           }}

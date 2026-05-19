@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (5 hex/rgba + 0 tailwind-rose swept)
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import V2Header from "./V2Header";
@@ -878,8 +879,8 @@ function V2ManagerDashboardInner() {
             role="alert"
             className="rounded-2xl px-5 py-4 text-sm"
             style={{
-              border: "1px solid rgba(255,86,187,0.32)",
-              background: "rgba(255,134,225,0.06)",
+              border: "1px solid rgba(200, 67, 29, 0.32)",
+              background: "rgba(124, 45, 18, 0.06)",
               color: "var(--zoca-pink)",
             }}
           >
@@ -891,7 +892,7 @@ function V2ManagerDashboardInner() {
               style={{
                 background: "transparent",
                 color: "var(--zoca-pink)",
-                border: "1px solid rgba(255,86,187,0.32)",
+                border: "1px solid rgba(200, 67, 29, 0.32)",
               }}
             >
               Reset to today
@@ -1429,9 +1430,9 @@ function DeltaBadge({
           border: "1px solid rgba(16,185,129,0.22)",
         }
       : {
-          background: "rgba(255,134,225,0.12)",
+          background: "rgba(124, 45, 18, 0.12)",
           color: "#c026d3",
-          border: "1px solid rgba(255,86,187,0.22)",
+          border: "1px solid rgba(200, 67, 29, 0.22)",
         };
   }
   const arrow = positive ? "▲" : "▼";

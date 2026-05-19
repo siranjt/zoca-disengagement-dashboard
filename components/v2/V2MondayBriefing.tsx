@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 4 tailwind-rose swept)
 
 import { useEffect, useMemo, useState } from "react";
 import ZocaLogo from "@/components/ZocaLogo";
@@ -46,7 +47,7 @@ function formatMoney(n: number): string {
 
 function StoplightChip({ tier }: { tier: "RED" | "YELLOW" | "GREEN" }) {
   const map = {
-    RED: "bg-rose-500/15 text-rose-300",
+    RED: "bg-zoca-pink/15 text-rose-300",
     YELLOW: "bg-amber-500/15 text-amber-300",
     GREEN: "bg-emerald-500/15 text-emerald-300",
   };
@@ -172,7 +173,7 @@ export default function V2MondayBriefing() {
         )}
 
         {state.status === "error" && (
-          <div role="alert" className="rounded-zoca border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
+          <div role="alert" className="rounded-zoca border border-zoca-pink/30 bg-zoca-pink/10 px-5 py-4 text-sm text-zoca-pink-bright">
             Signal lost — couldn't load brief: {state.message}
           </div>
         )}

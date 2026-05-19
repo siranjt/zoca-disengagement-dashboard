@@ -1,4 +1,5 @@
 "use client";
+// Phase 33.brand-watchfire-pink-sweep-v2 (0 hex/rgba + 6 tailwind-rose swept)
 
 import { useEffect, useState } from "react";
 import type { ScoredCustomerV2, AmActionRow } from "@/lib/types";
@@ -107,14 +108,14 @@ function V2CustomerDetailClient({ entityId }: Props) {
       />
 
       {error && !loading && (
-        <div className="mt-6 rounded-zoca-lg border border-rose-300/60 bg-rose-50 p-6 text-center">
-          <div className="text-[14px] font-semibold text-rose-700">
+        <div className="mt-6 rounded-zoca-lg border border-zoca-pink/60 bg-zoca-pink-soft p-6 text-center">
+          <div className="text-[14px] font-semibold text-zoca-pink-bright">
             Couldn’t load customer detail
           </div>
-          <div className="mt-1 text-[12px] text-rose-700/80">{error}</div>
+          <div className="mt-1 text-[12px] text-zoca-pink-bright/80">{error}</div>
           <a
             href="/v2"
-            className="mt-3 inline-flex items-center gap-1 rounded-zoca-pill border border-rose-300 bg-white px-3 py-1 text-[12px] font-medium text-rose-700 hover:bg-rose-100"
+            className="mt-3 inline-flex items-center gap-1 rounded-zoca-pill border border-rose-300 bg-white px-3 py-1 text-[12px] font-medium text-zoca-pink-bright hover:bg-zoca-pink-soft"
           >
             ← Back to dashboard
           </a>
