@@ -350,7 +350,8 @@ function V2CustomerCardInner({
         return `${customer.company} — ${_tl}${recentlyContacted ? " (contacted recently)" : ""}${isSnoozed ? " (snoozed)" : ""}`;
       })()}
       data-entity-id={customer.entity_id}
-      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}`}
+      // Phase 33.brand-PR4b — card border pink-ring pulse for RED-tier cards only.
+      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}${s.stoplight === "RED" && !isSnoozed ? " b-card-pulse" : ""}`}
       style={{
         borderColor: tierStyle.borderColor,
         background: tierStyle.background,
@@ -590,7 +591,8 @@ function V2CustomerCardInner({
           {(customer as any).metabase_health?.recommended_action && (
             <div
               data-recommended-action="1"
-              className="mt-2 rounded-zoca border border-zoca-border bg-zoca-bg-tint/40 px-3 py-1.5 text-[11px] leading-snug text-zoca-text-2"
+              // Phase 33.brand-PR4b — escalation blink for RED-tier customers.
+              className={`mt-2 rounded-zoca border border-zoca-border bg-zoca-bg-tint/40 px-3 py-1.5 text-[11px] leading-snug text-zoca-text-2${s.stoplight === "RED" && !isSnoozed ? " b-escalation-blink" : ""}`}
               title="Recommended next action from Metabase Customer Health"
             >
               <span className="font-semibold text-zoca-text">→ </span>

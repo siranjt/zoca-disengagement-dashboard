@@ -145,7 +145,8 @@ export function V2Header(props: Props) {
         )}
 
         <div className="v2-header-status flex items-center gap-2 text-[11px] text-zoca-text-2" style={{ transition: "font-size 0.2s ease" }}>
-          <span className="zoca-pulse-dot-green" />
+          {/* Phase 33.brand-PR4b — outward ping ring around the live-status dot. */}
+          <span className="b-status-ping zoca-pulse-dot-green" />
           <span style={{ fontVariantNumeric: "tabular-nums" }}>
             Live · {relativeAge(generatedAt)}
           </span>
@@ -175,7 +176,8 @@ function NavTab({
     <a
       href={href}
       aria-current={active ? "page" : undefined}
-      className="px-3 py-1 rounded-md text-[11px] transition"
+      // Phase 33.brand-PR4b — soft pulse on the active tab.
+      className={`px-3 py-1 rounded-md text-[11px] transition${active ? " b-tab-pulse" : ""}`}
       style={
         active
           ? {

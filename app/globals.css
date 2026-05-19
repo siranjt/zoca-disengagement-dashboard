@@ -719,3 +719,107 @@ button:active:not(.no-press),
   }
   /* one-shot entry fades are intentionally kept — they aid orientation */
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-PR4b — full continuous-motion layer for the
+   customer feed. Shipped per user override of fatigue concern.
+   All loops gated by prefers-reduced-motion guard at the bottom.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Card border pink-ring pulse (RED-tier cards only) */
+.b-card-pulse {
+  animation: b-card-pulse 3s ease-in-out infinite;
+}
+@keyframes b-card-pulse {
+  0%, 100% {
+    box-shadow:
+      0 1px 3px rgba(11, 5, 29, 0.04),
+      0 0 0 0 rgba(255, 86, 187, 0.45);
+  }
+  60% {
+    box-shadow:
+      0 1px 3px rgba(11, 5, 29, 0.04),
+      0 0 0 10px rgba(255, 86, 187, 0);
+  }
+}
+
+/* 2. Live-status dot ping ring (one in the header) */
+.b-status-ping {
+  position: relative;
+  display: inline-block;
+}
+.b-status-ping::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--zoca-green);
+  animation: b-status-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+@keyframes b-status-ping {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0;    }
+}
+
+/* 3. Active view-toggle tab pulse */
+.b-tab-pulse {
+  animation: b-tab-pulse 2.4s ease-in-out infinite;
+}
+@keyframes b-tab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(11, 5, 29, 0.45); }
+  60%      { box-shadow: 0 0 0 7px rgba(11, 5, 29, 0);    }
+}
+
+/* 4. Spike dot radius pulse (sparkline last point) */
+.b-spike-pulse {
+  animation: b-spike-pulse 1.5s ease-in-out infinite;
+  animation-delay: 1.6s;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes b-spike-pulse {
+  0%, 100% { transform: scale(1);   }
+  50%      { transform: scale(1.5); }
+}
+
+/* 5. Spike halo ripple (sparkline last point) */
+.b-spike-halo {
+  animation: b-spike-halo 1.5s ease-out infinite;
+  animation-delay: 1.6s;
+}
+@keyframes b-spike-halo {
+  0%   { r: 1; opacity: 0.55; }
+  100% { r: 8; opacity: 0;    }
+}
+
+/* 6. Area-fill breathe (kicks in after PR 4's entry fade settles) */
+.b-area-breathe {
+  animation: b-area-breathe 3s ease-in-out infinite;
+  animation-delay: 1.6s;
+}
+@keyframes b-area-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.78; }
+}
+
+/* 7. IMMEDIATE ESCALATION blink (recommended-action pill on RED cards) */
+.b-escalation-blink {
+  animation: b-escalation-blink 1.6s ease-in-out infinite;
+}
+@keyframes b-escalation-blink {
+  0%, 100% { opacity: 1;   }
+  50%      { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .b-card-pulse,
+  .b-status-ping::after,
+  .b-tab-pulse,
+  .b-spike-pulse,
+  .b-spike-halo,
+  .b-area-breathe,
+  .b-escalation-blink {
+    animation: none !important;
+  }
+}

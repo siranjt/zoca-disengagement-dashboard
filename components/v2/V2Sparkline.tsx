@@ -124,12 +124,13 @@ export default function V2Sparkline({
           </defs>
         )}
         {fillPath && (
-          // Phase 33.brand-PR4 — area fill fades in 0.9s after the line starts drawing (spec §8 row 2)
+          // Phase 33.brand-PR4 entry fade + PR4b breathe loop (spec §8 row 3)
           <path
             d={fillPath}
             fill={effectiveFill || "transparent"}
+            className={drawn ? "b-area-breathe" : undefined}
             style={{
-              opacity: drawn ? 1 : 0,
+              opacity: drawn ? 0.55 : 0,
               transition: "opacity 0.6s ease 0.9s",
             }}
           />
@@ -160,13 +161,23 @@ export default function V2Sparkline({
             transition: "stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         />
+        {showLastPoint && drawn && (
+          // Phase 33.brand-PR4b — halo ripple expanding outward from the spike (spec §8 row 5)
+          <circle
+            cx={last.x}
+            cy={last.y}
+            fill={color}
+            className="b-spike-halo"
+          />
+        )}
         {showLastPoint && (
-          // Phase 33.brand-PR4 — today's spike dot grows in after the line+fill settle (spec §8 row 4)
+          // Phase 33.brand-PR4 entry grow + PR4b infinite pulse (spec §8 row 4)
           <circle
             cx={last.x}
             cy={last.y}
             r={drawn ? 1.8 : 0}
             fill={color}
+            className={drawn ? "b-spike-pulse" : undefined}
             style={{
               transition: "r 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 1.2s",
             }}
