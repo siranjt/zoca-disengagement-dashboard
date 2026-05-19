@@ -45,14 +45,15 @@ type Props = {
 
 // Stable signal -> color mapping. Picks a brand-aware palette so multi-AM
 // switches keep the same color for the same signal across renders.
+// Phase 33.brand-watchfire — signal colors per spec §7.
 const SIGNAL_COLORS: Record<SignalKey, string> = {
-  client_silent: CHART_COLORS.red,
-  we_silent: CHART_COLORS.rose,
-  resp_drop: CHART_COLORS.amber,
-  vol_collapse: CHART_COLORS.purple,
-  usage_low: CHART_COLORS.blue,
-  billing: CHART_COLORS.midnight,
-  perf_flag: CHART_COLORS.green,
+  client_silent: CHART_COLORS.red,      // Ember
+  we_silent: CHART_COLORS.rose,         // Ember @ 55%
+  resp_drop: CHART_COLORS.amber,        // Brass
+  vol_collapse: CHART_COLORS.blue,      // Sea Lapis
+  usage_low: CHART_COLORS.muted,        // Smoke
+  billing: CHART_COLORS.midnight,       // Char
+  perf_flag: CHART_COLORS.midnight,     // Char (combined w/ billing)
 };
 
 export function SignalMixPie({ customers, amName }: Props) {

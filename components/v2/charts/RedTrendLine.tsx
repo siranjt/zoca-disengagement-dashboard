@@ -155,7 +155,8 @@ export function RedTrendLine({ currentRed, amName }: Props) {
         label: "RED count",
         data: values,
         borderColor: CHART_COLORS.red,
-        backgroundColor: "rgba(255, 86, 187, 0.12)",
+        // Phase 33.brand-watchfire — Light Ember fill @ 70% per spec §7.
+        backgroundColor: "rgba(252, 228, 214, 0.70)",
         fill: true,
         tension: 0.35,
         pointRadius: 3,
@@ -238,7 +239,7 @@ export function RedTrendLine({ currentRed, amName }: Props) {
             fontWeight: 600,
           }}
         >
-          30-day RED trend
+          30-day ember trend
         </div>
         {isPlaceholder && (
           <div

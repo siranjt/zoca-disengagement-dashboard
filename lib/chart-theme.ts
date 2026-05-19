@@ -12,17 +12,20 @@
 // tiles, card stagger, etc.).
 // ---------------------------------------------------------------------------
 
+// Phase 33.brand-watchfire — chart palette flips to Watchfire.
+// Names are kept (red, amber, green, blue, …) to avoid churn at
+// every callsite; semantic meaning shifts per spec §7.
 export const CHART_COLORS = {
-  red: "#ff56bb",
-  amber: "#f59e0b",
-  green: "#10b981",
-  blue: "#3b82f6",
-  purple: "#7c3aed",
-  rose: "#ec4899",
-  midnight: "#0b051d",
-  muted: "#696376",
-  bg: "#fafafa",
-  gridLine: "rgba(0,0,0,0.04)",
+  red: "#C8431D",                  // Ember
+  amber: "#D9A441",                // Brass
+  green: "#4A7C59",                // Patina
+  blue: "#2A4D5C",                 // Sea Lapis
+  purple: "#2A4D5C",               // (legacy alias — folds into Sea Lapis)
+  rose: "rgba(200, 67, 29, 0.55)", // Ember @ 55% (for "we silent")
+  midnight: "#2B1F14",             // Char
+  muted: "#6E5F50",                // Smoke
+  bg: "#F8EFD7",                   // Light Parchment
+  gridLine: "#EBE0C2",             // Buff (faint)
 } as const;
 
 export const CHART_ANIMATION = {

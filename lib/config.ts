@@ -337,11 +337,12 @@ export const HEALTH_TIER_LABELS: Record<HealthTier, string> = {
   "HEALTHY":  "Healthy",
 };
 
+// Phase 33.brand-watchfire — tier colors per spec §6.
 export const HEALTH_TIER_COLORS: Record<HealthTier, string> = {
-  "CRITICAL": "#dc2626",
-  "AT-RISK":  "#ff56bb",
-  "MONITOR":  "#f59e0b",
-  "HEALTHY":  "#10b981",
+  "CRITICAL": "#7C2D12",  // Deep Crimson
+  "AT-RISK":  "#C8431D",  // Ember
+  "MONITOR":  "#D9A441",  // Brass
+  "HEALTHY":  "#4A7C59",  // Patina
 };
 
 /** Normalize the raw tier string from Metabase ("CRITICAL - DEAL BREAKER", etc.) to our HealthTier union. */

@@ -36,14 +36,15 @@ import type { ScoredCustomerV2 } from "@/lib/types";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
+// Phase 33.brand-watchfire — signal colors per spec §7.
 const SIGNAL_COLORS: Record<SignalKey, string> = {
-  client_silent: CHART_COLORS.red,
-  we_silent: CHART_COLORS.purple,
-  resp_drop: CHART_COLORS.rose,
-  vol_collapse: CHART_COLORS.amber,
-  usage_low: CHART_COLORS.blue,
-  billing: CHART_COLORS.green,
-  perf_flag: CHART_COLORS.midnight,
+  client_silent: CHART_COLORS.red,      // Ember
+  we_silent: CHART_COLORS.rose,         // Ember @ 55%
+  resp_drop: CHART_COLORS.amber,        // Brass
+  vol_collapse: CHART_COLORS.blue,      // Sea Lapis
+  usage_low: CHART_COLORS.muted,        // Smoke
+  billing: CHART_COLORS.midnight,       // Char
+  perf_flag: CHART_COLORS.midnight,     // Char (combined w/ billing)
 };
 
 const ALL_SIGNALS: SignalKey[] = [
