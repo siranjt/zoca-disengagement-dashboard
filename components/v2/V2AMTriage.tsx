@@ -405,6 +405,70 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
     return out;
   }, [filtered, signal, podFilter, coachingMetric, coachingRow, customers]);
 
+  // Phase 33.brand-watchfire-PR8-45 — viewList orchestration for exit animations.
+  //
+  // viewList is a superset of finalList that keeps cards around for 500ms
+  // after they leave finalList, so the .beacon-card-exit animation has time
+  // to play. Bulk transitions (> 3 cards removed in one render — typically
+  // filter/sort changes) snap to finalList immediately to avoid mass-exit
+  // noise; targeted removals (snooze, unpin, mark-contacted) animate.
+  type ViewItem = (typeof finalList)[number] & { _exiting?: boolean };
+  const [viewList, setViewList] = useState<ViewItem[]>(() => finalList);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const finalIds = new Set(finalList.map((c) => c.entity_id));
+    const stillVisible = viewList.filter((c) => !c._exiting);
+    const newlyRemoved = stillVisible.filter((c) => !finalIds.has(c.entity_id));
+
+    // Bulk or zero-removal: snap to finalList and clear any pending exits.
+    if (newlyRemoved.length === 0 || newlyRemoved.length > 3) {
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+      setViewList(finalList);
+      return;
+    }
+
+    // Targeted removals: rebuild viewList preserving positions.
+    //   • finalList items → use fresh copy, drop any _exiting flag.
+    //   • items in viewList missing from finalList:
+    //       - already _exiting → leave as is
+    //       - newly removed → mark _exiting: true
+    //   • new arrivals (in finalList, not in viewList) → append at end.
+    const viewIds = new Set(viewList.map((c) => c.entity_id));
+    const next: ViewItem[] = [];
+    for (const c of viewList) {
+      if (finalIds.has(c.entity_id)) {
+        const fresh = finalList.find((x) => x.entity_id === c.entity_id);
+        next.push(fresh ?? c);
+      } else if (c._exiting) {
+        next.push(c);
+      } else {
+        next.push({ ...c, _exiting: true });
+      }
+    }
+    for (const c of finalList) {
+      if (!viewIds.has(c.entity_id)) next.push(c);
+    }
+    setViewList(next);
+
+    // Schedule the actual removal — 500ms matches .beacon-card-exit duration.
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => {
+      setViewList((prev) => prev.filter((c) => finalIds.has(c.entity_id)));
+      exitTimerRef.current = null;
+    }, 500);
+
+    return () => {
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalList]);
+
   // Phase 22.C — FLIP transitions: when finalList re-orders (filter/sort/pin/snooze),
   // each card animates from its previous DOM position to its new one via inverse
   // transform + transition-back. Cards are identified across renders by their
@@ -899,22 +963,26 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       )}
 
       {/* Cards or empty state */}
-      {finalList.length === 0 ? (
+      {viewList.length === 0 ? (
         <V2EmptyState filter={filter} hasQuery={query.trim().length > 0} />
       ) : (
         <div ref={listRef} className="flex flex-col gap-3">
-          {finalList.map((c, i) => {
+          {viewList.map((c, i) => {
             const isFocused = c.entity_id === focusedEntityId;
+            // Phase 33.brand-watchfire-PR8-45 — mid-exit cards get the
+            // collapse animation; suppress focus ring while exiting.
+            const isExiting = !!c._exiting;
+            const wrapperClass = isExiting
+              ? "beacon-card-exit transition"
+              : isFocused
+                ? "rounded-zoca-lg ring-2 ring-zoca-pink-cta/30 transition"
+                : "transition";
             return (
               <div
                 key={c.entity_id}
-                data-focused={isFocused ? "true" : undefined}
-                className={
-                  isFocused
-                    ? "rounded-zoca-lg ring-2 ring-zoca-pink-cta/30 transition"
-                    : "transition"
-                }
-                onClick={() => setFocusedEntityId(c.entity_id)}
+                data-focused={isFocused && !isExiting ? "true" : undefined}
+                className={wrapperClass}
+                onClick={isExiting ? undefined : () => setFocusedEntityId(c.entity_id)}
               >
                 <V2CustomerCard
                   customer={c}

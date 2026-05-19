@@ -1426,6 +1426,8 @@ textarea {
 .beacon-card-exit {
   animation: beacon-card-exit 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   overflow: hidden;
+  /* Phase 33.brand-watchfire-PR8-45 — disable clicks during exit. */
+  pointer-events: none;
 }
 @keyframes beacon-card-exit {
   0%   { opacity: 1; max-height: 600px; margin-bottom: 12px; transform: scaleY(1); }
