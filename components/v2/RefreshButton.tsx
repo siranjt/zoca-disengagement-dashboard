@@ -17,7 +17,8 @@ import { useState, useTransition } from "react";
  * matching V2RefreshBar's "Refresh live data" CTA).
  */
 export function RefreshButton() {
-  const [status, setStatus] = useState<"idle" | "refreshing" | "error">("idle");
+  // Phase 33.brand-watchfire-PR8 — "caught" status added for the 1.5s success beat.
+  const [status, setStatus] = useState<"idle" | "refreshing" | "caught" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -30,10 +31,14 @@ export function RefreshButton() {
       if (!data.ok) {
         throw new Error(data.error || "Refresh failed");
       }
-      // Force a hard reload so the page re-fetches the new snapshot.
-      startTransition(() => {
-        window.location.reload();
-      });
+      // Phase 33.brand-watchfire-PR8 — show "✓ caught" for 1.5s before reloading,
+      // so the user sees confirmation before the page swap.
+      setStatus("caught");
+      setTimeout(() => {
+        startTransition(() => {
+          window.location.reload();
+        });
+      }, 1500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus("error");
@@ -67,7 +72,13 @@ export function RefreshButton() {
       {status === "refreshing" ? (
         <>
           <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Refreshing…
+          Catching signals…
+        </>
+      ) : status === "caught" ? (
+        // Phase 33.brand-watchfire-PR8 — success beat.
+        <>
+          <span aria-hidden>✓</span>
+          caught
         </>
       ) : status === "error" ? (
         <>
