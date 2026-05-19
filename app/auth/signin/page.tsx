@@ -13,6 +13,7 @@
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { ZocaLogo } from "@/components/v2/ZocaLogo";
 
 const C = {
   parchment: "#F0E4CC",
@@ -69,6 +70,19 @@ function SignInShell({
           'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
+      {/* Phase 33.brand-watchfire — Zoca brand attribution top-left. */}
+      <div
+        style={{
+          position: "absolute",
+          top: "24px",
+          left: "32px",
+          zIndex: 20,
+          opacity: 0.85,
+        }}
+      >
+        <ZocaLogo height={20} color={C.char} />
+      </div>
+
       <div
         style={{
           position: "relative",
