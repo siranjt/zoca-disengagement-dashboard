@@ -1244,7 +1244,12 @@ export async function composeSnapshot(
       errors.push(`Postgres write: ${msg}`);
     }
     try {
-      const trendRows = snapshot.customers.map((c) => ({
+      // Phase 33.scope-optionZ — exclude recently_churned from the
+      // historical trend. They're forced GREEN by compose and would
+      // pad the trend's healthy count over time as the universe shifts.
+      const trendRows = snapshot.customers
+        .filter((c) => c.lifecycle_state !== "recently_churned")
+        .map((c) => ({
         entity_id: c.entity_id,
         am_name: c.am_name || "",
         pod: c.pod || "",
