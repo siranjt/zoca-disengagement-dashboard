@@ -581,3 +581,24 @@ button:active:not(.no-press),
 .v2-mesh-bg > *:not(.sr-only) { position: relative; z-index: 1; }
 /* Bug fix: preserve Tailwind .sr-only absolute positioning so the
  * "Skip to dashboard content" a11y link stays visually hidden until focus. */
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-PR1 — Beacon flame flicker (used on the login
+   screen; off by default in the nav). Two keyframes at slightly
+   different intervals so the inner+outer flame never looks like
+   a single rigid shape.
+   ───────────────────────────────────────────────────────────── */
+@keyframes beacon-flicker {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.05, 1.10); }
+}
+
+@keyframes beacon-flicker-inner {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.08, 1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Kill continuous Beacon-brand motion for users who request it. */
+  [style*="beacon-flicker"] { animation: none !important; }
+}

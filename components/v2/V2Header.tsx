@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { ZocaLogo } from "./ZocaLogo";
+import { BeaconMark } from "@/components/BeaconMark";
 import { AmPickerPill } from "./AmPickerPill";
 import { RefreshButton } from "./RefreshButton";
 import { V2UserMenu } from "./V2UserMenu";
@@ -97,6 +98,8 @@ export function V2Header(props: Props) {
         >
           <ZocaLogo height={20} color="var(--zoca-text)" />
           <span className="text-zoca-text-3 text-xs">|</span>
+          {/* Phase 33.brand-PR1 — Beacon mark slotted into the lockup at logo-height. */}
+          <BeaconMark size={20} />
           <span
             className="text-zoca-text text-[13px] font-medium"
             style={{ letterSpacing: "-0.005em" }}
