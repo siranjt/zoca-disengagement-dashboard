@@ -201,13 +201,22 @@ canvas { max-width: 100% !important; }
    automatically.
    ============================================================ */
 
-/* Gradient-clipped text — now Zoca brand blue -> pink */
+/* Phase 33.brand-watchfire — twilight hero gradient (lapis → ember → brass → cream) */
 .zoca-gradient-text {
-  background: linear-gradient(135deg, var(--zoca-blue) 0%, var(--zoca-pink) 100%);
+  background: linear-gradient(
+    90deg,
+    #2A4D5C 0%,    /* Sea Lapis — dusk */
+    #7C2D12 33%,   /* Deep Ember — last light */
+    #D9A441 66%,   /* Brass — flame */
+    #FEF3C7 100%   /* Cream Gold — heart */
+  );
+  background-size: 130% 100%;
+  background-position: 0% 50%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   font-weight: 900;
+  animation: hero-drift 10s ease-in-out infinite;
 }
 
 /* Sparkle after the gradient word — retinted for light bg */
@@ -939,4 +948,14 @@ button:active:not(.no-press),
     animation: none !important;
   }
   /* footer fade-in is one-shot, intentionally kept */
+}
+
+/* Phase 33.brand-watchfire — twilight hero drift (10s ambient loop) */
+@keyframes hero-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 30% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zoca-gradient-text { animation: none !important; }
 }
