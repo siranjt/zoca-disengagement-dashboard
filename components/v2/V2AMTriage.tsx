@@ -421,9 +421,42 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
   // to play. Bulk transitions (> 3 cards removed in one render — typically
   // filter/sort changes) snap to finalList immediately to avoid mass-exit
   // noise; targeted removals (snooze, unpin, mark-contacted) animate.
-  type ViewItem = (typeof finalList)[number] & { _exiting?: boolean };
+  //
+  // Phase 33.brand-watchfire-PR9-52 — tier-changed set:
+  // read beacon_seen_v2_<am> once on mount and build a Set of entity_ids whose
+  // tier has changed since the previous session. When the viewList
+  // orchestration marks any of these for exit, .beacon-tier-exit-spark is
+  // layered on top of .beacon-card-exit for the comet-trail effect.
+  type ViewItem = (typeof finalList)[number] & {
+    _exiting?: boolean;
+    _tierExit?: boolean;
+  };
   const [viewList, setViewList] = useState<ViewItem[]>(() => finalList);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tierChangedSetRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    // One-shot read of the per-AM seen map; build the tier-changed Set.
+    try {
+      if (typeof window === "undefined") return;
+      const am = amName || "default";
+      const raw = window.localStorage.getItem(`beacon_seen_v2_${am}`);
+      if (!raw) return;
+      const seen = JSON.parse(raw) as Record<
+        string,
+        { tier?: string; last_touch_at?: string | null; churn_open?: number }
+      >;
+      const next = new Set<string>();
+      for (const c of customers) {
+        const prev = seen[c.entity_id]?.tier;
+        const curr = c.signals_v2?.stoplight;
+        if (prev && curr && prev !== curr) next.add(c.entity_id);
+      }
+      tierChangedSetRef.current = next;
+    } catch {
+      tierChangedSetRef.current = new Set();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const finalIds = new Set(finalList.map((c) => c.entity_id));
     const stillVisible = viewList.filter((c) => !c._exiting);
@@ -454,7 +487,10 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
       } else if (c._exiting) {
         next.push(c);
       } else {
-        next.push({ ...c, _exiting: true });
+        // Phase 33.brand-watchfire-PR9-52 — flag tier-driven exits for the
+        // comet-trail spark; everything else just collapses cleanly.
+        const tierExit = tierChangedSetRef.current.has(c.entity_id);
+        next.push({ ...c, _exiting: true, _tierExit: tierExit });
       }
     }
     for (const c of finalList) {
@@ -981,10 +1017,12 @@ export default function V2AMTriage({ amName, pod, customers, generatedAt, pinned
             // Phase 33.brand-watchfire-PR8-45 — mid-exit cards get the
             // collapse animation; suppress focus ring while exiting.
             const isExiting = !!c._exiting;
+            // Phase 33.brand-watchfire-PR9-52 — comet trail spark on tier-driven exits.
+            const isTierExit = isExiting && !!c._tierExit;
             // Phase 33.brand-watchfire-PR7-37 — brass focus-entry ring for 400ms.
             const isFocusEntry = focusEntryId === c.entity_id && !isExiting;
             const baseClass = isExiting
-              ? "beacon-card-exit transition"
+              ? `beacon-card-exit${isTierExit ? " beacon-tier-exit-spark" : ""} transition`
               : isFocused
                 ? "rounded-zoca-lg ring-2 ring-zoca-pink-cta/30 transition"
                 : "transition";

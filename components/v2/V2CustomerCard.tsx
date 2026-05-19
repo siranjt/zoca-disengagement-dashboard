@@ -616,7 +616,13 @@ function V2CustomerCardInner({
             )}
             {trend && trend.length > 1 && (
               <span
-                className="text-zoca-text-2"
+                // Phase 33.brand-watchfire-PR9-50 — Deep Crimson flash + scale 1.05
+                // when this customer just crossed into the critical (RED) tier.
+                className={`text-zoca-text-2${
+                  arrivalState === "tier-changed" && arrivalTier === "RED"
+                    ? " beacon-score-flash"
+                    : ""
+                }`}
                 title={`Composite score over last ${trend.length} days, latest ${s.composite}`}
               >
                 <V2Sparkline
