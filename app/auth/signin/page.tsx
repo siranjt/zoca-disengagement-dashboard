@@ -1,21 +1,34 @@
 "use client";
 
-// Phase 33.brand-PR3 — Beacon-branded sign-in page.
+// Phase 33.brand-watchfire — Beacon sign-in, "Follow the Light".
 //
-// Preserves Phase 33.A's working OAuth wiring:
-//   - Suspense + useSearchParams for callbackUrl + error
-//   - signIn("google", { callbackUrl })
-//   - AccessDenied banner for non-Zoca emails
-//   - Generic error fallback
-//   - Loading state on the button
+// Heraldic watchfire palette (parchment + ember + brass + char), Georgia
+// serif wordmark, 4-layer animated flame, 4 staggered pulse rings, 6
+// rising embers, gold Google G. Specced as the SINGLE brand moment that
+// shifts register from V2's modern interior.
 //
-// Adds the brand spec §7–8 motion layer. All continuous motion is gated
-// by prefers-reduced-motion in app/globals.css.
+// Preserves Phase 33.A OAuth wiring (Suspense + useSearchParams + signIn
+// + error banners + loading state).
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { BeaconMark } from "@/components/BeaconMark";
+
+const C = {
+  parchment: "#F0E4CC",
+  parchmentLight: "#F8EFD7",
+  agedBrass: "#D4C29B",
+  char: "#2B1F14",
+  smoke: "#6E5F50",
+  fadedSmoke: "#8B7A66",
+  ember: "#C8431D",
+  deepOrange: "#E85A2B",
+  brass: "#D9A441",
+  gold: "#FBBF24",
+  cream: "#FEF3C7",
+  haloOuter: "#FDE68A",
+  haloInner: "#FCD34D",
+};
 
 export default function SignInPage() {
   return (
@@ -40,249 +53,366 @@ function SignInShell({
   callbackUrl?: string;
 }) {
   const [loading, setLoading] = useState(false);
-
   return (
     <div
-      data-theme="zoca-light"
       style={{
-        position: "relative",
         minHeight: "100vh",
-        background: "#FAF9F6",
+        background: C.parchment,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px",
+        position: "relative",
         overflow: "hidden",
+        padding: "24px",
+        fontFamily:
+          'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* 4 drifting background blobs */}
-      <div className="b-blob b-blob-1" aria-hidden="true" />
-      <div className="b-blob b-blob-2" aria-hidden="true" />
-      <div className="b-blob b-blob-3" aria-hidden="true" />
-      <div className="b-blob b-blob-4" aria-hidden="true" />
+      <Scene />
 
-      {/* 6 sparkles */}
-      <Sparkle top="8%" left="14%" color="#8B5CF6" size={16} delay={0} rotate />
-      <Sparkle top="14%" right="14%" color="#ff56bb" size={14} delay={0.3} />
-      <Sparkle top="44%" left="9%" color="#3B82F6" size={12} delay={0.6} />
-      <Sparkle top="38%" right="14%" color="#F97316" size={16} delay={0.9} rotate />
-      <Sparkle bottom="22%" left="16%" color="#A78BFA" size={14} delay={1.2} rotate reverse />
-      <Sparkle bottom="28%" right="12%" color="#F472B6" size={12} delay={1.5} />
-
-      {/* 2 drift dots */}
-      <div className="b-drift-dot" style={{ top: "32%", left: "7%", background: "#8B5CF6" }} aria-hidden="true" />
-      <div className="b-drift-dot b-drift-dot-2" style={{ bottom: "14%", right: "7%", background: "#F97316" }} aria-hidden="true" />
-
-      {/* THE CARD */}
       <div
-        className="b-card"
         style={{
           position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: "400px",
-          background: "#ffffff",
-          border: "0.5px solid #E5E7EB",
-          borderRadius: "20px",
-          padding: "32px 36px 28px",
-          boxShadow: "0 12px 40px rgba(11,5,29,0.06)",
-          textAlign: "center",
+          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          marginTop: "60px",
         }}
       >
-        {/* Mark with halo */}
-        <div className="b-mark-fade" style={{ position: "relative", display: "inline-block", marginBottom: "16px" }}>
-          <div className="b-halo" aria-hidden="true" />
-          <BeaconMark size={64} flicker />
-        </div>
-
-        {/* BEACON wordmark with gradient shimmer */}
-        <div className="b-wordmark">BEACON</div>
-
-        {/* Tagline */}
-        <div className="b-tagline-fade" style={{ fontSize: "10.5px", letterSpacing: "0.3em", color: "#6B7280", marginTop: "10px" }}>
-          A &middot; SIGNAL &middot; WORTH &middot; FOLLOWING
-        </div>
-
-        {/* Divider */}
-        <div className="b-divider-fade" style={{ width: "220px", height: "0.5px", background: "#E5E7EB", margin: "20px auto" }} />
-
-        {/* Error banners — preserved from Phase 33.A */}
-        {error === "AccessDenied" && (
-          <div
-            role="alert"
-            className="b-stagger-err"
-            style={{
-              padding: "12px 14px",
-              borderRadius: "10px",
-              background: "rgba(239, 68, 68, 0.08)",
-              border: "1px solid rgba(239, 68, 68, 0.25)",
-              color: "#b91c1c",
-              fontSize: "12.5px",
-              lineHeight: "1.5",
-              marginBottom: "16px",
-              textAlign: "left",
-            }}
-          >
-            Your email isn&apos;t on the Zoca team. Contact your manager if this is unexpected.
-          </div>
-        )}
-        {error && error !== "AccessDenied" && (
-          <div
-            role="alert"
-            className="b-stagger-err"
-            style={{
-              padding: "12px 14px",
-              borderRadius: "10px",
-              background: "rgba(245, 158, 11, 0.08)",
-              border: "1px solid rgba(245, 158, 11, 0.25)",
-              color: "#92400e",
-              fontSize: "12.5px",
-              lineHeight: "1.5",
-              marginBottom: "16px",
-              textAlign: "left",
-            }}
-          >
-            Couldn&apos;t sign in: {error}. Try again, or contact your manager.
-          </div>
-        )}
-
-        {/* Headline */}
-        <div
-          className="b-headline-fade"
-          style={{ fontSize: "15px", fontWeight: 500, color: "#0b051d", marginBottom: "14px" }}
-        >
-          Sign in to continue
-        </div>
-
-        {/* Google button */}
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => {
-            setLoading(true);
-            void signIn("google", { callbackUrl });
-          }}
-          className="b-btn-pulse"
+        <h1
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            width: "100%",
-            padding: "12px 16px",
-            background: loading ? "#FAF9F6" : "#ffffff",
-            border: "1px solid #E5E7EB",
-            borderRadius: "10px",
-            fontSize: "13.5px",
-            fontWeight: 500,
-            color: "#0b051d",
-            cursor: loading ? "wait" : "pointer",
-            transition: "background 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) e.currentTarget.style.background = "#FAF9F6";
-          }}
-          onMouseLeave={(e) => {
-            if (!loading) e.currentTarget.style.background = "#ffffff";
+            margin: 0,
+            fontSize: "44px",
+            fontWeight: 400,
+            letterSpacing: "0.5em",
+            paddingLeft: "0.5em",
+            color: C.char,
+            fontFamily: 'Georgia, "Times New Roman", serif',
           }}
         >
-          <GoogleIcon />
-          {loading ? "Redirecting\u2026" : "Continue with Google"}
-        </button>
+          BEACON
+        </h1>
 
-        {/* Bottom note */}
-        <div
-          className="b-note-fade"
-          style={{ marginTop: "16px", fontSize: "10.5px", color: "#9CA3AF" }}
+        <p
+          style={{
+            margin: "8px 0 0",
+            fontSize: "11px",
+            letterSpacing: "0.25em",
+            color: C.smoke,
+          }}
         >
-          Only @zoca.ai and @zoca.com accounts can sign in.
+          A &nbsp; S I G N A L &nbsp; W O R T H &nbsp; F O L L O W I N G
+        </p>
+
+        <SparkleDivider />
+
+        <div
+          style={{
+            marginTop: "20px",
+            background: C.parchmentLight,
+            border: `1px solid ${C.agedBrass}`,
+            borderRadius: "14px",
+            padding: "28px 50px",
+            maxWidth: "360px",
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "18px",
+              fontWeight: 400,
+              color: C.char,
+              fontFamily: 'Georgia, "Times New Roman", serif',
+            }}
+          >
+            Follow the light
+          </h2>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "11px",
+              color: C.smoke,
+            }}
+          >
+            Sign in to continue
+          </p>
+
+          {/* Error banners — preserve Phase 33.A behavior */}
+          {error === "AccessDenied" && (
+            <div
+              role="alert"
+              style={{
+                marginTop: "16px",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "rgba(200, 67, 29, 0.10)",
+                border: `1px solid ${C.ember}`,
+                color: C.ember,
+                fontSize: "11.5px",
+                lineHeight: 1.5,
+                textAlign: "left",
+              }}
+            >
+              Your email isn&apos;t on the Zoca team. Contact your manager if this is unexpected.
+            </div>
+          )}
+          {error && error !== "AccessDenied" && (
+            <div
+              role="alert"
+              style={{
+                marginTop: "16px",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "rgba(217, 164, 65, 0.12)",
+                border: `1px solid ${C.brass}`,
+                color: C.char,
+                fontSize: "11.5px",
+                lineHeight: 1.5,
+                textAlign: "left",
+              }}
+            >
+              Couldn&apos;t sign in: {error}. Try again, or contact your manager.
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setLoading(true);
+              void signIn("google", { callbackUrl });
+            }}
+            className="beacon-button"
+            style={{
+              position: "relative",
+              marginTop: "20px",
+              width: "100%",
+              height: "44px",
+              borderRadius: "10px",
+              background: C.char,
+              color: C.parchment,
+              border: "none",
+              fontSize: "13px",
+              fontWeight: 500,
+              fontFamily: "inherit",
+              cursor: loading ? "wait" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+            }}
+          >
+            <GoldGoogleG />
+            {loading ? "Catching the light\u2026" : "Click to follow"}
+          </button>
+
+          <hr
+            style={{
+              margin: "20px 0",
+              border: "none",
+              borderTop: `1px solid ${C.agedBrass}`,
+            }}
+          />
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "11px",
+              color: C.smoke,
+            }}
+          >
+            Only @zoca.ai and @zoca.com accounts can sign in.
+          </p>
         </div>
       </div>
 
-      {/* Footer */}
-      <div
-        className="b-footer-fade"
+      <p
+        className="beacon-footer-fade"
         style={{
           position: "absolute",
-          bottom: "20px",
+          bottom: "24px",
           left: 0,
           right: 0,
           textAlign: "center",
-          fontSize: "9px",
+          fontSize: "10px",
           letterSpacing: "0.3em",
-          color: "rgba(11,5,29,0.4)",
+          color: C.fadedSmoke,
+          opacity: 0,
           pointerEvents: "none",
         }}
       >
-        B E A C O N &middot; H O S T E D &middot; O N &middot; V E R C E L
-      </div>
+        B E A C O N &nbsp; &middot; &nbsp; H O S T E D &nbsp; O N &nbsp; V E R C E L
+      </p>
     </div>
   );
 }
 
-function Sparkle({
-  top,
-  bottom,
-  left,
-  right,
-  color,
-  size,
-  delay = 0,
-  rotate = false,
-  reverse = false,
-}: {
-  top?: string;
-  bottom?: string;
-  left?: string;
-  right?: string;
-  color: string;
-  size: number;
-  delay?: number;
-  rotate?: boolean;
-  reverse?: boolean;
-}) {
-  const rotationDur = 10 + delay * 2;
-  const twinkleDur = 1.8 + delay;
+/* ─────────────────────────────────────────────────────────────
+ * The Scene — pulse rings + halo + animated flame + rising embers.
+ * All decorative, aria-hidden, pointer-events:none.
+ * ───────────────────────────────────────────────────────────── */
+function Scene() {
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
+      viewBox="0 0 640 320"
+      width="100%"
+      height="320"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
       style={{
         position: "absolute",
-        top,
-        bottom,
-        left,
-        right,
-        animation: rotate
-          ? `b-twinkle ${twinkleDur}s ease-in-out infinite, b-rotate ${rotationDur}s linear infinite ${reverse ? "reverse" : ""}`
-          : `b-twinkle-2 ${2 + delay}s ease-in-out infinite`,
+        top: "10%",
+        left: 0,
+        right: 0,
+        margin: "0 auto",
+        overflow: "visible",
+        pointerEvents: "none",
+        zIndex: 1,
       }}
     >
-      <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" fill={color} />
+      <defs>
+        <linearGradient id="beacon-flame-heart" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FEF3C7" />
+          <stop offset="100%" stopColor="#FBBF24" />
+        </linearGradient>
+      </defs>
+
+      {/* Pulse rings — 4 concentric, staggered by 1.25s. r grows 60→240, opacity 0.5→0. */}
+      {[0, 1.25, 2.5, 3.75].map((begin, i) => (
+        <circle
+          key={i}
+          cx="320"
+          cy="220"
+          fill="none"
+          stroke="#C8431D"
+          strokeWidth="1"
+          r="60"
+          opacity="0"
+        >
+          <animate
+            attributeName="r"
+            values="60;240"
+            dur="5s"
+            begin={`${begin}s`}
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="opacity"
+            values="0.5;0"
+            dur="5s"
+            begin={`${begin}s`}
+            repeatCount="indefinite"
+          />
+        </circle>
+      ))}
+
+      {/* Halo — outer + inner, breath loops */}
+      <circle cx="320" cy="220" r="48" fill="#FDE68A" opacity="0.18">
+        <animate attributeName="r" values="48;58;48" dur="2.4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.18;0.34;0.18" dur="2.4s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="320" cy="220" r="30" fill="#FCD34D" opacity="0.25">
+        <animate attributeName="r" values="30;38;30" dur="1.8s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.25;0.42;0.25" dur="1.8s" repeatCount="indefinite" />
+      </circle>
+
+      {/* Tower (static) — 4 stepped tiers, mark base at (320, 250) */}
+      <g transform="translate(320, 250)">
+        <rect x="-12" y="-8"  width="24" height="8" fill="#2B1F14" />
+        <rect x="-10" y="-20" width="20" height="8" fill="#2B1F14" />
+        <rect x="-8"  y="-32" width="16" height="8" fill="#2B1F14" />
+        <rect x="-6"  y="-44" width="12" height="8" fill="#2B1F14" />
+
+        {/* Flame layer 1 — Outer ember, 2.2s flicker */}
+        <path
+          d="M 0 -82 C 11 -72 14 -60 8 -47 L -8 -47 C -14 -60 -11 -72 0 -82 Z"
+          fill="#C8431D"
+          className="beacon-flame-1"
+          style={{ transformBox: "fill-box", transformOrigin: "center bottom" }}
+        />
+        {/* Flame layer 2 — Mid deep-orange, 1.7s flicker */}
+        <path
+          d="M 0 -74 C 7 -66 9 -56 5 -49 L -5 -49 C -9 -56 -7 -66 0 -74 Z"
+          fill="#E85A2B"
+          className="beacon-flame-2"
+          style={{ transformBox: "fill-box", transformOrigin: "center bottom" }}
+        />
+        {/* Flame layer 3 — Core brass, 1.3s flicker */}
+        <path
+          d="M 0 -68 C 4 -62 6 -54 3 -50 L -3 -50 C -6 -54 -4 -62 0 -68 Z"
+          fill="#D9A441"
+          className="beacon-flame-3"
+          style={{ transformBox: "fill-box", transformOrigin: "center bottom" }}
+        />
+        {/* Flame layer 4 — Heart gradient, 0.9s flicker */}
+        <path
+          d="M 0 -62 C 2 -58 3 -54 1.5 -51 L -1.5 -51 C -3 -54 -2 -58 0 -62 Z"
+          fill="url(#beacon-flame-heart)"
+          className="beacon-flame-4"
+          style={{ transformBox: "fill-box", transformOrigin: "center bottom" }}
+        />
+      </g>
+
+      {/* Rising embers — 6 with co-prime durations + delays */}
+      <circle cx="320" cy="200" r="1.6" fill="#C8431D" className="beacon-ember-1" />
+      <circle cx="320" cy="200" r="1.8" fill="#FBBF24" className="beacon-ember-5" />
+      <circle cx="320" cy="200" r="1.5" fill="#E85A2B" className="beacon-ember-2" />
+      <circle cx="320" cy="200" r="1.4" fill="#D9A441" className="beacon-ember-3" />
+      <circle cx="320" cy="200" r="1.5" fill="#E85A2B" className="beacon-ember-6" />
+      <circle cx="320" cy="200" r="1.6" fill="#C8431D" className="beacon-ember-4" />
     </svg>
   );
 }
 
-function GoogleIcon() {
+/* Heraldic 8-point sparkle divider between motto and card */
+function SparkleDivider() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <div
+      aria-hidden="true"
+      style={{
+        marginTop: "20px",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        width: "200px",
+      }}
+    >
+      <span style={{ flex: 1, height: "0.5px", background: "#D4C29B" }} />
+      <svg width="14" height="14" viewBox="-7 -7 14 14">
+        <path
+          d="M 0 -6 L 1.2 -1.2 L 6 0 L 1.2 1.2 L 0 6 L -1.2 1.2 L -6 0 L -1.2 -1.2 Z"
+          fill="#D9A441"
+        />
+      </svg>
+      <span style={{ flex: 1, height: "0.5px", background: "#D4C29B" }} />
+    </div>
+  );
+}
+
+/* Single-color brass "G" — per spec §8 (Google brand-guideline deviation
+ * accepted by product; OAuth app is Internal-only). */
+function GoldGoogleG() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-        fill="#4285F4"
+        fill="#FBBF24"
       />
       <path
         d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.997 10.997 0 0 0 12 23z"
-        fill="#34A853"
+        fill="#FBBF24"
       />
       <path
         d="M5.84 14.1A6.6 6.6 0 0 1 5.49 12c0-.73.13-1.44.35-2.1V7.06H2.18A10.997 10.997 0 0 0 1 12c0 1.77.43 3.45 1.18 4.94l3.66-2.84z"
-        fill="#FBBC05"
+        fill="#FBBF24"
       />
       <path
         d="M12 5.38c1.62 0 3.07.56 4.21 1.65l3.16-3.16C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"
-        fill="#EA4335"
+        fill="#FBBF24"
       />
     </svg>
   );
