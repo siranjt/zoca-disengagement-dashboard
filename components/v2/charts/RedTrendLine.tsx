@@ -164,7 +164,8 @@ export function RedTrendLine({ currentRed, amName }: Props) {
         pointBackgroundColor: CHART_COLORS.red,
         pointBorderColor: CHART_COLORS.bg,
         pointBorderWidth: 2,
-        borderWidth: 2,
+        // Phase 33.brand-watchfire-PR4-deferred — line stroke 1.8 per spec §7.
+        borderWidth: 1.8,
       },
     ],
   };
@@ -192,8 +193,9 @@ export function RedTrendLine({ currentRed, amName }: Props) {
         },
       },
       y: {
-        grid: { color: CHART_COLORS.gridLine },
-        ticks: { color: CHART_COLORS.muted, font: { size: 10 } },
+        // Phase 33.brand-watchfire-PR4-deferred — Y-axis polish per spec §7.
+        grid: { color: CHART_COLORS.gridLine, lineWidth: 0.5 },
+        ticks: { color: "#8B7A66", font: { size: 9 } },
         beginAtZero: true,
       },
     },

@@ -153,6 +153,44 @@ export function BookHealthDonut({
       <div style={{ position: "relative", width: "100%", height: "180px" }}>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Doughnut data={data} options={options as any} />
+        {/* Phase 33.brand-watchfire-PR4-deferred — center label per spec §7. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            fontFamily: 'Georgia, "Times New Roman", serif',
+          }}
+        >
+          <div
+            style={{
+              fontSize: "22px",
+              lineHeight: 1,
+              color: "#2B1F14",
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            <AnimatedNumber value={total} />
+          </div>
+          <div
+            style={{
+              marginTop: "3px",
+              fontSize: "9px",
+              color: "#6E5F50",
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+            }}
+          >
+            scored
+          </div>
+        </div>
       </div>
     </div>
   );

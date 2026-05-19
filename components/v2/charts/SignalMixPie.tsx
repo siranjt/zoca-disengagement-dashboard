@@ -91,9 +91,10 @@ export function SignalMixPie({ customers, amName }: Props) {
       {
         data: counts,
         backgroundColor: colors,
-        borderWidth: 2,
+        // Phase 33.brand-watchfire-PR4-deferred — hairline wedge separator per spec §7.
+        borderWidth: 1,
         borderColor: CHART_COLORS.bg,
-        hoverBorderWidth: 3,
+        hoverBorderWidth: 2,
         hoverOffset: 6,
       },
     ],
