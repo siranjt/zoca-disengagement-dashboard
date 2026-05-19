@@ -159,7 +159,8 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
       <div
         className="overflow-x-auto rounded-2xl"
         style={{
-          background: "#ffffff",
+          // Phase 33.brand-watchfire-T6 — heatmap table on Light Parchment.
+          background: "var(--zoca-bg-soft)",
           border: "1px solid var(--zoca-border)",
           boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
         }}
@@ -197,7 +198,7 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
                   key={pod}
                   className="transition"
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = "rgba(20,110,245,0.03)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(252, 228, 214, 0.55)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -234,7 +235,7 @@ export default function V2SignalHeatmap({ snapshot }: Props) {
                       v === 0
                         ? "var(--zoca-text-3)"
                         : intensity > 0.6
-                          ? "#ffffff"
+                          ? "var(--zoca-bg-soft)"
                           : "var(--zoca-text)";
                     const pct = total ? ((v / total) * 100).toFixed(0) : "0";
                     const taxonomyLabel = SIGNAL_LABELS[TAXONOMY_KEY[s.key]];

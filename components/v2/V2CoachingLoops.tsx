@@ -170,11 +170,12 @@ function CoachingTable({
       </header>
 
       <div
+        // Phase 33.brand-watchfire-T6 — coaching table on Light Parchment.
         className="overflow-hidden rounded-2xl"
         style={{
-          background: "#ffffff",
+          background: "var(--zoca-bg-soft)",
           border: "1px solid var(--zoca-border)",
-          boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
+          boxShadow: "0 1px 2px rgba(43,31,20,0.04)",
         }}
       >
         {rows.length === 0 ? (

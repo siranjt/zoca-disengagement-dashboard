@@ -272,17 +272,19 @@ export default function V2PodSummaryGrid({
                         "0 0 0 1px rgba(200, 67, 29, 0.35), 0 0 24px rgba(252, 228, 214, 0.35)",
                     }
                   : {
+                      // Phase 33.brand-watchfire-T6 — Light Parchment surface, not white.
                       border: "1px solid var(--zoca-border)",
-                      background: "#ffffff",
-                      boxShadow: "0 1px 3px rgba(11,5,29,0.04)",
+                      background: "var(--zoca-bg-soft)",
+                      boxShadow: "0 1px 3px rgba(43,31,20,0.04)",
                     }
               }
               onMouseEnter={(e) => {
                 if (active) return;
+                // Phase 33.brand-watchfire-T6 — Ember hover.
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.borderColor = "rgba(20,110,245,0.18)";
+                e.currentTarget.style.borderColor = "rgba(200, 67, 29, 0.30)";
                 e.currentTarget.style.boxShadow =
-                  "0 12px 28px -8px rgba(11,5,29,0.1), 0 0 0 1px rgba(20,110,245,0.18), 0 0 32px rgba(252, 228, 214, 0.32)";
+                  "0 12px 28px -8px rgba(43,31,20,0.12), 0 0 0 1px rgba(200, 67, 29, 0.22), 0 0 32px rgba(252, 228, 214, 0.40)";
               }}
               onMouseLeave={(e) => {
                 if (active) return;

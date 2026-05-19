@@ -801,7 +801,8 @@ function V2ManagerDashboardInner() {
   }, [kpis, compareKpis, compareDays]);
 
   return (
-    <div data-theme="zoca-light" className="min-h-screen text-zoca-text print:bg-white print:text-black v2-mesh-bg" style={{ background: "var(--zoca-bg-soft)" }}>
+    // Phase 33.brand-watchfire-T6 — Manager view canvas on Parchment.
+    <div data-theme="zoca-light" className="min-h-screen text-zoca-text print:bg-white print:text-black v2-mesh-bg" style={{ background: "var(--zoca-bg)" }}>
       {snapshot.status === "ready" && (
         <FreshnessBanner generatedAt={snapshot.snapshot.generatedAt} />
       )}

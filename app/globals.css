@@ -168,13 +168,15 @@
   color-scheme: light;
 }
 
+/* Phase 33.brand-watchfire-T6 — canvas on Parchment (#F0E4CC) per spec §2.
+   Cards remain on Light Parchment (--zoca-bg-soft) for elevation contrast. */
 html, body {
-  background: var(--zoca-bg-soft);
+  background: var(--zoca-bg);
   color: var(--zoca-text);
 }
 
 body {
-  background: var(--zoca-bg-soft);
+  background: var(--zoca-bg);
   color: var(--zoca-text);
   font-family: -apple-system, 'Inter', BlinkMacSystemFont, var(--font-inter), system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
@@ -187,8 +189,9 @@ body {
 
 /* Hard-force light theme inside the v2 dashboard regardless of OS pref */
 @media (prefers-color-scheme: dark) {
+  /* Phase 33.brand-watchfire-T6 — keep canvas on Parchment in forced-light. */
   [data-theme="zoca-light"] {
-    background: var(--zoca-bg-soft);
+    background: var(--zoca-bg);
     color: var(--zoca-text);
     color-scheme: light;
   }

@@ -579,7 +579,8 @@ function V2DashboardInner() {
     <div
       data-theme="zoca-light"
       className="min-h-screen text-zoca-text v2-mesh-bg"
-      style={{ background: "var(--zoca-bg-soft)" }}
+      // Phase 33.brand-watchfire-T6 — AM view canvas on Parchment.
+      style={{ background: "var(--zoca-bg)" }}
     >
       <CursorGlow />
       <V2Header

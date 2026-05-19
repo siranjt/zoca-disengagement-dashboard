@@ -132,7 +132,8 @@ export default function V2AmActivityRollup({
       <div
         className="overflow-hidden rounded-2xl"
         style={{
-          background: "#ffffff",
+          // Phase 33.brand-watchfire-T6 — AM activity table on Light Parchment.
+          background: "var(--zoca-bg-soft)",
           border: "1px solid var(--zoca-border)",
           boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
         }}
@@ -182,7 +183,7 @@ export default function V2AmActivityRollup({
                     className="transition"
                     style={{ borderTop: "1px solid var(--zoca-border)" }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "rgba(20,110,245,0.03)";
+                      (e.currentTarget as HTMLElement).style.background = "rgba(252, 228, 214, 0.55)";
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLElement).style.background = "transparent";

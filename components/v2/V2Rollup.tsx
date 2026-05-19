@@ -438,9 +438,10 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
             }}
             aria-label="Search account managers by name"
             className="w-44 rounded-full border px-3 py-1.5 text-[13px] focus:outline-none"
+            // Phase 33.brand-watchfire-T6 — search input on Light Parchment.
             style={{
               borderColor: "var(--zoca-border)",
-              background: "#ffffff",
+              background: "var(--zoca-bg-soft)",
               color: "var(--zoca-text)",
             }}
           />
@@ -479,8 +480,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
                         color: "var(--zoca-text)",
                       }
                     : {
+                        // Phase 33.brand-watchfire-T6 — pod chip on Light Parchment.
                         borderColor: "var(--zoca-border)",
-                        background: "#ffffff",
+                        background: "var(--zoca-bg-soft)",
                         color: "var(--zoca-text-2)",
                       }
                 }
@@ -585,8 +587,9 @@ export default function V2Rollup({ snapshot, initialPod, onJumpToAm }: Props) {
 
       {/* Table */}
       <div
+        // Phase 33.brand-watchfire-T6 — rollup table on Light Parchment.
         className="mt-4 overflow-x-auto rounded-2xl border"
-        style={{ borderColor: "var(--zoca-border)", background: "#ffffff" }}
+        style={{ borderColor: "var(--zoca-border)", background: "var(--zoca-bg-soft)" }}
       >
         <table className="min-w-full divide-y text-[13px]" style={{ borderColor: "var(--zoca-border)" }}>
           <thead
