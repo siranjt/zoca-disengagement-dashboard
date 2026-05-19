@@ -27,6 +27,7 @@
 
 import { getSql } from "@/lib/postgres";
 import type { UserRole } from "@/lib/config";
+import { postRealtimeAmActivity } from "./slack-am-activity";
 
 export type ActivityEvent =
   | "sign_in"
@@ -92,6 +93,8 @@ export async function logActivity(input: LogActivityInput): Promise<void> {
       INSERT INTO am_activity_log (email, role, am_name, event_name, surface, entity_id, metadata)
       VALUES (${email}, ${role}, ${am_name}, ${event_name}, ${surface}, ${entity_id}, ${metadata ? JSON.stringify(metadata) : null}::jsonb)
     `;
+    // Phase Beacon — fire-and-forget real-time Slack post (high-signal events only)
+    postRealtimeAmActivity(input).catch(() => {});
   } catch (err) {
     // Never throw — logging failures should not affect the request.
     console.warn(
