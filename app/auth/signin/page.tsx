@@ -69,8 +69,6 @@ function SignInShell({
           'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      <Scene />
-
       <div
         style={{
           position: "relative",
@@ -78,9 +76,9 @@ function SignInShell({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          marginTop: "60px",
         }}
       >
+        <Scene />
         <h1
           style={{
             margin: 0,
@@ -129,7 +127,7 @@ function SignInShell({
               fontFamily: 'Georgia, "Times New Roman", serif',
             }}
           >
-            Follow the light
+            Follow the signal
           </h2>
           <p
             style={{
@@ -207,7 +205,7 @@ function SignInShell({
             }}
           >
             <GoldGoogleG />
-            {loading ? "Catching the light\u2026" : "Click to follow"}
+            {loading ? "Catching the signal\u2026" : "Click to follow"}
           </button>
 
           <hr
@@ -258,20 +256,17 @@ function SignInShell({
 function Scene() {
   return (
     <svg
-      viewBox="0 0 640 320"
-      width="100%"
-      height="320"
+      // Phase 33.brand-watchfire — alignment fix: inline above wordmark,
+      // viewBox windowed onto the mark area; rings still extend outward.
+      viewBox="200 60 240 220"
+      width="240"
+      height="220"
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
       style={{
-        position: "absolute",
-        top: "10%",
-        left: 0,
-        right: 0,
-        margin: "0 auto",
+        display: "block",
         overflow: "visible",
         pointerEvents: "none",
-        zIndex: 1,
       }}
     >
       <defs>
