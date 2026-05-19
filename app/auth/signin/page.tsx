@@ -257,7 +257,7 @@ function SignInShell({
           pointerEvents: "none",
         }}
       >
-        B E A C O N &nbsp; &middot; &nbsp; H O S T E D &nbsp; O N &nbsp; V E R C E L
+        B E A C O N &nbsp; &middot; &nbsp; B U I L T &nbsp; F O R &nbsp; Z O C A
       </p>
     </div>
   );
