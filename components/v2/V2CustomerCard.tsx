@@ -83,35 +83,86 @@ function V2CustomerCardInner({
     prevPinnedRef.current = !!isPinned;
   }, [isPinned]);
 
-  // Phase 33.brand-watchfire-PR8 — localStorage diff on mount to surface
-  // new arrivals (#44) and tier changes (#46). Per-AM key so different AMs
-  // have independent "seen" books.
-  const [arrivalState, setArrivalState] = useState<"new" | "tier-changed" | null>(null);
+  // Phase 33.brand-watchfire-PR9 — extended localStorage diff: tracks tier,
+  // last_touch_at, and churn open_count per entity. Fires four animations:
+  //   #44 .beacon-card-arrival       — new (non-RED) customer
+  //   #49 .beacon-new-customer-halo  — new high-priority (RED) customer
+  //   #46 .beacon-tier-change-{TIER} — tier flipped since last view
+  //   #51 .beacon-comm-spark         — last_touch_at advanced (new comm)
+  //   #54 .beacon-churn-shake        — churn ticket newly open
+  const [arrivalState, setArrivalState] = useState<"new" | "new-priority" | "tier-changed" | null>(null);
   const [arrivalTier, setArrivalTier] = useState<"RED" | "YELLOW" | "GREEN" | null>(null);
+  const [commSparkActive, setCommSparkActive] = useState(false);
+  const [churnShakeActive, setChurnShakeActive] = useState(false);
   useEffect(() => {
+    type SeenRecord = {
+      tier: string;
+      last_touch_at?: string | null;
+      churn_open?: number;
+    };
     const am = amName || customer.am_name || "default";
-    const key = `beacon_seen_${am}`;
+    const key = `beacon_seen_v2_${am}`;
     const eid = customer.entity_id;
     if (!eid) return;
-    let seen: Record<string, string> = {};
+    let seen: Record<string, SeenRecord> = {};
     try {
       const raw = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
       if (raw) seen = JSON.parse(raw);
     } catch {
       seen = {};
     }
+
     const prev = seen[eid];
-    const curr = s.stoplight;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    const currTier = s.stoplight;
+    const currLastTouch = customer.metrics?.last_any_iso ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mh = (customer as any).metabase_health;
+    const currChurnOpen: number = mh?.churn?.open_count ?? 0;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
     if (!prev) {
-      setArrivalState("new");
-      timer = setTimeout(() => setArrivalState(null), 600);
-    } else if (prev !== curr) {
-      setArrivalTier(curr as "RED" | "YELLOW" | "GREEN");
-      setArrivalState("tier-changed");
-      timer = setTimeout(() => setArrivalState(null), 2000);
+      // New customer.
+      if (currTier === "RED") {
+        // #49 — high-priority arrival gets the 3s ember halo.
+        setArrivalState("new-priority");
+        timers.push(setTimeout(() => setArrivalState(null), 3000));
+      } else {
+        // #44 — generic new-arrival brass flash, 600ms.
+        setArrivalState("new");
+        timers.push(setTimeout(() => setArrivalState(null), 600));
+      }
+    } else {
+      // #46 — tier flipped between views.
+      if (prev.tier !== currTier) {
+        setArrivalTier(currTier as "RED" | "YELLOW" | "GREEN");
+        setArrivalState("tier-changed");
+        timers.push(setTimeout(() => setArrivalState(null), 2000));
+      }
+      // #51 — last_touch advanced (new comm landed since last visit).
+      if (
+        currLastTouch != null &&
+        prev.last_touch_at != null &&
+        new Date(currLastTouch).getTime() >
+          new Date(prev.last_touch_at).getTime()
+      ) {
+        setCommSparkActive(true);
+        timers.push(setTimeout(() => setCommSparkActive(false), 1300));
+      }
+      // #54 — churn ticket newly opened.
+      const prevChurn = prev.churn_open ?? 0;
+      if (prevChurn === 0 && currChurnOpen > 0) {
+        setChurnShakeActive(true);
+        timers.push(setTimeout(() => setChurnShakeActive(false), 220));
+      }
     }
-    seen[eid] = curr;
+
+    // Update the stored snapshot for this entity.
+    seen[eid] = {
+      tier: currTier,
+      last_touch_at: currLastTouch,
+      churn_open: currChurnOpen,
+    };
     try {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(key, JSON.stringify(seen));
@@ -120,7 +171,7 @@ function V2CustomerCardInner({
       /* localStorage may be full or disabled; safe to swallow */
     }
     return () => {
-      if (timer) clearTimeout(timer);
+      timers.forEach((t) => clearTimeout(t));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1023,7 +1074,11 @@ function V2CustomerCardInner({
       </div>
 
       {/* Metrics summary line — render on ALL tiers (Phase 26) */}
-      <div className="border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-2 md:px-5">
+      {/* Phase 33.brand-watchfire-PR9-51 — comm-spark ember dot rises
+          from this row when last_touch_at advanced since last view. */}
+      <div
+        className={`border-t border-zoca-border px-4 py-2.5 text-[11px] text-zoca-text-2 md:px-5${commSparkActive ? " beacon-comm-spark" : ""}`}
+      >
         {renderMetricsSummary(customer)}
       </div>
 
