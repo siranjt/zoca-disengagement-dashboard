@@ -38,51 +38,68 @@ function fmtMoney(n: number | null | undefined): string {
   return `$${Math.round(n)}`;
 }
 
-function summarizeMetadata(input: LogActivityInput): string {
-  const m = input.metadata || {};
-  const bits: string[] = [];
-
-  // Choice (mark_contacted)
-  if (m.choice && typeof m.choice === "string") {
-    bits.push(`Outcome: *${m.choice}*`);
-  }
-
-  // Reason (mark_contacted or coaching_acted)
-  if (m.reason && typeof m.reason === "string" && m.reason.trim()) {
-    const r = m.reason.trim();
-    bits.push(`Reason: ${r.length > 80 ? r.slice(0, 80) + "…" : r}`);
-  }
-
-  // Days (snooze_set)
-  if (typeof m.days === "number" && Number.isFinite(m.days)) {
-    bits.push(`Days: ${m.days}`);
-  }
-
-  // Metric + AM (coaching_acted)
-  if (m.metric && typeof m.metric === "string") {
-    bits.push(`Metric: ${m.metric}`);
-  }
-
-  // Note length (note_saved)
-  if (typeof m.note_length === "number" && Number.isFinite(m.note_length)) {
-    bits.push(`Note length: ${m.note_length} chars`);
-  }
-
-  return bits.join(" · ");
-}
-
+// Phase 33.scope-slack — per-event message composer.
+// Anchors line 1 on the bizname (or entity-id short hash fallback) and
+// surfaces the actual edit content (note text / contact reason) as a Slack
+// mrkdwn blockquote. Outcome / days / metric appear inline on line 1.
 function buildText(input: LogActivityInput): string | null {
   if (!REALTIME_EVENTS.has(input.event_name)) return null;
+
   const am = input.am_name || input.email || "unknown";
-  const verb = ACTION_LABEL[input.event_name] || String(input.event_name);
   const emoji = EMOJI[input.event_name] || ":bell:";
-  const entityShort = input.entity_id ? input.entity_id.slice(0, 8) : "—";
-  const meta = summarizeMetadata(input);
-  const surface = input.surface ? `_${input.surface}_` : "";
-  return [
-    `${emoji} *${am}* ${verb} (${entityShort}) ${surface}`.trim(),
-    meta ? `   ${meta}` : null,
-  ].filter(Boolean).join("\n");
+  const m = input.metadata || {};
+
+  // Target identifier: bizname (preferred) or entity_id short hash fallback.
+  const bizname =
+    typeof m.bizname === "string" && m.bizname.trim()
+      ? m.bizname.trim()
+      : null;
+  const entityShort = input.entity_id ? input.entity_id.slice(0, 8) : null;
+  const target = bizname
+    ? `*${bizname}*`
+    : entityShort
+      ? `(${entityShort})`
+      : "";
+
+  switch (input.event_name) {
+    case "note_saved": {
+      const preview =
+        typeof m.note_preview === "string" ? m.note_preview.trim() : "";
+      const header = `${emoji} *${am}* saved a note${target ? ` for ${target}` : ""}`;
+      // Slack mrkdwn blockquote — escape any leading `>` in the user's note
+      // by prefixing each line with `> ` (handles multi-line notes too).
+      const quoted = preview
+        ? preview.split("\n").map((ln) => `> ${ln}`).join("\n")
+        : "";
+      return quoted ? `${header}\n${quoted}` : header;
+    }
+    case "mark_contacted": {
+      const choice = typeof m.choice === "string" ? m.choice : null;
+      const reason =
+        typeof m.reason === "string" && m.reason.trim() ? m.reason.trim() : "";
+      const outcome = choice ? ` — *${choice}*` : "";
+      const header = `${emoji} *${am}* marked ${target} contacted${outcome}`;
+      const quoted = reason
+        ? reason.split("\n").map((ln) => `> ${ln}`).join("\n")
+        : "";
+      return quoted ? `${header}\n${quoted}` : header;
+    }
+    case "snooze_set": {
+      const days =
+        typeof m.days === "number" && Number.isFinite(m.days)
+          ? `${m.days} days`
+          : "";
+      return `${emoji} *${am}* snoozed ${target}${days ? ` for *${days}*` : ""}`.trim();
+    }
+    case "coaching_acted": {
+      const metric = typeof m.metric === "string" ? m.metric : "";
+      // Coaching is AM-level — bizname is intentionally absent.
+      const header = `${emoji} *${am}* acted on coaching loop`;
+      return metric ? `${header}\n   Metric: \`${metric}\`` : header;
+    }
+    default:
+      return null;
+  }
 }
 
 /**

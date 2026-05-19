@@ -90,7 +90,8 @@ function V2CustomerCardInner({
       logEvent("snooze_set", {
         surface: "v2_dashboard",
         entity_id: customer.entity_id,
-        metadata: { days, am: customer.am_name },
+        // Phase 33.scope-slack — bizname for Slack channel.
+        metadata: { days, am: customer.am_name, bizname: customer.company || null },
       });
   }
 
@@ -200,7 +201,8 @@ function V2CustomerCardInner({
       logEvent("mark_contacted", {
         surface: "v2_dashboard",
         entity_id: customer.entity_id,
-        metadata: { choice, reason: reason || null, am: customer.am_name },
+        // Phase 33.scope-slack — bizname for Slack channel.
+        metadata: { choice, reason: reason || null, am: customer.am_name, bizname: customer.company || null },
       });
     } catch (e) {
       setActionState({

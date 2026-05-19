@@ -112,7 +112,8 @@ export function NotesField({ amName, entityId, customerId, bizname }: Props) {
       logEvent("note_saved", {
         surface: "v2_customer_detail",
         entity_id: entityId,
-        metadata: { am: amName, note_length: note.length },
+        // Phase 33.scope-slack — surface bizname + full note preview in Slack channel.
+        metadata: { am: amName, bizname: bizname || null, note_length: note.length, note_preview: note },
       });
     } catch (e) {
       setState("error");
