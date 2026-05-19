@@ -197,7 +197,7 @@ export default function V2ManagerToolbar({
         targets.push({
           label,
           date: target,
-          disabled: !availableDates.includes(target),
+          disabled: !availableDates.some((d) => d.slice(0, 10) === target),
         });
       }
     }
