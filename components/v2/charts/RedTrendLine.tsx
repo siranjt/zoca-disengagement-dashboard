@@ -43,6 +43,45 @@ ChartJS.register(
   Legend,
 );
 
+// Phase 33.brand-watchfire-PR6-final — current-point Ember halo per spec §11 row 26.
+// Draws a halo behind the last data point that pulses 1.5s loop. Runs on every
+// requestAnimationFrame after the entry animation settles (~2s in).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const emberTrendPulsePlugin: any = {
+  id: "ember-trend-pulse",
+  afterDatasetsDraw(chart: any) {
+    const meta = chart.getDatasetMeta?.(0);
+    const points = meta?.data;
+    if (!points || points.length === 0) return;
+    const last = points[points.length - 1];
+    if (!last || typeof last.x !== "number" || typeof last.y !== "number") return;
+
+    if (chart.$emberHaloStart == null) {
+      chart.$emberHaloStart = performance.now();
+    }
+    const elapsed = performance.now() - chart.$emberHaloStart - 2000; // wait for entry
+    if (elapsed < 0) {
+      // still in entry; schedule a redraw past the entry barrier so the loop kicks off
+      requestAnimationFrame(() => chart.draw && chart.draw());
+      return;
+    }
+
+    const phase = (elapsed % 1500) / 1500;       // 0 → 1 over 1.5s
+    const radius = 4 + 6 * phase;
+    const alpha = 0.55 * (1 - phase);
+
+    const c = chart.ctx;
+    c.save();
+    c.beginPath();
+    c.arc(last.x, last.y, radius, 0, Math.PI * 2);
+    c.fillStyle = `rgba(200, 67, 29, ${alpha})`;
+    c.fill();
+    c.restore();
+
+    requestAnimationFrame(() => chart.draw && chart.draw());
+  },
+};
+
 type Props = {
   currentRed: number;
   amName: string;
@@ -173,8 +212,9 @@ export function RedTrendLine({ currentRed, amName }: Props) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    // Phase 33.brand-watchfire-PR6-final — 2s line-draw entry per spec §11 row 13/14.
     animation: {
-      duration: CHART_ANIMATION.duration,
+      duration: 2000,
       easing: CHART_ANIMATION.easing,
     },
     plugins: {
@@ -285,7 +325,9 @@ export function RedTrendLine({ currentRed, amName }: Props) {
       </div>
       <div style={{ position: "relative", width: "100%", height: "180px" }}>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Line data={data} options={options as any} />
+        <Line data={data} options={options as any} plugins={[emberTrendPulsePlugin]} />
+        {/* Phase 33.brand-watchfire-PR6-final — area-fill breathe overlay per spec §11 row 27. */}
+        <div className="beacon-trend-breath" aria-hidden />
       </div>
     </div>
   );

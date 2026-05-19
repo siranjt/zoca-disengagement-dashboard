@@ -78,7 +78,8 @@ const SELECTED_OUTLINE: Record<Tile["color"], { border: string; shadow: string; 
 export function V2KpiTiles({ tiles }: Props) {
   return (
     <div
-      className="mx-6 mb-6 grid gap-2.5"
+      // Phase 33.brand-watchfire-PR6-final — stagger fade-up per spec §11 row 7.
+      className="mx-6 mb-6 grid gap-2.5 beacon-kpi-staggered"
       style={{ gridTemplateColumns: `repeat(${tiles.length}, 1fr)` }}
     >
       {tiles.map((tile, i) => (

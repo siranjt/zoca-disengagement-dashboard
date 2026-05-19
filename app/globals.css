@@ -784,10 +784,10 @@ button:active:not(.no-press),
 .b-tab-pulse {
   animation: b-tab-pulse 2.4s ease-in-out infinite;
 }
-/* Phase 33.brand-watchfire-PR6 — re-skin to Char */
+/* Phase 33.brand-watchfire-PR6-final — re-skin to Brass per spec §11 row 22 */
 @keyframes b-tab-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(43, 31, 20, 0.45); }
-  60%      { box-shadow: 0 0 0 7px rgba(43, 31, 20, 0);    }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 164, 65, 0.55); }
+  50%      { box-shadow: 0 0 0 4px rgba(217, 164, 65, 0);    }
 }
 
 /* 4. Spike dot radius pulse (sparkline last point) */
@@ -1219,6 +1219,60 @@ textarea:focus-visible {
   .beacon-kpi-breath,
   .beacon-refresh-spin,
   .beacon-count-breath {
+    animation: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR6-final — last 8 animations from
+   spec §11 (KPI stagger entry, trend breathe overlay, caret).
+   ───────────────────────────────────────────────────────────── */
+
+/* #7: KPI cards stagger fade-up — 400ms each, 100ms apart.
+   Container gets `.beacon-kpi-staggered` so we can target children. */
+.beacon-kpi-staggered > * {
+  animation: beacon-kpi-card-entry 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.beacon-kpi-staggered > *:nth-child(1) { animation-delay: 0.70s; }
+.beacon-kpi-staggered > *:nth-child(2) { animation-delay: 0.80s; }
+.beacon-kpi-staggered > *:nth-child(3) { animation-delay: 0.90s; }
+.beacon-kpi-staggered > *:nth-child(4) { animation-delay: 1.00s; }
+.beacon-kpi-staggered > *:nth-child(5) { animation-delay: 1.10s; }
+.beacon-kpi-staggered > *:nth-child(6) { animation-delay: 1.20s; }
+@keyframes beacon-kpi-card-entry {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* #27: 30-day trend area-fill breathe — gentle ember tint over the canvas
+   that pulses 0.55 → 1.0 → 0.55 on a 3s loop. Layered via position: absolute
+   inside the chart wrapper; pointer-events disabled so chart hover still works. */
+.beacon-trend-breath {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at right 70%,
+    rgba(252, 228, 214, 0.20),
+    transparent 60%
+  );
+  animation: beacon-trend-breath 3s ease-in-out infinite;
+  animation-delay: 2.4s;  /* hold steady through the 2s entry, then start */
+}
+@keyframes beacon-trend-breath {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1.0;  }
+}
+
+/* #29: Notes textarea Char-colored caret. Browser handles the ~1s blink
+   natively once caret-color is set; spec wants Char (#2B1F14). */
+textarea {
+  caret-color: var(--zoca-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-kpi-staggered > *,
+  .beacon-trend-breath {
     animation: none !important;
   }
 }
