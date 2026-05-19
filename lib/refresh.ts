@@ -208,7 +208,9 @@ export async function runStageA(today: number = todayMs()): Promise<{
   const [cbResult, invoicesResult, transactionsResult, baseSheetResult] = await Promise.all([
     fetchAllLiveSubsWithEntityMap().catch((e: Error) => {
       errors.push(`Chargebee subs: ${e.message}`);
-      return { subs: [] as ChargebeeSub[], customerToEntities: new Map<string, string[]>() };
+      // Phase 33.scope-fix7-hotfix — keep the success and failure return shapes identical
+      // so the destructure below doesn't hit a TS union-type error.
+      return { subs: [] as ChargebeeSub[], customerToEntities: new Map<string, string[]>(), entityNameById: new Map<string, string>() };
     }),
     fetchUnpaidInvoices().catch((e: Error) => {
       errors.push(`Chargebee invoices: ${e.message}`);
