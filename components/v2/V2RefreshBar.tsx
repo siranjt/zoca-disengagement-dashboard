@@ -1,6 +1,6 @@
 "use client";
 // Phase 33.brand-watchfire-pink-sweep-v2 (3 hex/rgba + 0 tailwind-rose swept)
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "./Toast";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { useMagnetic } from "@/lib/hooks/useMagnetic";
@@ -17,6 +17,23 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
   const { showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const magneticRef = useMagnetic<HTMLButtonElement>({ strength: 0.18, radius: 70 });
+
+  // Phase 33.brand-watchfire-PR8-47 — shimmer the timestamp when /api/snapshot
+  // returns fresh data. Per spec §11 row 47: 800ms gradient sweep on update.
+  const [shimmer, setShimmer] = useState(false);
+  const prevGeneratedAtRef = useRef<string | null | undefined>(generatedAt);
+  useEffect(() => {
+    if (
+      prevGeneratedAtRef.current != null &&
+      prevGeneratedAtRef.current !== generatedAt
+    ) {
+      setShimmer(true);
+      const t = setTimeout(() => setShimmer(false), 850);
+      prevGeneratedAtRef.current = generatedAt;
+      return () => clearTimeout(t);
+    }
+    prevGeneratedAtRef.current = generatedAt;
+  }, [generatedAt]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -56,7 +73,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
         <span>
           <span className="zoca-micro-label">Last refresh</span>{" "}
           <strong
-            className="ml-1.5 font-semibold"
+            className={`ml-1.5 font-semibold${shimmer ? " beacon-shimmer" : ""}`}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {time}

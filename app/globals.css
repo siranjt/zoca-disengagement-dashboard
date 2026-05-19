@@ -1394,3 +1394,101 @@ textarea {
     transform: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR8 — data-update animations (spec §11).
+   ───────────────────────────────────────────────────────────── */
+
+/* #44 New customer card — Brass flash on entry, 600ms */
+.beacon-card-arrival {
+  animation: beacon-card-arrival 0.6s ease-out both;
+}
+@keyframes beacon-card-arrival {
+  0% {
+    box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 0 rgba(217, 164, 65, 0.65);
+    transform: translateY(-6px);
+    opacity: 0.85;
+  }
+  50% {
+    box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 6px rgba(217, 164, 65, 0.45);
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04), 0 0 0 0 rgba(217, 164, 65, 0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* #45 Removed card fade + collapse — DORMANT (awaiting parent orchestration).
+   Apply via .beacon-card-exit once a list-management refactor lands. */
+.beacon-card-exit {
+  animation: beacon-card-exit 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  overflow: hidden;
+}
+@keyframes beacon-card-exit {
+  0%   { opacity: 1; max-height: 600px; margin-bottom: 12px; transform: scaleY(1); }
+  100% { opacity: 0; max-height: 0;     margin-bottom: 0;    transform: scaleY(0.95); }
+}
+
+/* #46 Tier-changed card — 2s outline pulse in the NEW tier color */
+.beacon-tier-change-RED {
+  animation: beacon-tier-change-red 2s ease-out both;
+}
+@keyframes beacon-tier-change-red {
+  0%   { box-shadow: 0 0 0 3px rgba(200, 67, 29, 0.75); }
+  100% { box-shadow: 0 0 0 0   rgba(200, 67, 29, 0);    }
+}
+.beacon-tier-change-YELLOW {
+  animation: beacon-tier-change-yellow 2s ease-out both;
+}
+@keyframes beacon-tier-change-yellow {
+  0%   { box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.75); }
+  100% { box-shadow: 0 0 0 0   rgba(217, 164, 65, 0);    }
+}
+.beacon-tier-change-GREEN {
+  animation: beacon-tier-change-green 2s ease-out both;
+}
+@keyframes beacon-tier-change-green {
+  0%   { box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.75); }
+  100% { box-shadow: 0 0 0 0   rgba(74, 124, 89, 0);    }
+}
+
+/* #47 LAST REFRESH timestamp shimmer — 800ms gradient sweep on update.
+   Uses background-clip: text so the ember-tint travels across the digits. */
+.beacon-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--zoca-text) 0%,
+    var(--zoca-text) 35%,
+    #C8431D 50%,
+    var(--zoca-text) 65%,
+    var(--zoca-text) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: beacon-shimmer 0.8s ease-out forwards;
+}
+@keyframes beacon-shimmer {
+  0%   { background-position: 110% 50%;  }
+  100% { background-position: -10% 50%;  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-card-arrival,
+  .beacon-card-exit,
+  .beacon-tier-change-RED,
+  .beacon-tier-change-YELLOW,
+  .beacon-tier-change-GREEN,
+  .beacon-shimmer {
+    animation: none !important;
+  }
+  .beacon-shimmer {
+    -webkit-text-fill-color: var(--zoca-text);
+    color: var(--zoca-text);
+  }
+}

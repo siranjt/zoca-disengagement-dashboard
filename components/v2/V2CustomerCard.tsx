@@ -83,6 +83,48 @@ function V2CustomerCardInner({
     prevPinnedRef.current = !!isPinned;
   }, [isPinned]);
 
+  // Phase 33.brand-watchfire-PR8 — localStorage diff on mount to surface
+  // new arrivals (#44) and tier changes (#46). Per-AM key so different AMs
+  // have independent "seen" books.
+  const [arrivalState, setArrivalState] = useState<"new" | "tier-changed" | null>(null);
+  const [arrivalTier, setArrivalTier] = useState<"RED" | "YELLOW" | "GREEN" | null>(null);
+  useEffect(() => {
+    const am = amName || customer.am_name || "default";
+    const key = `beacon_seen_${am}`;
+    const eid = customer.entity_id;
+    if (!eid) return;
+    let seen: Record<string, string> = {};
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+      if (raw) seen = JSON.parse(raw);
+    } catch {
+      seen = {};
+    }
+    const prev = seen[eid];
+    const curr = s.stoplight;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (!prev) {
+      setArrivalState("new");
+      timer = setTimeout(() => setArrivalState(null), 600);
+    } else if (prev !== curr) {
+      setArrivalTier(curr as "RED" | "YELLOW" | "GREEN");
+      setArrivalState("tier-changed");
+      timer = setTimeout(() => setArrivalState(null), 2000);
+    }
+    seen[eid] = curr;
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(key, JSON.stringify(seen));
+      }
+    } catch {
+      /* localStorage may be full or disabled; safe to swallow */
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleSnoozeWithAnimation(days: number) {
     if (!onSnooze) return;
     setSnoozing(true);
@@ -353,7 +395,7 @@ function V2CustomerCardInner({
       })()}
       data-entity-id={customer.entity_id}
       // Phase 33.brand-PR4b — card border pink-ring pulse for RED-tier cards only.
-      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}${s.stoplight === "RED" && !isSnoozed ? " b-card-pulse" : ""}`}
+      className={`zoca-card group v2-card-enter${snoozing ? " v2-card-snoozing" : ""}${s.stoplight === "RED" && !isSnoozed ? " b-card-pulse" : ""}${arrivalState === "new" ? " beacon-card-arrival" : ""}${arrivalState === "tier-changed" && arrivalTier ? ` beacon-tier-change-${arrivalTier}` : ""}`}
       style={{
         borderColor: tierStyle.borderColor,
         background: tierStyle.background,

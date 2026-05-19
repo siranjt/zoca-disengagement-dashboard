@@ -78,6 +78,13 @@ export function BookHealthDonut({
       duration: 1500,
       easing: CHART_ANIMATION.easing,
     },
+    // Phase 33.brand-watchfire-PR8-43 — segment proportion update animation per spec §11 row 43.
+    animations: {
+      numbers: {
+        duration: 1200,
+        easing: "easeOutCubic",
+      },
+    },
     rotation: -90,
     plugins: {
       legend: { display: false },
