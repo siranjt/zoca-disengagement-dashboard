@@ -102,9 +102,11 @@ export function SignalMixPie({ customers, amName }: Props) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    // Phase 33.brand-watchfire-PR6-complete — spec §11 row 10: wedges expand from center.
     animation: {
-      animateRotate: true,
-      duration: CHART_ANIMATION.duration,
+      animateRotate: false,
+      animateScale: true,
+      duration: 1500,
       easing: CHART_ANIMATION.easing,
     },
     plugins: {

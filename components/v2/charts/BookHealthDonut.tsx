@@ -71,11 +71,14 @@ export function BookHealthDonut({
     responsive: true,
     maintainAspectRatio: false,
     cutout: "62%",
+    // Phase 33.brand-watchfire-PR6-complete — spec §11 row 9: 1.5s clockwise sweep.
     animation: {
       animateRotate: true,
-      duration: CHART_ANIMATION.duration,
+      animateScale: false,
+      duration: 1500,
       easing: CHART_ANIMATION.easing,
     },
+    rotation: -90,
     plugins: {
       legend: { display: false },
       tooltip: CHART_TOOLTIP_STYLE,

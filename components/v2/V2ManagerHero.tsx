@@ -64,7 +64,7 @@ export function V2ManagerHero({
             size={18}
             style={{ position: "absolute", top: "-8px", left: "-26px" }}
           />
-          <span className="zoca-gradient-text">{title}</span>
+          <span className="beacon-hero-entry zoca-gradient-text" style={{ display: "inline-block" }}>{title}</span>
           <ZocaSparkle
             size={14}
             delay={1}

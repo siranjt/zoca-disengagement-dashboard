@@ -88,7 +88,7 @@ export function RefreshButton() {
         </>
       ) : (
         <>
-          <span aria-hidden>↻</span>
+          <span aria-hidden className="beacon-refresh-spin">↻</span>
           Refresh
         </>
       )}

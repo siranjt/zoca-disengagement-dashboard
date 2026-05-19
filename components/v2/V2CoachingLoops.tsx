@@ -381,7 +381,7 @@ function CoachingPills({
             disabled={!active}
             onClick={() => active && onMetricClick?.(row.am_name, m.key)}
             title={m.explainer}
-            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium transition focus:outline-none focus-visible:ring-2"
+            className={`beacon-headsup-slide inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium transition focus:outline-none focus-visible:ring-2${active ? " beacon-count-breath" : ""}`}
             style={
               active
                 ? {

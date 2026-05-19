@@ -22,7 +22,7 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
           instead of sitting next to it on the same baseline. */}
       <div className="mb-5 flex justify-center">
         <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+          className="beacon-pill-fade inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
           style={{
             border: "1px solid rgba(20,110,245,0.18)",
             background: "rgba(20,110,245,0.06)",
@@ -40,7 +40,7 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
 
       {/* Title — wrapped in a block-level container so the gradient h1 with its
           absolutely-positioned sparkles centers cleanly under the chip. */}
-      <div>
+      <div className="beacon-hero-entry">
         <h1
           className="m-0 font-extrabold"
           style={{
@@ -92,13 +92,13 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
         )}
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">
-        <span className="inline-flex items-center gap-2">
+        <span className="beacon-stats-dot inline-flex items-center gap-2">
           <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> <span style={{ fontVariantNumeric: "tabular-nums" }}><AnimatedNumber value={totalCount} duration={900} /></span> active customers
         </span>
-        <span className="inline-flex items-center gap-2">
+        <span className="beacon-stats-dot inline-flex items-center gap-2">
           <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> Live Chargebee + Metabase
         </span>
-        <span className="inline-flex items-center gap-2">
+        <span className="beacon-stats-dot inline-flex items-center gap-2">
           <span className="text-zoca-pink" style={{ fontSize: "12px", lineHeight: 1 }}>{"❋"}</span> Claude-scored signals
         </span>
       </div>

@@ -42,7 +42,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
 
   return (
     <div
-      className="mx-6 mb-4 rounded-2xl border border-zoca-border bg-white px-5 py-3.5 flex items-center justify-between flex-wrap gap-3"
+      className="beacon-refresh-card mx-6 mb-4 rounded-2xl border border-zoca-border bg-white px-5 py-3.5 flex items-center justify-between flex-wrap gap-3"
       style={{ boxShadow: "0 4px 18px rgba(11,5,29,0.04)" }}
     >
       <div className="flex items-center gap-5 flex-wrap text-[12px] text-zoca-text">

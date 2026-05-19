@@ -1112,3 +1112,113 @@ textarea:focus-visible {
 }
 
 /* Phase 33.brand-watchfire-pink-sweep-globals — sweep complete (21 replacements) */
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR6-complete — spec §11 deferred animations.
+   #2/#3/#4/#5/#6/#11/#12 = entry one-shots
+   #21/#23/#31 = continuous loops
+   ───────────────────────────────────────────────────────────── */
+
+/* #2 Brand pill fade-in (600ms @ 200ms) */
+.beacon-pill-fade {
+  animation: beacon-pill-fade 0.6s ease-out 0.2s both;
+}
+@keyframes beacon-pill-fade {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0);     }
+}
+
+/* #3 Hero gradient fade + scale-in entry (800ms @ 400ms) */
+.beacon-hero-entry {
+  animation: beacon-hero-entry 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+@keyframes beacon-hero-entry {
+  0%   { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1);    }
+}
+
+/* #4 Sparkles scatter into place (600ms staggered 100ms) */
+.beacon-sparkle-scatter {
+  animation: beacon-sparkle-scatter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes beacon-sparkle-scatter {
+  0%   { opacity: 0; transform: translate(-20px, -10px) scale(0); }
+  100% { opacity: 1; transform: translate(0, 0) scale(1);          }
+}
+
+/* #5 Stats row dots sequential fade-in */
+.beacon-stats-dot {
+  animation: beacon-stats-fade 0.5s ease-out both;
+}
+.beacon-stats-dot:nth-child(1) { animation-delay: 1.0s; }
+.beacon-stats-dot:nth-child(2) { animation-delay: 1.15s; }
+.beacon-stats-dot:nth-child(3) { animation-delay: 1.30s; }
+@keyframes beacon-stats-fade {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+
+/* #6 Refresh card fades up (500ms) */
+.beacon-refresh-card {
+  animation: beacon-refresh-card 0.5s ease-out 0.6s both;
+}
+@keyframes beacon-refresh-card {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+
+/* #11 HEADS UP pills slide in from sides (400ms staggered 80ms) */
+.beacon-headsup-slide {
+  animation: beacon-headsup-slide 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.beacon-headsup-slide:nth-child(1) { animation-delay: 0.8s; }
+.beacon-headsup-slide:nth-child(2) { animation-delay: 0.88s; }
+.beacon-headsup-slide:nth-child(3) { animation-delay: 0.96s; }
+.beacon-headsup-slide:nth-child(4) { animation-delay: 1.04s; }
+.beacon-headsup-slide:nth-child(5) { animation-delay: 1.12s; }
+@keyframes beacon-headsup-slide {
+  0%   { opacity: 0; transform: translateX(-12px); }
+  100% { opacity: 1; transform: translateX(0);      }
+}
+
+/* #21 Active KPI card border breathing (continuous, 3s) */
+.beacon-kpi-breath {
+  animation: beacon-kpi-breath 3s ease-in-out infinite;
+}
+@keyframes beacon-kpi-breath {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(43, 31, 20, 0.25), 0 0 24px rgba(43, 31, 20, 0.18); }
+  50%      { box-shadow: 0 0 0 1px rgba(43, 31, 20, 0.45), 0 0 28px rgba(217, 164, 65, 0.30); }
+}
+
+/* #23 Refresh button icon slow rotation (6s linear infinite) */
+.beacon-refresh-spin {
+  display: inline-block;
+  animation: beacon-refresh-spin 6s linear infinite;
+}
+@keyframes beacon-refresh-spin {
+  0%   { transform: rotate(0deg);   }
+  100% { transform: rotate(360deg); }
+}
+
+/* #31 HEADS UP non-zero pill count opacity breath (3s) */
+.beacon-count-breath {
+  animation: beacon-count-breath 3s ease-in-out infinite;
+}
+@keyframes beacon-count-breath {
+  0%, 100% { opacity: 1;   }
+  50%      { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-pill-fade,
+  .beacon-hero-entry,
+  .beacon-sparkle-scatter,
+  .beacon-stats-dot,
+  .beacon-refresh-card,
+  .beacon-headsup-slide,
+  .beacon-kpi-breath,
+  .beacon-refresh-spin,
+  .beacon-count-breath {
+    animation: none !important;
+  }
+}
