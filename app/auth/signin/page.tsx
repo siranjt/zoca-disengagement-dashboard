@@ -1,16 +1,21 @@
 "use client";
 
-// Phase 33.A — Custom sign-in page.
+// Phase 33.brand-PR3 — Beacon-branded sign-in page.
 //
-// Lives at /auth/signin. NextAuth's signIn("google") kicks off the OAuth
-// dance and lands the user back on whatever `callbackUrl` they came from
-// (or /v2 by default). If the signIn callback rejects them (non-Zoca
-// domain), NextAuth redirects back here with `?error=AccessDenied`.
+// Preserves Phase 33.A's working OAuth wiring:
+//   - Suspense + useSearchParams for callbackUrl + error
+//   - signIn("google", { callbackUrl })
+//   - AccessDenied banner for non-Zoca emails
+//   - Generic error fallback
+//   - Loading state on the button
+//
+// Adds the brand spec §7–8 motion layer. All continuous motion is gated
+// by prefers-reduced-motion in app/globals.css.
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { ZocaLogo } from "@/components/v2/ZocaLogo";
+import { BeaconMark } from "@/components/BeaconMark";
 
 export default function SignInPage() {
   return (
@@ -40,61 +45,72 @@ function SignInShell({
     <div
       data-theme="zoca-light"
       style={{
+        position: "relative",
         minHeight: "100vh",
-        background: "var(--zoca-bg-soft, #f7f6fb)",
+        background: "#FAF9F6",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
+        overflow: "hidden",
       }}
     >
+      {/* 4 drifting background blobs */}
+      <div className="b-blob b-blob-1" aria-hidden="true" />
+      <div className="b-blob b-blob-2" aria-hidden="true" />
+      <div className="b-blob b-blob-3" aria-hidden="true" />
+      <div className="b-blob b-blob-4" aria-hidden="true" />
+
+      {/* 6 sparkles */}
+      <Sparkle top="8%" left="14%" color="#8B5CF6" size={16} delay={0} rotate />
+      <Sparkle top="14%" right="14%" color="#ff56bb" size={14} delay={0.3} />
+      <Sparkle top="44%" left="9%" color="#3B82F6" size={12} delay={0.6} />
+      <Sparkle top="38%" right="14%" color="#F97316" size={16} delay={0.9} rotate />
+      <Sparkle bottom="22%" left="16%" color="#A78BFA" size={14} delay={1.2} rotate reverse />
+      <Sparkle bottom="28%" right="12%" color="#F472B6" size={12} delay={1.5} />
+
+      {/* 2 drift dots */}
+      <div className="b-drift-dot" style={{ top: "32%", left: "7%", background: "#8B5CF6" }} aria-hidden="true" />
+      <div className="b-drift-dot b-drift-dot-2" style={{ bottom: "14%", right: "7%", background: "#F97316" }} aria-hidden="true" />
+
+      {/* THE CARD */}
       <div
+        className="b-card"
         style={{
+          position: "relative",
+          zIndex: 1,
           width: "100%",
-          maxWidth: "420px",
+          maxWidth: "400px",
           background: "#ffffff",
-          border: "1px solid var(--zoca-border, #e6e3ef)",
-          borderRadius: "16px",
-          padding: "36px 32px",
-          boxShadow: "0 12px 32px rgba(11,5,29,0.08)",
+          border: "0.5px solid #E5E7EB",
+          borderRadius: "20px",
+          padding: "32px 36px 28px",
+          boxShadow: "0 12px 40px rgba(11,5,29,0.06)",
+          textAlign: "center",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "24px",
-          }}
-        >
-          <ZocaLogo height={28} color="var(--zoca-text, #0b051d)" />
+        {/* Mark with halo */}
+        <div className="b-mark-fade" style={{ position: "relative", display: "inline-block", marginBottom: "16px" }}>
+          <div className="b-halo" aria-hidden="true" />
+          <BeaconMark size={64} flicker />
         </div>
 
-        <h1
-          style={{
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "var(--zoca-text, #0b051d)",
-            textAlign: "center",
-            margin: "0 0 8px",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Customer Health
-        </h1>
-        <p
-          style={{
-            fontSize: "13px",
-            color: "var(--zoca-text-2, #4d4666)",
-            textAlign: "center",
-            margin: "0 0 28px",
-          }}
-        >
-          Sign in to continue
-        </p>
+        {/* BEACON wordmark with gradient shimmer */}
+        <div className="b-wordmark">BEACON</div>
 
+        {/* Tagline */}
+        <div className="b-tagline-fade" style={{ fontSize: "10.5px", letterSpacing: "0.3em", color: "#6B7280", marginTop: "10px" }}>
+          A &middot; SIGNAL &middot; WORTH &middot; FOLLOWING
+        </div>
+
+        {/* Divider */}
+        <div className="b-divider-fade" style={{ width: "220px", height: "0.5px", background: "#E5E7EB", margin: "20px auto" }} />
+
+        {/* Error banners — preserved from Phase 33.A */}
         {error === "AccessDenied" && (
           <div
             role="alert"
+            className="b-stagger-err"
             style={{
               padding: "12px 14px",
               borderRadius: "10px",
@@ -103,16 +119,17 @@ function SignInShell({
               color: "#b91c1c",
               fontSize: "12.5px",
               lineHeight: "1.5",
-              marginBottom: "20px",
+              marginBottom: "16px",
+              textAlign: "left",
             }}
           >
-            Your email isn&apos;t on the Zoca team. Contact your manager if
-            this is unexpected.
+            Your email isn&apos;t on the Zoca team. Contact your manager if this is unexpected.
           </div>
         )}
         {error && error !== "AccessDenied" && (
           <div
             role="alert"
+            className="b-stagger-err"
             style={{
               padding: "12px 14px",
               borderRadius: "10px",
@@ -121,13 +138,23 @@ function SignInShell({
               color: "#92400e",
               fontSize: "12.5px",
               lineHeight: "1.5",
-              marginBottom: "20px",
+              marginBottom: "16px",
+              textAlign: "left",
             }}
           >
             Couldn&apos;t sign in: {error}. Try again, or contact your manager.
           </div>
         )}
 
+        {/* Headline */}
+        <div
+          className="b-headline-fade"
+          style={{ fontSize: "15px", fontWeight: 500, color: "#0b051d", marginBottom: "14px" }}
+        >
+          Sign in to continue
+        </div>
+
+        {/* Google button */}
         <button
           type="button"
           disabled={loading}
@@ -135,60 +162,112 @@ function SignInShell({
             setLoading(true);
             void signIn("google", { callbackUrl });
           }}
+          className="b-btn-pulse"
           style={{
-            width: "100%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: "10px",
+            width: "100%",
             padding: "12px 16px",
+            background: loading ? "#FAF9F6" : "#ffffff",
+            border: "1px solid #E5E7EB",
             borderRadius: "10px",
-            border: "1px solid var(--zoca-border, #e6e3ef)",
-            background: loading ? "var(--zoca-bg-soft, #f7f6fb)" : "#ffffff",
-            color: "var(--zoca-text, #0b051d)",
-            fontSize: "14px",
-            fontWeight: 600,
+            fontSize: "13.5px",
+            fontWeight: 500,
+            color: "#0b051d",
             cursor: loading ? "wait" : "pointer",
             transition: "background 0.15s ease",
           }}
           onMouseEnter={(e) => {
-            if (!loading)
-              e.currentTarget.style.background =
-                "var(--zoca-bg-soft, #f7f6fb)";
+            if (!loading) e.currentTarget.style.background = "#FAF9F6";
           }}
           onMouseLeave={(e) => {
             if (!loading) e.currentTarget.style.background = "#ffffff";
           }}
         >
           <GoogleIcon />
-          {loading ? "Redirecting…" : "Continue with Google"}
+          {loading ? "Redirecting\u2026" : "Continue with Google"}
         </button>
 
-        <p
-          style={{
-            marginTop: "20px",
-            fontSize: "11px",
-            color: "var(--zoca-text-3, #8a8499)",
-            textAlign: "center",
-            lineHeight: "1.5",
-          }}
+        {/* Bottom note */}
+        <div
+          className="b-note-fade"
+          style={{ marginTop: "16px", fontSize: "10.5px", color: "#9CA3AF" }}
         >
           Only @zoca.ai and @zoca.com accounts can sign in.
-        </p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div
+        className="b-footer-fade"
+        style={{
+          position: "absolute",
+          bottom: "20px",
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          fontSize: "9px",
+          letterSpacing: "0.3em",
+          color: "rgba(11,5,29,0.4)",
+          pointerEvents: "none",
+        }}
+      >
+        B E A C O N &middot; H O S T E D &middot; O N &middot; V E R C E L
       </div>
     </div>
   );
 }
 
-function GoogleIcon() {
+function Sparkle({
+  top,
+  bottom,
+  left,
+  right,
+  color,
+  size,
+  delay = 0,
+  rotate = false,
+  reverse = false,
+}: {
+  top?: string;
+  bottom?: string;
+  left?: string;
+  right?: string;
+  color: string;
+  size: number;
+  delay?: number;
+  rotate?: boolean;
+  reverse?: boolean;
+}) {
+  const rotationDur = 10 + delay * 2;
+  const twinkleDur = 1.8 + delay;
   return (
     <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
       aria-hidden="true"
+      style={{
+        position: "absolute",
+        top,
+        bottom,
+        left,
+        right,
+        animation: rotate
+          ? `b-twinkle ${twinkleDur}s ease-in-out infinite, b-rotate ${rotationDur}s linear infinite ${reverse ? "reverse" : ""}`
+          : `b-twinkle-2 ${2 + delay}s ease-in-out infinite`,
+      }}
     >
+      <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" fill={color} />
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
         fill="#4285F4"
