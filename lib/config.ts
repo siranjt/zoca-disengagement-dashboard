@@ -271,6 +271,7 @@ export const MANAGER_EMAILS: string[] = [
   "abhishek.j@zoca.com",
   "siddhi.s@zoca.com",
   "kripali@zoca.ai",
+  "kripali@zoca.com",
   "saibal.p@zoca.com",
   "vaibhav.v@zoca.com",
 ];
