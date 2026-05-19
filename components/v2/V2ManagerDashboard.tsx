@@ -807,7 +807,7 @@ function V2ManagerDashboardInner() {
       )}
       <a
         href="#manager-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:border focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-zoca-text focus:bg-white focus:border-zoca-pink"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:border focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-zoca-text focus:bg-zoca-bg-soft focus:border-zoca-pink"
       >
         Skip to dashboard content
       </a>
@@ -1452,11 +1452,11 @@ function DeltaBadge({
 
 function ManagerSkeleton() {
   const tile =
-    "h-20 animate-pulse rounded-2xl border bg-white";
+    "h-20 animate-pulse rounded-2xl border bg-zoca-bg-soft";
   const tileBig =
-    "h-32 animate-pulse rounded-2xl border bg-white";
+    "h-32 animate-pulse rounded-2xl border bg-zoca-bg-soft";
   const tileXL =
-    "animate-pulse rounded-2xl border bg-white";
+    "animate-pulse rounded-2xl border bg-zoca-bg-soft";
   const borderStyle = { borderColor: "var(--zoca-border)" };
   return (
     <div className="space-y-6">

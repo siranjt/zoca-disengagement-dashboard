@@ -32,10 +32,11 @@ const METRICS: MetricDef[] = [
     short: "Untouched 7d",
     explainer:
       "Customers in this AM's book that need a call today (Critical or At-risk) where no am_action was logged AND no comms recorded in the last 7 days. These are the ones falling through.",
+    // Phase 33.brand-watchfire-T5 — untouched_7d → Light Ember bg + Deep Ember text.
     tone: {
-      fg: "#e11d48", // rose-600
-      bg: "rgba(244,63,94,0.08)",
-      border: "rgba(244,63,94,0.22)",
+      fg: "#7C2D12", // Deep Ember
+      bg: "rgba(252, 228, 214, 0.80)", // Light Ember
+      border: "rgba(200, 67, 29, 0.30)",
     },
   },
   {
@@ -44,10 +45,11 @@ const METRICS: MetricDef[] = [
     short: "Stale 14d",
     explainer:
       "Customers that need a call today whose last_any_iso is null or more than 14 days old — they've been on the needs-call list a long time without a reset. (v1 uses last-comms recency as a proxy for 'stale 14+ days running'.)",
+    // Phase 33.brand-watchfire-T5 — stale_14d → Faded Crimson bg + Deep Ember text.
     tone: {
-      fg: "#b45309", // amber-700
-      bg: "rgba(245,158,11,0.08)",
-      border: "rgba(245,158,11,0.22)",
+      fg: "#7C2D12", // Deep Ember
+      bg: "rgba(245, 201, 182, 0.65)", // Faded Crimson
+      border: "rgba(200, 67, 29, 0.32)",
     },
   },
   {
@@ -56,10 +58,11 @@ const METRICS: MetricDef[] = [
     short: "No-reach 3+",
     explainer:
       "Customers where the last three am_actions logged by this AM are all 'No reach'. Worth escalating or trying a different channel.",
+    // Phase 33.brand-watchfire-T5 — noreach_streak → Buff bg + Smoke text.
     tone: {
-      fg: "#7c3aed", // violet-600
-      bg: "rgba(124,58,237,0.08)",
-      border: "rgba(124,58,237,0.22)",
+      fg: "#6E5F50", // Smoke
+      bg: "rgba(235, 224, 194, 0.55)", // Buff
+      border: "rgba(217, 164, 65, 0.28)",
     },
   },
   {
@@ -68,10 +71,11 @@ const METRICS: MetricDef[] = [
     short: "Snooze ignored",
     explainer:
       "Customers this AM snoozed where the snooze has elapsed AND no am_action has been logged since. These quietly fell off the radar.",
+    // Phase 33.brand-watchfire-T5 — snooze_ignored → Buff bg + Smoke text.
     tone: {
-      fg: "#0284c7", // sky-600
-      bg: "rgba(2,132,199,0.08)",
-      border: "rgba(2,132,199,0.22)",
+      fg: "#6E5F50", // Smoke
+      bg: "rgba(235, 224, 194, 0.55)", // Buff
+      border: "rgba(217, 164, 65, 0.28)",
     },
   },
 ];

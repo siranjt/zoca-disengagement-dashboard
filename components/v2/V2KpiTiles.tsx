@@ -114,11 +114,12 @@ function KpiTile({ tile, index }: { tile: Tile; index: number }) {
       onClick={handleClick}
       role={tile.onClick && !tile.href ? "button" : undefined}
       aria-pressed={tile.onClick ? isSelected : undefined}
-      className={`block bg-white rounded-2xl px-4 py-4 no-underline transition cursor-pointer${isSelected ? " beacon-kpi-breath" : ""}`}
+      // Phase 33.brand-watchfire-T5 — Light Parchment surface, not white.
+      className={`block bg-zoca-bg-soft rounded-2xl px-4 py-4 no-underline transition cursor-pointer${isSelected ? " beacon-kpi-breath" : ""}`}
       style={{
         border: sel ? `1px solid ${sel.border}` : "1px solid var(--zoca-border)",
         boxShadow: sel ? sel.shadow : "0 1px 3px rgba(11,5,29,0.04)",
-        background: sel ? sel.gradient : "#fff",
+        background: sel ? sel.gradient : "var(--zoca-bg-soft)",
         transformStyle: "preserve-3d",
         willChange: "transform",
       }}

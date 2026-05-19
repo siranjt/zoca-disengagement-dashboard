@@ -1509,7 +1509,7 @@ function SnoozeMenu({ onPick, size = "sm" }: { onPick: (days: number) => void; s
         <div
           role="menu"
           // Phase 33.brand-watchfire-PR7-39 — brass border draw on snooze dropdown entry.
-          className="beacon-dropdown-entry absolute right-0 z-20 mt-1 rounded-zoca border border-zoca-border bg-white py-1 shadow-zoca-sm"
+          className="beacon-dropdown-entry absolute right-0 z-20 mt-1 rounded-zoca border border-zoca-border bg-zoca-bg-soft py-1 shadow-zoca-sm"
           style={{ minWidth: 110 }}
         >
           {presets.map((p) => (

@@ -19,10 +19,11 @@ export default function ScopeStrip({ scope }: { scope?: SnapshotV2["scope"] }) {
   return (
     <div
       className="mx-6 mt-4 mb-2 rounded-2xl px-5 py-2.5 text-[11px] text-zoca-text-2 flex items-center gap-1 flex-wrap"
+      // Phase 33.brand-watchfire-T5 — Light Parchment surface.
       style={{
-        background: "#ffffff",
+        background: "var(--zoca-bg-soft)",
         border: "1px solid var(--zoca-border)",
-        boxShadow: "0 1px 2px rgba(11,5,29,0.03)",
+        boxShadow: "0 1px 2px rgba(43,31,20,0.04)",
       }}
       title={tooltip}
     >

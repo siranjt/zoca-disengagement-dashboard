@@ -97,7 +97,7 @@ export function AmPickerPill({ selectedAm, allAms, onChange }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`AM picker — selected ${selectedAm || "none"}`}
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white transition cursor-pointer"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-zoca-bg-soft transition cursor-pointer"
         style={{
           borderColor: "var(--zoca-border)",
         }}

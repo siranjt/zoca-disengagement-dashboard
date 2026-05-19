@@ -109,12 +109,13 @@
   box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
+/* Phase 33.brand-watchfire-T5 — zoca-card hover swept from V2 blue → Ember. */
 .zoca-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(20, 110, 245, 0.18);
+  border-color: rgba(200, 67, 29, 0.22);
   box-shadow:
-    0 12px 28px -8px rgba(11, 5, 29, 0.1),
-    0 0 0 1px rgba(20, 110, 245, 0.18),
+    0 12px 28px -8px rgba(43, 31, 20, 0.10),
+    0 0 0 1px rgba(200, 67, 29, 0.18),
     0 0 32px rgba(252, 228, 214, 0.32);
 }
 
@@ -417,13 +418,14 @@ canvas { max-width: 100% !important; }
    Phase 17.B — basic light treatment for V2 customer cards.
    Phase 17.C will polish them. For now: just ensure readability.
    ============================================================ */
+/* Phase 33.brand-watchfire-T5 — v2-customer-card fallback to Light Parchment. */
 [data-theme="zoca-light"] .v2-customer-card,
 [data-theme="zoca-light"] [data-card-type="v2"] {
-  background: #ffffff;
+  background: var(--zoca-bg-soft);
   border: 1px solid var(--zoca-border);
   border-radius: 14px;
   color: var(--zoca-text);
-  box-shadow: 0 1px 3px rgba(11, 5, 29, 0.04);
+  box-shadow: 0 1px 3px rgba(43, 31, 20, 0.04);
 }
 
 /* ============================================================

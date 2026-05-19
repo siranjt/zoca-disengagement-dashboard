@@ -77,7 +77,7 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
 
   if (state.status === "loading") {
     return (
-      <div className="my-4 flex items-center gap-3 rounded-zoca-lg border border-zoca-border bg-white px-4 py-3">
+      <div className="my-4 flex items-center gap-3 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft px-4 py-3">
         <div className="h-3 w-32 animate-pulse rounded bg-zoca-bg-tint" />
         <div className="h-6 flex-1 animate-pulse rounded bg-zoca-bg-tint" />
       </div>
@@ -98,7 +98,7 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
   return (
     <section
       aria-label={`${amName} book trend over the last ${days} days`}
-      className="my-4 rounded-zoca-lg border border-zoca-border bg-white p-4 md:p-5"
+      className="my-4 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft p-4 md:p-5"
       style={{ boxShadow: "0 1px 3px rgba(11, 5, 29, 0.04)" }}
     >
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -119,25 +119,25 @@ export default function V2AMBookTrendStrip({ amName, days = 14 }: Props) {
         <TrendRow
           label="Needs call"
           values={points.map((p) => p.red)}
-          color="rgb(255 86 187)"
+          color="rgb(200 67 29)"
           lastValue={last.red}
         />
         <TrendRow
           label="Monitor"
           values={points.map((p) => p.yellow)}
-          color="rgb(245 158 11)"
+          color="rgb(217 164 65)"
           lastValue={last.yellow}
         />
         <TrendRow
           label="Healthy"
           values={points.map((p) => p.green)}
-          color="rgb(16 185 129)"
+          color="rgb(74 124 89)"
           lastValue={last.green}
         />
         <TrendRow
           label="MRR @ risk"
           values={points.map((p) => p.mrr_at_risk)}
-          color="rgb(255 86 187)"
+          color="rgb(200 67 29)"
           lastValue={formatMoney(last.mrr_at_risk)}
         />
       </div>

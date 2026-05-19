@@ -97,25 +97,26 @@ export function tierToStoplight(
   return "GREEN";
 }
 
+// Phase 33.brand-watchfire-T5 — TIER/STOPLIGHT/CHANNEL palettes swept to Watchfire.
 export const TIER_COLORS: Record<Tier, string> = {
-  HIGH:    "#ff4fa8",
-  MEDIUM:  "#ffb74d",
-  LOW:     "#7868f4",
-  HEALTHY: "#76FF03",
+  HIGH:    "#7C2D12", // Deep Crimson
+  MEDIUM:  "#D9A441", // Brass
+  LOW:     "#2A4D5C", // Sea Lapis
+  HEALTHY: "#4A7C59", // Patina
 };
 
 export const STOPLIGHT_COLORS: Record<Stoplight, string> = {
-  RED:    "#ef4444",
-  YELLOW: "#f59e0b",
-  GREEN:  "#10b981",
+  RED:    "#C8431D", // Ember
+  YELLOW: "#D9A441", // Brass
+  GREEN:  "#4A7C59", // Patina
 };
 
 export const CHANNEL_COLORS: Record<string, string> = {
-  chat:  "#7868f4",
-  phone: "#00E5FF",
-  video: "#ff86e1",
-  sms:   "#FFD54F",
-  email: "#c8cafe",
+  chat:  "#2A4D5C", // Sea Lapis
+  phone: "#4A7C59", // Patina
+  video: "#C8431D", // Ember
+  sms:   "#D9A441", // Brass
+  email: "#6E5F50", // Smoke
 };
 
 export const SNAPSHOT_KEY = "disengagement:snapshot:latest";

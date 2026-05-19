@@ -54,13 +54,14 @@ type AmRow = {
 
 const POD_OPTIONS = ["All", "Pod 1", "Pod 2", "Pod 3", "Pod 4", "Pod 5", "Floating"];
 
+// Phase 33.brand-watchfire-T5 — pod indicator dots → Watchfire palette.
 const POD_COLOR_DOT: Record<string, string> = {
-  "Pod 1": "bg-violet-500",
-  "Pod 2": "bg-cyan-500",
-  "Pod 3": "bg-emerald-500",
-  "Pod 4": "bg-amber-500",
-  "Pod 5": "bg-pink-500",
-  Floating: "bg-slate-500",
+  "Pod 1": "bg-[#2A4D5C]", // Sea Lapis
+  "Pod 2": "bg-[#4A7C59]", // Patina
+  "Pod 3": "bg-[#D9A441]", // Brass
+  "Pod 4": "bg-[#C8431D]", // Ember
+  "Pod 5": "bg-[#7C2D12]", // Deep Crimson
+  Floating: "bg-[#6E5F50]", // Smoke
 };
 
 const SIGNAL_HELP =
