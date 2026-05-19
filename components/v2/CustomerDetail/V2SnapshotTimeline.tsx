@@ -308,7 +308,7 @@ function V2SnapshotTimeline({
         const json = (await res.json()) as TimelineResponse;
         if (cancelled) return;
         if (!json.ok) {
-          setError(json.error || "Failed to load timeline");
+          setError(json.error || "Signal lost — couldn't load timeline");
           setData(null);
         } else {
           setData(json);
@@ -385,7 +385,7 @@ function V2SnapshotTimeline({
         className="flex items-center justify-between rounded-zoca border border-rose-300/60 bg-rose-50 px-3 py-2 text-[12px] text-rose-700"
         style={{ minHeight: heightPx }}
       >
-        <span>Couldn’t load timeline · {error}</span>
+        <span>Signal lost · {error}</span>
         <button
           type="button"
           onClick={retry}

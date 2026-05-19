@@ -357,7 +357,7 @@ function CoachingPills({
         }}
       >
         <span aria-hidden>✓</span>
-        All clear — nothing falling through this week.
+        Quiet week — no signals slipping through.
       </div>
     );
   }

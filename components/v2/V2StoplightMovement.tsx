@@ -438,7 +438,7 @@ export default function V2StoplightMovement({ days = 7, onJumpToAm }: Props) {
             color: "#b45309",
           }}
         >
-          Couldn't load movement: {state.message}. (Likely no snapshot exists for {days} days
+          Signal lost — couldn't load movement: {state.message}. (Likely no snapshot exists for {days} days
           ago yet — the dashboard has been live less than {days} days, or that day's pipeline
           didn't run.)
         </div>

@@ -173,7 +173,7 @@ export default function V2MondayBriefing() {
 
         {state.status === "error" && (
           <div role="alert" className="rounded-zoca border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
-            Couldn't load brief: {state.message}
+            Signal lost — couldn't load brief: {state.message}
           </div>
         )}
 
@@ -191,7 +191,7 @@ export default function V2MondayBriefing() {
             <Panel
               title="🔥 Call these first"
               hint={`Top ${state.data.top_red.length} needs-call customer${state.data.top_red.length === 1 ? "" : "s"} by composite. Click to open the card.`}
-              emptyText="No needs-call customers in your book this week. Nice."
+              emptyText="Quiet week. No signals to follow."
               empty={state.data.top_red.length === 0}
             >
               <ul className="divide-y divide-zoca-border">
@@ -223,7 +223,7 @@ export default function V2MondayBriefing() {
             <Panel
               title="⬇ Degraded since last week"
               hint={state.data.compared_to ? `Customers whose stoplight worsened between ${state.data.compared_to} and today.` : "No 7d-ago snapshot yet — comparison disabled."}
-              emptyText="No one degraded this week. 🎉"
+              emptyText="No one slipped this week. 🎉"
               empty={state.data.degraded_this_week.length === 0}
             >
               <ul className="divide-y divide-zoca-border">
@@ -245,7 +245,7 @@ export default function V2MondayBriefing() {
             <Panel
               title="⬆ Recoveries this week"
               hint="Customers whose stoplight improved. Celebrate or call to lock the gain."
-              emptyText="No recoveries this week — focus on the top needs-call list."
+              emptyText="No recoveries this week — focus on the top signals."
               empty={state.data.improved_this_week.length === 0}
               tone="emerald"
             >
@@ -268,7 +268,7 @@ export default function V2MondayBriefing() {
             <Panel
               title="📅 Follow-ups this week"
               hint="Customers you tagged with a 7-day reminder."
-              emptyText="No scheduled follow-ups."
+              emptyText="Nothing scheduled to follow up on."
               empty={state.data.follow_ups.length === 0}
             >
               <ul className="divide-y divide-zoca-border">

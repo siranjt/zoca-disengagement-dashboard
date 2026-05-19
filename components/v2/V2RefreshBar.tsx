@@ -103,7 +103,7 @@ export function V2RefreshBar({ showing, total, generatedAt, amName, pod }: Props
             display: "inline-block",
           }}
         />
-        {refreshing ? "Refreshing…" : "Refresh live data"}
+        {refreshing ? "Catching signals…" : "Refresh live data"}
       </button>
     </div>
   );

@@ -212,7 +212,7 @@ export function OutcomeBreakdownDonut({ daysBack = 7 }: Props) {
               color: CHART_COLORS.muted,
             }}
           >
-            {loading ? "Loading…" : `No actions logged in last ${daysBack} days`}
+            {loading ? "Catching signals…" : `No actions logged in last ${daysBack} days`}
           </div>
         ) : (
           /* eslint-disable-next-line @typescript-eslint/no-explicit-any */

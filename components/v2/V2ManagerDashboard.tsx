@@ -883,7 +883,7 @@ function V2ManagerDashboardInner() {
               color: "var(--zoca-pink)",
             }}
           >
-            <p className="font-semibold">Couldn't load the snapshot.</p>
+            <p className="font-semibold">Signal lost — couldn't load the snapshot.</p>
             <p className="mt-1 text-[12px] text-zoca-text-2">{snapshot.message}</p>
             <button
               onClick={() => setCurrentDate("today")}

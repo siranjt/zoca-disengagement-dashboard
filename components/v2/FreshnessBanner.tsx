@@ -62,7 +62,7 @@ export function FreshnessBanner({ generatedAt }: Props) {
           color: "#92400e",
         }}
       >
-        {refreshing ? "Refreshing…" : "Refresh now"}
+        {refreshing ? "Catching signals…" : "Refresh now"}
       </button>
     </div>
   );

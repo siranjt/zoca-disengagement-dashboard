@@ -88,7 +88,7 @@ export function V2Hero({ amName, redCount, customerCount }: Props) {
             <span style={{ fontVariantNumeric: "tabular-nums" }}><AnimatedNumber value={needsCall} duration={900} /></span> customers need your attention today — surfaced from live billing, comms, app usage, and HubSpot signals.
           </>
         ) : (
-          "All clear today — no customers at critical risk. Use the filters below to review the full book."
+          "Quiet today — no signals worth following right now. Use the filters below to review the full book."
         )}
       </p>
       <div className="inline-flex items-center gap-6 mt-5 flex-wrap justify-center text-[12px] font-medium text-zoca-text-2">

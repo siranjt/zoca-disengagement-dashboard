@@ -67,7 +67,7 @@ function V2CommsThreadPanel({ entityId }: Props) {
       .then((data) => {
         if (cancelled) return;
         if (!data.ok) {
-          setError(data.error || "Failed to load comms");
+          setError(data.error || "Signal lost — couldn't load comms");
           setEvents([]);
           return;
         }
