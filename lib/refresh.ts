@@ -318,7 +318,9 @@ export async function runStageA(today: number = todayMs()): Promise<{
   for (const s of subs) {
     if (!(s as any).recently_cancelled) continue;
     if (!s.customer_id) continue;
-    if (liveCustomerIds.has(s.customer_id)) continue; // resurrection — keep live as primary
+    // Phase 33.scope-fix5 — DO NOT skip resurrected here. We need their
+    // cancelled_at to flow into recentlyChurnedByCustomer so the lifecycle
+    // derivation can tag them as "resurrected" (was "active" until now).
     const existing = recentlyChurnedByCustomer[s.customer_id];
     const cancelledMs = (s as any).cancelled_at as number | null | undefined;
     if (!existing || (cancelledMs && (!existing.cancelled_at || Date.parse(existing.cancelled_at) < cancelledMs))) {
@@ -891,7 +893,7 @@ export async function composeSnapshot(
     const _activatedMs = _activatedIso ? Date.parse(_activatedIso) : NaN;
     const _thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const _isNewlyOnboarded = _hasLiveSub && Number.isFinite(_activatedMs) && (stageA.todayMs - _activatedMs) <= _thirtyDaysMs && !_recentlyChurned;
-    const _isResurrected = _hasLiveSub && !!_recentlyChurned; // unreachable under current dedupe, but kept for completeness
+    const _isResurrected = _hasLiveSub && !!_recentlyChurned;
     const _isRecentlyChurned = !_hasLiveSub && !!_recentlyChurned;
     let _lifecycle_state: "active" | "recently_churned" | "newly_onboarded" | "resurrected" = "active";
     if (_isRecentlyChurned) _lifecycle_state = "recently_churned";
