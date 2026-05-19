@@ -972,3 +972,40 @@ button:active:not(.no-press),
 @media (prefers-reduced-motion: reduce) {
   .beacon-nav-slide { animation: none !important; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR7 — hover + focus interactions.
+   Targets existing selectors; no component touches.
+   ───────────────────────────────────────────────────────────── */
+
+/* 32. KPI tile hover lift — char border + 2px lift */
+.zoca-card:not([data-entity-id]):hover {
+  transform: translateY(-2px);
+  border-color: var(--zoca-text);
+  transition: transform 0.2s ease-out, border-color 0.2s ease-out, box-shadow 0.2s ease-out;
+  box-shadow: 0 6px 16px -8px rgba(43, 31, 20, 0.18);
+}
+
+/* 33. Customer card hover — ember border + 2px lift.
+   Customer cards have data-entity-id; KPI cards don't. */
+article[data-entity-id]:hover {
+  transform: translateY(-2px);
+  border-color: var(--zoca-pink) !important;  /* Ember after PR 1 swap */
+  transition: transform 0.2s ease-out, border-color 0.2s ease-out, box-shadow 0.2s ease-out;
+  box-shadow: 0 8px 20px -10px rgba(200, 67, 29, 0.30);
+}
+
+/* 41. Notes textarea focus glow — darker brass border + soft brass ring */
+textarea:focus-visible {
+  border-color: var(--zoca-border-2) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.22);
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zoca-card:not([data-entity-id]):hover,
+  article[data-entity-id]:hover {
+    transform: none !important;
+  }
+}
