@@ -73,6 +73,8 @@ export type StageAData = {
     plan_amount_cents: number;
     auto_collection: string | null;
     company_from_chargebee: string;
+    // Phase 33.scope-fix7 — entity-specific name from Chargebee sub.cf_entity_name.
+    entity_name_from_chargebee: string;
     email: string;
     phone: string;
     activated_at: string | null;
@@ -229,7 +231,8 @@ export async function runStageA(today: number = todayMs()): Promise<{
   ]);
   memSnap("A after fetch");
 
-  const { subs, customerToEntities } = cbResult;
+  // Phase 33.scope-fix7 — also pick up the per-entity name map.
+  const { subs, customerToEntities, entityNameById } = cbResult;
   const customerToEntitiesObj: Record<string, string[]> = {};
   for (const [k, v] of customerToEntities) customerToEntitiesObj[k] = v;
 
@@ -289,6 +292,8 @@ export async function runStageA(today: number = todayMs()): Promise<{
       plan_amount_cents: sub?.plan_amount || 0,
       auto_collection: sub?.auto_collection || null,
       company_from_chargebee: sub?.company || "",
+      // Phase 33.scope-fix7 — fall back to entity-specific Chargebee name for the UI/Slack bizname.
+      entity_name_from_chargebee: entityNameById.get(eid) || "",
       email: sub?.email || "",
       phone: sub?.phone || "",
       activated_at: sub?.activated_at ? new Date(sub.activated_at).toISOString() : null,
@@ -825,7 +830,8 @@ export async function composeSnapshot(
         if (hsCo) matchedVia = "place_id";
       }
       if (!hsCo) {
-        const lookupName = (bs?.bizname || meta?.company_from_chargebee || "").trim();
+        // Phase 33.scope-fix7 — same fallback chain as scored.push.
+        const lookupName = (bs?.bizname || meta?.entity_name_from_chargebee || meta?.company_from_chargebee || "").trim();
         if (lookupName) {
           hsCo = hubspotByNormalizedName.get(normalizeName(lookupName));
           if (hsCo) matchedVia = "bizname";
@@ -905,7 +911,8 @@ export async function composeSnapshot(
       customer_id: meta?.customer_id || "",
       entity_id: entityId,
       subscription_id: meta?.subscription_id || "",
-      company: bs?.bizname || meta?.company_from_chargebee || "",
+      // Phase 33.scope-fix7 — prefer entity-specific Chargebee name over customer-level company.
+      company: bs?.bizname || meta?.entity_name_from_chargebee || meta?.company_from_chargebee || "",
       email: bs?.app_email || meta?.email || "",
       phone: bs?.phone_number || meta?.phone || "",
       am_name: amName,

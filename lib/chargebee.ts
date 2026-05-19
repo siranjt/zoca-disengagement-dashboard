@@ -23,6 +23,8 @@ export async function fetchAllLiveSubs(): Promise<ChargebeeSub[]> {
 export async function fetchAllLiveSubsWithEntityMap(): Promise<{
   subs: ChargebeeSub[];
   customerToEntities: Map<string, string[]>;
+  // Phase 33.scope-fix7 — per-entity name from Chargebee cf_entity_name custom field.
+  entityNameById: Map<string, string>;
 }> {
   const site = process.env.CHARGEBEE_SITE || "zoca";
   const key = process.env.CHARGEBEE_API_KEY;
@@ -34,6 +36,8 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
   const out: ChargebeeSub[] = [];
   const seen = new Set<string>();
   const customerToEntities = new Map<string, Set<string>>();
+  // Phase 33.scope-fix7 — per-entity name (cf_entity_name from sub custom field).
+  const entityNameById = new Map<string, string>();
 
   // v2 — include "future" so AMs can see upcoming signed customers.
   // TODO: future subs hit the scoring engine with zero comms/usage/billing
@@ -75,6 +79,9 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
           const set = customerToEntities.get(customer_id) || new Set<string>();
           set.add(cfEntityId);
           customerToEntities.set(customer_id, set);
+          // Phase 33.scope-fix7 — capture per-entity name from sub custom field.
+          const cfEntityName = (sub.cf_entity_name || "").toString().trim();
+          if (cfEntityName) entityNameById.set(cfEntityId, cfEntityName);
         }
 
         out.push({
@@ -143,6 +150,9 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
           const set = customerToEntities.get(customer_id) || new Set<string>();
           set.add(cfEntityId);
           customerToEntities.set(customer_id, set);
+          // Phase 33.scope-fix7 — capture per-entity name (cancelled subs may have it too).
+          const cfEntityName = (sub.cf_entity_name || "").toString().trim();
+          if (cfEntityName) entityNameById.set(cfEntityId, cfEntityName);
         }
 
         out.push({
@@ -196,5 +206,6 @@ export async function fetchAllLiveSubsWithEntityMap(): Promise<{
     customerToEntitiesArr.set(c, Array.from(s).sort());
   }
 
-  return { subs: out, customerToEntities: customerToEntitiesArr };
+  // Phase 33.scope-fix7 — return per-entity name lookup alongside the entity-id map.
+  return { subs: out, customerToEntities: customerToEntitiesArr, entityNameById };
 }
