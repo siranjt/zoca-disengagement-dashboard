@@ -740,7 +740,9 @@ function V2CustomerCardInner({
             />
           ) : actionState.kind === "done" ? (
             <div
-              className="max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]"
+              // Phase 33.brand-watchfire-PR9 — auto-rescue ribbon (#53)
+              // sweeps Patina across the panel when AM logs "Connected".
+              className={`max-w-[260px] rounded-zoca-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 text-right text-[12px] font-semibold leading-snug text-emerald-700 md:max-w-[300px] md:px-4 md:text-[13px]${actionState.choice === "connected" ? " beacon-auto-rescue" : ""}`}
               aria-live="polite"
             >
               ✓ Logged {actionState.choice === "connected" ? "as connected" : actionState.choice === "vm" ? "voicemail" : "no reach"}

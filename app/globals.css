@@ -1009,3 +1009,104 @@ textarea:focus-visible {
     transform: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 33.brand-watchfire-PR9 — live event animations (spec §11 49-54).
+   CSS foundation; component wiring fires the classes when triggers
+   arrive. Each animation is a single one-shot beat — they're not loops.
+   ───────────────────────────────────────────────────────────── */
+
+/* #49 New high-priority customer — large Ember halo on entry, 3s fade */
+.beacon-new-customer-halo {
+  position: relative;
+  animation: beacon-new-customer-halo 3s ease-out both;
+}
+@keyframes beacon-new-customer-halo {
+  0%   { box-shadow: 0 0 0 0    rgba(200, 67, 29, 0.55); }
+  20%  { box-shadow: 0 0 0 18px rgba(200, 67, 29, 0.30); }
+  100% { box-shadow: 0 0 0 32px rgba(200, 67, 29, 0);     }
+}
+
+/* #50 Composite crosses critical threshold — Crimson flash + scale */
+.beacon-score-flash {
+  animation: beacon-score-flash 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  color: #7C2D12 !important; /* Deep Crimson */
+  display: inline-block;
+  transform-origin: center;
+}
+@keyframes beacon-score-flash {
+  0%   { transform: scale(1);    }
+  30%  { transform: scale(1.05); }
+  100% { transform: scale(1);    }
+}
+
+/* #51 New comm spark — small Ember dot rising from "Last touch" */
+.beacon-comm-spark {
+  position: relative;
+}
+.beacon-comm-spark::after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #C8431D;
+  top: 0;
+  left: 50%;
+  animation: beacon-comm-spark 1.2s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes beacon-comm-spark {
+  0%   { transform: translate(-50%, 0);     opacity: 1;   }
+  100% { transform: translate(-50%, -32px); opacity: 0;   }
+}
+
+/* #52 Customer tier change — card slides between sections with trailing spark */
+.beacon-tier-change {
+  animation: beacon-tier-change 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes beacon-tier-change {
+  0%   { transform: translateY(0)    scale(1);    opacity: 1;   }
+  50%  { transform: translateY(-4px) scale(0.99); opacity: 0.85; }
+  100% { transform: translateY(0)    scale(1);    opacity: 1;   }
+}
+
+/* #53 Auto-rescue ribbon — Patina expands across card with "✓ Caught" */
+.beacon-auto-rescue {
+  position: relative;
+  overflow: hidden;
+}
+.beacon-auto-rescue::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(74, 124, 89, 0.20) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: beacon-auto-rescue 1.8s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes beacon-auto-rescue {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%);  }
+}
+
+/* #54 Active churn ticket appears — subtle shake */
+.beacon-churn-shake {
+  animation: beacon-churn-shake 0.2s ease-in-out both;
+}
+@keyframes beacon-churn-shake {
+  0%, 100% { transform: translateX(0);   }
+  25%      { transform: translateX(2px);  }
+  75%      { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-new-customer-halo,
+  .beacon-score-flash,
+  .beacon-comm-spark::after,
+  .beacon-tier-change,
+  .beacon-auto-rescue::before,
+  .beacon-churn-shake {
+    animation: none !important;
+  }
+}
