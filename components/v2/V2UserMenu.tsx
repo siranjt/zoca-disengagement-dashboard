@@ -15,6 +15,7 @@
 //   4. AM-book pill kept (it's not a duplicate of any other chip).
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { signOut, useSession } from "next-auth/react";
 import type { UserRole } from "@/lib/config";
 
@@ -59,12 +60,20 @@ export function V2UserMenu() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  // Phase 33.scope-userMenuPortal — portal escapes V2Header stacking context.
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
 
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // Phase 33.scope-userMenuPortal — popover is portaled to body so we need
+      // to check both the trigger wrapper AND the portaled popover.
+      if (ref.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -74,6 +83,24 @@ export function V2UserMenu() {
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Phase 33.scope-userMenuPortal — keep portaled popover anchored to the
+  // avatar button on scroll / resize / orientation change.
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const r = triggerRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setCoords({ top: Math.round(r.bottom + 8), right: Math.round(window.innerWidth - r.right) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
     };
   }, [open]);
 
@@ -101,6 +128,7 @@ export function V2UserMenu() {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
@@ -176,17 +204,20 @@ export function V2UserMenu() {
         <span style={{ fontSize: "10px", color: "var(--zoca-text-3)" }}>▾</span>
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
+          ref={popoverRef}
           role="menu"
           aria-label="User menu"
-          // Phase 33.D — z-index bumped from 40 → 1000 so the popover always
-          // sits above the sticky header / refresh strip / view-toggle pills.
+          // Phase 33.scope-userMenuPortal — portaled to document.body with
+          // position: fixed so we escape V2Header's backdrop-filter stacking
+          // context (which had been trapping the dropdown beneath ScopeStrip
+          // on Manager view and beneath V2AMTriage's sticky bar on AM view).
           style={{
-            position: "absolute",
-            right: 0,
-            top: "calc(100% + 8px)",
-            zIndex: 1000,
+            position: "fixed",
+            top: coords.top,
+            right: coords.right,
+            zIndex: 9999,
             width: "260px",
             background: "#ffffff",
             border: "1px solid var(--zoca-border)",
@@ -292,7 +323,8 @@ export function V2UserMenu() {
           >
             Sign out
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
