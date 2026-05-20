@@ -110,7 +110,7 @@ function plannerUrl(amName: string): string {
   const base =
     process.env.NEXT_PUBLIC_DASHBOARD_URL ||
     process.env.DASHBOARD_URL ||
-    "https://zoca-disengagement-dashboard.vercel.app";
+    "https://beacon-zoca.vercel.app";
   return `${base.replace(/\/$/, "")}/v2?am=${encodeURIComponent(amName)}`;
 }
 
