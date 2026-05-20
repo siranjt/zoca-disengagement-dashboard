@@ -35,10 +35,14 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
   const total = _activeCustomers.length;
 
   return (
-    <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-zoca-lg border border-zoca-border-2 bg-zoca-banner px-5 py-4">
-      <div className="text-sm text-zoca-text-primary">
+    {/* Phase 33.brand-watchfire-T13 — Welcome strip rewired to Watchfire tokens.
+        Old text-zoca-text-primary/text-zoca-text-muted classes don't exist in the
+        Tailwind config — they were resolving to no color so the strip read as
+        nearly-invisible peach text on the banner gradient. */}
+    <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft px-5 py-4">
+      <div className="text-sm text-zoca-text">
         <strong>Welcome back{amName ? `, ${firstName(amName)}` : ""}.</strong>{" "}
-        <span className="text-zoca-text-muted">
+        <span className="text-zoca-text-2">
           {total === 0
             ? "No customers in your book yet."
             : needsCallCount === 0 && watchingCount === 0
@@ -50,7 +54,7 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
       </div>
       <button
         onClick={onDismiss}
-        className="rounded-zoca-pill border border-zoca-border-2 px-3 py-1.5 text-[12px] text-zoca-text-muted transition hover:bg-zoca-bg-3/60 hover:text-zoca-text-primary"
+        className="rounded-zoca-pill border border-zoca-border px-3 py-1.5 text-[12px] text-zoca-text-2 transition hover:bg-zoca-bg-tint/60 hover:text-zoca-text hover:border-zoca-border-2"
       >
         Got it
       </button>
