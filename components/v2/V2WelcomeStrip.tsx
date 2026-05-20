@@ -34,11 +34,11 @@ export default function V2WelcomeStrip({ amName, customers, onDismiss }: Props) 
   const watchingCount = _activeCustomers.filter((c) => _classify(c) === "watching").length;
   const total = _activeCustomers.length;
 
+  // Phase 33.brand-watchfire-T13 — Welcome strip rewired to Watchfire tokens.
+  // Old text-zoca-text-primary/text-zoca-text-muted classes don't exist in the
+  // Tailwind config — they were resolving to no color so the strip read as
+  // nearly-invisible peach text on the banner gradient.
   return (
-    {/* Phase 33.brand-watchfire-T13 — Welcome strip rewired to Watchfire tokens.
-        Old text-zoca-text-primary/text-zoca-text-muted classes don't exist in the
-        Tailwind config — they were resolving to no color so the strip read as
-        nearly-invisible peach text on the banner gradient. */}
     <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-zoca-lg border border-zoca-border bg-zoca-bg-soft px-5 py-4">
       <div className="text-sm text-zoca-text">
         <strong>Welcome back{amName ? `, ${firstName(amName)}` : ""}.</strong>{" "}
